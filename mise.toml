@@ -1,0 +1,20 @@
+# Thin project toolchain/task declaration (project body only).
+#
+# Toolchain versions are the verified baseline. Generated state/output resolves
+# through `scripts/lib/stack_paths.py` (XDG):
+#   PROJECT_ROOT   = this checkout (or $ANDROID_AGENT_STACK_ROOT)
+#   STACK_*_ROOT   = ${XDG_*_HOME:-$HOME/.local/*}/google-android-agent-stack
+# No host-specific absolute path is stored here. The AEGL recovery driver runs
+# these tasks under `mise exec`, so only the locked tool versions are used.
+[tools]
+java = "temurin-21.0.12+8.0.LTS"
+python = "3.14.4"
+node = "24.21.0"
+
+[tasks.doctor]
+description = "Print every resolved path-contract root (read-only)"
+run = "python3 scripts/lib/stack_paths.py"
+
+[tasks.test]
+description = "Offline gate: 10 suites + layout before/after"
+run = "bash scripts/run-tests.sh"

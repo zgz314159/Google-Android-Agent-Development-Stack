@@ -1,0 +1,285 @@
+{
+  "acceptance_ids": [
+    "AC-PHASE4SM-001",
+    "AC-PHASE4SM-002",
+    "AC-PHASE4SM-003",
+    "AC-PHASE4SM-004"
+  ],
+  "allowed_paths": [
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/phase4-termination-smoke/"
+  ],
+  "artifact_hashes": {
+    "DESIGN.md": "b836e440599bc084c1bb789ef48f1e15a073142c8031e7c2ed52204e4aa1708a",
+    "PRODUCT.md": "41cbc795a4cd921e8457dc532b0b586df2c29af114c79ebf4db5f6fb98ff5d75",
+    "acceptance.md": "d22afeaf34211470b26ade9fba0b2b7aa3dd95fd73906845a3930c5ebfb89faa",
+    "design.md": "d8330f2fcc549c127993b7faf9efb469d84f962082360e68f450211f1b14b904",
+    "project-context.json": "eb5abe30b55e829c19bbace50be5dc8a8c5228a87e7758a55c471824aad62423",
+    "requirements.md": "a7d0edb3b459ae3dbe4f0295a5e8f1d4b8a4a92dd3e0a5777a6aaae7cc2d044e",
+    "tasks.md": "1beac7fc92e49e030a817d5d818b7dcec1ac4bb4eeb7d1edf9862fdbc92d3dc5",
+    "verification-intent.json": "ded2d89f439421d5678f229d5075387857a9ad8c0524d704ecffb13423553ba9"
+  },
+  "artifact_refs": [
+    {
+      "path": "PRODUCT.md",
+      "required": true,
+      "role": "product",
+      "source": "authored"
+    },
+    {
+      "path": "requirements.md",
+      "required": true,
+      "role": "requirements",
+      "source": "authored"
+    },
+    {
+      "path": "design.md",
+      "required": true,
+      "role": "design",
+      "source": "authored"
+    },
+    {
+      "path": "tasks.md",
+      "required": true,
+      "role": "tasks",
+      "source": "authored"
+    },
+    {
+      "path": "DESIGN.md",
+      "required": true,
+      "role": "ui_design",
+      "source": "authored"
+    },
+    {
+      "path": "acceptance.md",
+      "required": true,
+      "role": "acceptance",
+      "source": "authored"
+    },
+    {
+      "path": "project-context.json",
+      "required": true,
+      "role": "project_context",
+      "source": "authored"
+    },
+    {
+      "path": "verification-intent.json",
+      "required": true,
+      "role": "verification_intent",
+      "source": "authored"
+    }
+  ],
+  "assumptions": [
+    {
+      "id": "ASM-001",
+      "statement": "The bridge contract gate accepts a READY, compiler-generated, project-local package whose allowed surface is a single evidence directory."
+    },
+    {
+      "id": "ASM-002",
+      "statement": "Creating one small JSON marker file and reading it back is fully deterministic and offline."
+    }
+  ],
+  "contract_id": "PHASE4-TERMINATION-SMOKE-001",
+  "contract_version": "0.1.0",
+  "data_change": {
+    "migration_required": false,
+    "notes": "No persisted schema is touched. The only durable artifact is one new evidence-only marker file in an isolated directory.",
+    "schema_version_current": 0,
+    "schema_version_target": 0
+  },
+  "decisions": [
+    {
+      "id": "DEC-001",
+      "rationale": "The smoke's only job is to prove termination semantics; isolating it to one evidence directory makes its worst-case effect a single stray marker and keeps the control plane unreachable by construction.",
+      "statement": "The smoke's entire write surface is orchestration/hermes/evidence/phase4-termination-smoke/ and nothing else."
+    },
+    {
+      "id": "DEC-002",
+      "rationale": "Termination semantics can only be observed on a task small enough that the only thing left to do after PASS is stop. A larger task would make 'no post-PASS tool call' untestable.",
+      "statement": "The smoke is a single deterministic marker plus one verification-layer pass; PASS -> FINAL RESPONSE -> STOP, with no repeated verification."
+    },
+    {
+      "id": "DEC-003",
+      "rationale": "Auto-Finalizer runs after the session exits; treating it as an in-session acceptance criterion invites exactly the post-PASS tool calls this smoke exists to forbid.",
+      "statement": "Auto-Finalizer is a POST-SESSION observer and is never invoked, inspected or awaited inside this session."
+    }
+  ],
+  "experiment_id": "PHASE4-TERMINATION-SMOKE",
+  "experiment_type": "SPEC_FIRST_BROWNFIELD",
+  "feature": {
+    "feature_id": "PHASE4-TERMINATION-SMOKE",
+    "summary": "One tiny deterministic live task that writes a single evidence marker under an isolated evidence directory, verifies it once, runs the normal verification layer once, and terminates on PASS with the Phase C report in the final assistant response, without any capability to touch the bridge, the guard, the compiler or any product code.",
+    "title": "Phase-4 evidence-only termination smoke"
+  },
+  "forbidden_paths": [
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/HERMES-LOCK.json",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/",
+    "Google-Android-Agent-Development-Stack/specification/",
+    "Google-Android-Agent-Development-Stack/.hermes.md",
+    "Google-Android-Agent-Development-Stack/evaluation/",
+    "Google-Android-Agent-Development-Stack/verification/",
+    "Google-Android-Agent-Development-Stack/verification-benchmark/",
+    "Google-Android-Agent-Development-Stack/reports/contracts/",
+    "KeepLab-Relay/",
+    "KeepLab-Relay-evidence/",
+    "Testapp/",
+    "PowerAi/"
+  ],
+  "matched_control_available": false,
+  "mode": "brownfield",
+  "non_goals": [
+    "Control-plane modification",
+    "Device or browser interaction",
+    "Network access",
+    "Repeated or exploratory verification",
+    "Auto-Finalizer invocation",
+    "Any broader project write surface"
+  ],
+  "project": "Google-Android-Agent-Development-Stack",
+  "read_first": [
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/README.md",
+      "why": "the orchestration layer's own entry description, confirming this task touches no orchestration code"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/INTEGRATION.md",
+      "why": "how the orchestration layer integrates, confirming the smoke consumes existing seams only"
+    }
+  ],
+  "readiness": {
+    "gates": {
+      "acceptance": "PASS",
+      "boundaries": "PASS",
+      "hashes": "PASS",
+      "schema": "PASS",
+      "traceability": "PASS"
+    },
+    "status": "READY"
+  },
+  "requirements": [
+    {
+      "acceptance_ids": [
+        "AC-PHASE4SM-001",
+        "AC-PHASE4SM-002"
+      ],
+      "id": "REQ-PHASE4SM-001",
+      "statement": "The generated contract must list `Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/phase4-termination-smoke/` in `allowed_paths` and must list no other project path as allowed, and its forbidden list must cover the bridge, the evaluation adapter, the pinned Hermes revision, `.hermes.md`, the Specification Compiler, the Android verification layers, `reports/contracts/`, KeepLab, `Testapp` and `PowerAi`, with no allowed path overlapping any forbidden path.",
+      "task_ids": [
+        "TASK-01"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE4SM-003",
+        "AC-PHASE4SM-004"
+      ],
+      "id": "REQ-PHASE4SM-002",
+      "statement": "The task must create exactly one evidence-only marker under the authorized directory, verify that marker once, run the normal verification layer exactly once, and then honour the hardened termination semantics: on PASS, no further tool call, search, read, audit, repeated verification or exploratory check; the Phase C report is produced in the final assistant response from evidence already collected; a compact final result is emitted and the session stops immediately.",
+      "task_ids": [
+        "TASK-01",
+        "TASK-02"
+      ]
+    }
+  ],
+  "scope": [
+    "Write authorization for orchestration/hermes/evidence/phase4-termination-smoke/ only",
+    "One evidence-only marker file",
+    "One deterministic verification",
+    "One normal verification-layer pass",
+    "PASS -> final response -> STOP"
+  ],
+  "selector_contract": [
+    {
+      "compose_test_tag": "phase4_termination_smoke_dir_present",
+      "name": "phase4_termination_smoke_dir_present",
+      "required": true,
+      "state": "isolated smoke evidence directory present under orchestration/hermes/evidence/phase4-termination-smoke/",
+      "uiautomator": "By.res(\"phase4_termination_smoke_dir_present\")"
+    },
+    {
+      "compose_test_tag": "phase4_termination_smoke_marker_present",
+      "name": "phase4_termination_smoke_marker_present",
+      "required": true,
+      "state": "single evidence-only marker file present inside that directory",
+      "uiautomator": "By.res(\"phase4_termination_smoke_marker_present\")"
+    }
+  ],
+  "stop_conditions": [
+    "A required write falls outside the smoke evidence directory: STOP, CONTRACT_DEVIATION.",
+    "Satisfying the smoke would require touching bridge/, evaluation_adapter/, specification/, HERMES-LOCK.json, .hermes.md, KeepLab, Testapp or PowerAi: STOP, ABSOLUTE_BLOCK_VIOLATION.",
+    "The smoke is asked to do anything beyond one marker and one verification-layer pass: STOP, SCOPE_WIDENING.",
+    "A post-PASS tool call, search, read, audit or repeated verification appears necessary: STOP, TERMINATION_SEMANTICS_VIOLATION.",
+    "Auto-Finalizer would have to be invoked, inspected or awaited in-session: STOP, POST_SESSION_ONLY_VIOLATION."
+  ],
+  "tasks": [
+    {
+      "acceptance_ids": [
+        "AC-PHASE4SM-001",
+        "AC-PHASE4SM-002",
+        "AC-PHASE4SM-003"
+      ],
+      "allowed_paths": [
+        "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/phase4-termination-smoke/"
+      ],
+      "boundary": "The smoke evidence directory only. No control-plane path, no contract package, no product code is read for write purposes or touched.",
+      "depends": [],
+      "done_when": "exactly one marker file exists under orchestration/hermes/evidence/phase4-termination-smoke/ and nothing else was created or modified",
+      "goal": "Create exactly one marker file under orchestration/hermes/evidence/phase4-termination-smoke/ recording the smoke identity and a deterministic timestamp, and write nothing else anywhere in the project.",
+      "id": "TASK-01",
+      "verification": [
+        "assert the single marker file exists under the authorized directory and assert no write occurred outside it"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE4SM-004"
+      ],
+      "allowed_paths": [
+        "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/phase4-termination-smoke/"
+      ],
+      "boundary": "Verification and reporting only. No additional artifact is created and no Auto-Finalizer is invoked, inspected or awaited.",
+      "depends": [
+        "TASK-01"
+      ],
+      "done_when": "the smoke reports PASS once, with the Phase C report in the final assistant response and no post-PASS tool call",
+      "goal": "Verify the marker exactly once, run the normal verification layer exactly once, and on PASS produce the Phase C report in the final assistant response from evidence already collected, emit a compact final result and stop immediately with no further tool call, search, read, audit or repeated verification.",
+      "id": "TASK-02",
+      "verification": [
+        "assert the marker content matches the expected deterministic shape and that the session terminates after the single verification-layer pass"
+      ]
+    }
+  ],
+  "ui_change": {
+    "selectors_added": [
+      "phase4_termination_smoke_dir_present",
+      "phase4_termination_smoke_marker_present"
+    ],
+    "surfaces": []
+  },
+  "unresolved_questions": [],
+  "verification_intent": {
+    "acceptance_ids": [
+      "AC-PHASE4SM-001",
+      "AC-PHASE4SM-002",
+      "AC-PHASE4SM-003",
+      "AC-PHASE4SM-004"
+    ],
+    "engine": "maestro",
+    "feature_id": "PHASE4-TERMINATION-SMOKE",
+    "fixture_intent": "No Android fixture and no device. The only fixture is the isolated evidence directory orchestration/hermes/evidence/phase4-termination-smoke/.",
+    "journey_id": "PHASE4-TERMINATION-SMOKE-EVIDENCE-ONLY",
+    "oracle_intent": "Deterministic only: the presence and content of exactly one marker file, a single successful read-back verification, and exactly one normal verification-layer pass. Zero LLM judgment, zero visual judgment, zero device interaction, no browser, no network. On PASS the executor emits the Phase C report in the final assistant response and stops immediately; Auto-Finalizer is POST-SESSION only. Verification is performed once; PASS = STOP.",
+    "persistence_checks": [
+      "the single evidence-only marker persists under orchestration/hermes/evidence/phase4-termination-smoke/ after the task completes"
+    ],
+    "required_selectors": [
+      "phase4_termination_smoke_dir_present",
+      "phase4_termination_smoke_marker_present"
+    ],
+    "rotation_checks": [],
+    "search_checks": [
+      "no file outside orchestration/hermes/evidence/phase4-termination-smoke/ was created or modified by the smoke"
+    ]
+  }
+}

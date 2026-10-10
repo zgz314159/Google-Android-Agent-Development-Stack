@@ -1,0 +1,71 @@
+{
+  "algorithm": "sha256",
+  "entries": [
+    {
+      "path": "PRODUCT.md",
+      "required": true,
+      "role": "product",
+      "sha256": "206589f6ac0f4f42061e457e882167e1d5798560b24a05084880824f37acf5d8",
+      "size": 4176,
+      "source": "authored"
+    },
+    {
+      "path": "requirements.md",
+      "required": true,
+      "role": "requirements",
+      "sha256": "55a5d75bc0f8b23ea8ad6e589a3c253fe3ad54611ef1d0b6433410aa04f1218f",
+      "size": 2823,
+      "source": "authored"
+    },
+    {
+      "path": "design.md",
+      "required": true,
+      "role": "design",
+      "sha256": "0840faa79cfddda2aeea0c61b09410ce0ef998f57e310cfb8b2fbe349db17b6c",
+      "size": 8805,
+      "source": "authored"
+    },
+    {
+      "path": "tasks.md",
+      "required": true,
+      "role": "tasks",
+      "sha256": "892baaafc16eebe6a7243bd4d0292873caa0588cc87e3c213a5d0129b7812c1f",
+      "size": 2500,
+      "source": "authored"
+    },
+    {
+      "path": "DESIGN.md",
+      "required": true,
+      "role": "ui_design",
+      "sha256": "34d4eb0ebb8bdc4134eee7ccea5219c123d0d2061519929f9d25779f8a093ec4",
+      "size": 1583,
+      "source": "authored"
+    },
+    {
+      "path": "acceptance.md",
+      "required": true,
+      "role": "acceptance",
+      "sha256": "96d367d8b31cea60ba639c0765706943d4776f264557ed06b1805c37ec0eac6c",
+      "size": 2569,
+      "source": "authored"
+    },
+    {
+      "path": "project-context.json",
+      "required": true,
+      "role": "project_context",
+      "sha256": "6fe19c3f2d97f9939e9c8f302e2792e4d91300520fc70f7e176db50675a150b1",
+      "size": 6098,
+      "source": "authored"
+    },
+    {
+      "path": "verification-intent.json",
+      "required": true,
+      "role": "verification_intent",
+      "sha256": "e83b1f40254fe87970da528bcff27a2daf504d70c8455e8de5b7b5282508e9e0",
+      "size": 1408,
+      "source": "authored"
+    }
+  ],
+  "generated_by": "specification/compiler/hash_manifest.py",
+  "package": "PHASE4-HERMES-TASK-V1-KERNEL-001"
+}

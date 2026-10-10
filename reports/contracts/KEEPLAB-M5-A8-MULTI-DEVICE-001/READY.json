@@ -1,0 +1,14 @@
+{
+  "contract_id": "KEEPLAB-M5-A8-MULTI-DEVICE-001",
+  "contract_version": "0.1.0",
+  "experiment_id": "KEEPLAB-M5-A8-MULTI-DEVICE",
+  "status": "READY",
+  "unresolved_questions": [],
+  "validation": {
+    "acceptance": "PASS",
+    "boundaries": "PASS",
+    "hashes": "PASS",
+    "schema": "PASS",
+    "traceability": "PASS"
+  }
+}

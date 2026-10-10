@@ -1,0 +1,20 @@
+appId: com.keeplab.app
+name: J3-rotation-state
+tags:
+  - benchmark
+---
+- launchApp:
+    clearState: false
+- tapOn: "Search"
+- tapOn:
+    id: "search-field"
+- inputText: "VC-J3-Keep"
+- assertVisible: "VC-J3-Keep"
+- setOrientation:
+    orientation: LANDSCAPE_LEFT
+- assertVisible: "VC-J3-Keep"
+- setOrientation:
+    orientation: PORTRAIT
+- assertVisible: "VC-J3-Keep"
+- toggleDarkMode
+- assertVisible: "VC-J3-Keep"

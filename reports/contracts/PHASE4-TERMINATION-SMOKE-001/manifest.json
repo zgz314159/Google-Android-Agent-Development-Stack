@@ -1,0 +1,71 @@
+{
+  "algorithm": "sha256",
+  "entries": [
+    {
+      "path": "PRODUCT.md",
+      "required": true,
+      "role": "product",
+      "sha256": "41cbc795a4cd921e8457dc532b0b586df2c29af114c79ebf4db5f6fb98ff5d75",
+      "size": 3558,
+      "source": "authored"
+    },
+    {
+      "path": "requirements.md",
+      "required": true,
+      "role": "requirements",
+      "sha256": "a7d0edb3b459ae3dbe4f0295a5e8f1d4b8a4a92dd3e0a5777a6aaae7cc2d044e",
+      "size": 2146,
+      "source": "authored"
+    },
+    {
+      "path": "design.md",
+      "required": true,
+      "role": "design",
+      "sha256": "d8330f2fcc549c127993b7faf9efb469d84f962082360e68f450211f1b14b904",
+      "size": 6990,
+      "source": "authored"
+    },
+    {
+      "path": "tasks.md",
+      "required": true,
+      "role": "tasks",
+      "sha256": "1beac7fc92e49e030a817d5d818b7dcec1ac4bb4eeb7d1edf9862fdbc92d3dc5",
+      "size": 1898,
+      "source": "authored"
+    },
+    {
+      "path": "DESIGN.md",
+      "required": true,
+      "role": "ui_design",
+      "sha256": "b836e440599bc084c1bb789ef48f1e15a073142c8031e7c2ed52204e4aa1708a",
+      "size": 1826,
+      "source": "authored"
+    },
+    {
+      "path": "acceptance.md",
+      "required": true,
+      "role": "acceptance",
+      "sha256": "d22afeaf34211470b26ade9fba0b2b7aa3dd95fd73906845a3930c5ebfb89faa",
+      "size": 2426,
+      "source": "authored"
+    },
+    {
+      "path": "project-context.json",
+      "required": true,
+      "role": "project_context",
+      "sha256": "eb5abe30b55e829c19bbace50be5dc8a8c5228a87e7758a55c471824aad62423",
+      "size": 4414,
+      "source": "authored"
+    },
+    {
+      "path": "verification-intent.json",
+      "required": true,
+      "role": "verification_intent",
+      "sha256": "ded2d89f439421d5678f229d5075387857a9ad8c0524d704ecffb13423553ba9",
+      "size": 1324,
+      "source": "authored"
+    }
+  ],
+  "generated_by": "specification/compiler/hash_manifest.py",
+  "package": "PHASE4-TERMINATION-SMOKE-001"
+}

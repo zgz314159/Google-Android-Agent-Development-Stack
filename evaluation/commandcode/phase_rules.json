@@ -1,0 +1,327 @@
+{
+  "version": "0.2.3",
+  "comment": "Deterministic, ordered rule table. First rule whose conditions all match any tool in a turn wins. Regexes are matched against the concatenated tool name, agent subagent_type, command, path and (optionally) result text. No project names are hard-coded: only generic workflow artifacts, tool names and command/path signatures. v0.2.1 adds structural rules for plan-mode control transitions, human-in-the-loop clarification, agent subagent_type, monitor_command build/test jobs, harness self-tests and result/report artifacts. v0.2.2 adds plan_review / agent_output control tools and the verification harness tree (*.py, *.sh, contracts/tests/examples/fixtures, README) so the promotion's harness-authoring wall is no longer UNKNOWN. v0.2.3 adds the Verification Layer runner execution signature (run_verification.sh / verification/runner / orchestrator.py) -> T7 so running the harness is never UNKNOWN.",
+  "rules": [
+    {
+      "id": "t3_plan_mode_enter",
+      "phase": "T3", "subphase": null, "confidence": "MEDIUM", "time_class": "PRODUCTIVE", "wait_tag": null,
+      "tools": ["enter_plan_mode"]
+    },
+    {
+      "id": "t3_plan_mode_exit",
+      "phase": "T3", "subphase": null, "confidence": "MEDIUM", "time_class": "NECESSARY_OVERHEAD", "wait_tag": null,
+      "tools": ["exit_plan_mode"]
+    },
+    {
+      "id": "t3_clarification",
+      "phase": "T3", "subphase": null, "confidence": "MEDIUM", "time_class": "NECESSARY_OVERHEAD", "wait_tag": null,
+      "tools": ["ask_user_question"]
+    },
+    {
+      "id": "t3_plan_review",
+      "phase": "T3", "subphase": null, "confidence": "HIGH", "time_class": "NECESSARY_OVERHEAD", "wait_tag": null,
+      "tools": ["plan_review", "exit_plan_mode"]
+    },
+    {
+      "id": "t2_agent_explore",
+      "phase": "T2", "subphase": null, "confidence": "HIGH", "time_class": "NECESSARY_OVERHEAD", "wait_tag": "WAIT_AI_NODE",
+      "tools": ["agent"],
+      "subagent_regex": "^explore$"
+    },
+    {
+      "id": "t3_agent_plan",
+      "phase": "T3", "subphase": null, "confidence": "HIGH", "time_class": "PRODUCTIVE", "wait_tag": "WAIT_AI_NODE",
+      "tools": ["agent"],
+      "subagent_regex": "^plan$"
+    },
+    {
+      "id": "t2_agent_output",
+      "phase": "T2", "subphase": null, "confidence": "MEDIUM", "time_class": "NECESSARY_OVERHEAD", "wait_tag": "WAIT_AI_NODE",
+      "tools": ["agent_output"]
+    },
+
+    {
+      "id": "t9_handoff_artifact",
+      "phase": "T9", "subphase": null, "confidence": "HIGH", "time_class": "PRODUCTIVE", "wait_tag": null,
+      "tools": ["write_file", "edit_file"],
+      "path_regex": "(?i)(HANDOFF|RESULT|GAPS|PHASE-[A-Z]-RESULT|FINAL)[^/]*\\.md$"
+    },
+    {
+      "id": "t9_result_file",
+      "phase": "T9", "subphase": null, "confidence": "HIGH", "time_class": "PRODUCTIVE", "wait_tag": null,
+      "tools": ["write_file", "edit_file"],
+      "path_regex": "(?i)/(results?|reports?)/[^/]*\\.(md|json)$"
+    },
+    {
+      "id": "t9_factory_record",
+      "phase": "T9", "subphase": null, "confidence": "MEDIUM", "time_class": "PRODUCTIVE", "wait_tag": null,
+      "tools": ["write_file", "edit_file"],
+      "path_regex": "(?i)(FACTORY|ledger)[^/]*\\.(md|json)$"
+    },
+    {
+      "id": "t9_report_cmd",
+      "phase": "T9", "subphase": null, "confidence": "MEDIUM", "time_class": "PRODUCTIVE", "wait_tag": null,
+      "tools": ["shell_command", "monitor_command"],
+      "command_regex": "(?i)(reports?[\"']?/|hardening-health|promotion_readiness|baseline-invariants|device-smoke)"
+    },
+    {
+      "id": "t9_git_commit",
+      "phase": "T9", "subphase": null, "confidence": "MEDIUM", "time_class": "PRODUCTIVE", "wait_tag": null,
+      "tools": ["shell_command"],
+      "command_regex": "(?i)\\bgit\\s+(commit|tag|push)\\b"
+    },
+    {
+      "id": "t9_agent_review",
+      "phase": "T9", "subphase": null, "confidence": "LOW", "time_class": "NECESSARY_OVERHEAD", "wait_tag": "WAIT_AI_NODE",
+      "tool_regex": "^agent$",
+      "command_regex": "(?i)review|verif|audit|\\bqa\\b|critique"
+    },
+
+    {
+      "id": "t6_gradle_test",
+      "phase": "T6", "subphase": null, "confidence": "HIGH", "time_class": "NECESSARY_OVERHEAD", "wait_tag": "WAIT_BUILD",
+      "tools": ["shell_command", "monitor_command"],
+      "command_regex": "(?i)(?<![/\\\\w])(\\./gradlew|gradlew)\\b[^|;&\\n]*(testDebugUnitTest|testReleaseUnitTest|connectedDebugAndroidTest|connectedAndroidTest|UnitTest|:app:test\\b|\\btestDebug\\b)"
+    },
+    {
+      "id": "t6_harness_device",
+      "phase": "T6", "subphase": null, "confidence": "HIGH", "time_class": "NECESSARY_OVERHEAD", "wait_tag": "WAIT_DEVICE",
+      "tools": ["shell_command", "monitor_command"],
+      "command_regex": "(?i)selftest_device\\.sh"
+    },
+    {
+      "id": "t6_harness_ci",
+      "phase": "T6", "subphase": null, "confidence": "HIGH", "time_class": "NECESSARY_OVERHEAD", "wait_tag": "WAIT_BUILD",
+      "tools": ["shell_command", "monitor_command"],
+      "command_regex": "(?i)(harness/ci\\.py|\\bci\\.py\\b|test-results|androidTest-results|selftest_static\\.sh)"
+    },
+    {
+      "id": "t6_test_path",
+      "phase": "T6", "subphase": null, "confidence": "HIGH", "time_class": "NECESSARY_OVERHEAD", "wait_tag": null,
+      "tools": ["write_file", "edit_file"],
+      "path_regex": "(?i)/src/(test|androidTest)/"
+    },
+    {
+      "id": "t6_harness_path",
+      "phase": "T6", "subphase": null, "confidence": "MEDIUM", "time_class": "NECESSARY_OVERHEAD", "wait_tag": null,
+      "tools": ["write_file", "edit_file"],
+      "path_regex": "(?i)/harness/"
+    },
+    {
+      "id": "t6_maestro_def",
+      "phase": "T6", "subphase": null, "confidence": "MEDIUM", "time_class": "NECESSARY_OVERHEAD", "wait_tag": null,
+      "tools": ["write_file", "edit_file"],
+      "path_regex": "(?i)/maestro/.*\\.ya?ml$"
+    },
+    {
+      "id": "t6_test_runner",
+      "phase": "T6", "subphase": null, "confidence": "MEDIUM", "time_class": "NECESSARY_OVERHEAD", "wait_tag": "WAIT_TOOL",
+      "tools": ["shell_command"],
+      "command_regex": "(?i)\\b(pytest|unittest|espresso|instrumentation)\\b"
+    },
+
+    {
+      "id": "t5_gradle_build",
+      "phase": "T5", "subphase": null, "confidence": "HIGH", "time_class": "NECESSARY_OVERHEAD", "wait_tag": "WAIT_BUILD",
+      "tools": ["shell_command", "monitor_command"],
+      "command_regex": "(?i)(?<![/\\\\w])(\\./gradlew|gradlew)\\b[^|;&\\n]*(assemble|bundle|compile|packageDebug|:app:build|\\bbuild\\b|dex)"
+    },
+    {
+      "id": "t5_gradle_generic",
+      "phase": "T5", "subphase": null, "confidence": "MEDIUM", "time_class": "NECESSARY_OVERHEAD", "wait_tag": "WAIT_BUILD",
+      "tools": ["shell_command", "monitor_command"],
+      "command_regex": "(?i)(?<![/\\\\w])(\\./gradlew|gradlew)\\s+[-\\w:]+(?![\\-\\w/])"
+    },
+
+    {
+      "id": "t7a_deploy",
+      "phase": "T7", "subphase": "T7a", "confidence": "HIGH", "time_class": "NECESSARY_OVERHEAD", "wait_tag": "WAIT_DEVICE",
+      "tools": ["shell_command"],
+      "command_regex": "(?i)(adb[^|;&\\n]*(\\binstall\\b|\\buninstall\\b)|android\\s+(run|install|describe)\\b|\\bam\\s+(start|force-stop)\\b|adb\\s+devices|android\\s+emulator|emulator\\s+start|adb\\s+wait-for-device|pm\\s+(install|path|list))"
+    },
+    {
+      "id": "t7a_device_props",
+      "phase": "T7", "subphase": "T7a", "confidence": "MEDIUM", "time_class": "NECESSARY_OVERHEAD", "wait_tag": "WAIT_DEVICE",
+      "tools": ["shell_command"],
+      "command_regex": "(?i)(\\bgetprop\\b)"
+    },
+    {
+      "id": "t7a_kill_shell",
+      "phase": "T7", "subphase": "T7a", "confidence": "LOW", "time_class": "NECESSARY_OVERHEAD", "wait_tag": "WAIT_DEVICE",
+      "tool_regex": "(?i)^kill_shell$"
+    },
+    {
+      "id": "t7_verification_run",
+      "phase": "T7", "subphase": null, "confidence": "HIGH", "time_class": "NECESSARY_OVERHEAD", "wait_tag": null,
+      "tools": ["shell_command", "monitor_command"],
+      "command_regex": "(?i)(run_verification\\.sh|verification/runner/|orchestrator\\.py)"
+    },
+
+    {
+      "id": "t7b_ui",
+      "phase": "T7", "subphase": "T7b", "confidence": "HIGH", "time_class": "NECESSARY_OVERHEAD", "wait_tag": "WAIT_DEVICE",
+      "tools": ["shell_command"],
+      "command_regex": "(?i)(adb[^|;&\\n]*shell\\s+input\\s+(tap|swipe|text|keyevent|press|roll)|\\binput\\s+(tap|swipe|text|keyevent)\\b|\\bime\\s+set\\b)"
+    },
+
+    {
+      "id": "t7c_evidence_cmd",
+      "phase": "T7", "subphase": "T7c", "confidence": "HIGH", "time_class": "NECESSARY_OVERHEAD", "wait_tag": "WAIT_DEVICE",
+      "tools": ["shell_command"],
+      "command_regex": "(?i)(android\\s+(layout|screen)|screen\\s*capture|screencap|uiautomator\\s+dump|window_dump|dumpsys|logcat|run-as[^|;&\\n]*(shared_prefs|databases|files)|sqlite|\\bime\\s+list\\b|(?<![A-Za-z0-9_])(layout|window_dump|ui)[A-Za-z0-9_-]*\\.(json|xml)|android\\s+studio\\s+(analyze-file|render-compose-preview))"
+    },
+    {
+      "id": "t7c_image_read",
+      "phase": "T7", "subphase": "T7c", "confidence": "HIGH", "time_class": "NECESSARY_OVERHEAD", "wait_tag": "WAIT_DEVICE",
+      "tools": ["read_file"],
+      "path_regex": "(?i)\\.(png|jpg|jpeg|webp)$"
+    },
+    {
+      "id": "t7c_state_read",
+      "phase": "T7", "subphase": "T7c", "confidence": "MEDIUM", "time_class": "NECESSARY_OVERHEAD", "wait_tag": "WAIT_DEVICE",
+      "tools": ["read_file", "read_directory", "glob"],
+      "path_regex": "(?i)(layout[^/]*\\.json|window_dump[^/]*\\.xml|final_state[^/]*\\.(json|txt)|state[^/]*\\.json|logcat[^/]*\\.txt)$"
+    },
+
+    {
+      "id": "t4_impl_code",
+      "phase": "T4", "subphase": null, "confidence": "HIGH", "time_class": "PRODUCTIVE", "wait_tag": null,
+      "tools": ["write_file", "edit_file"],
+      "path_regex": "(?i)\\.(kt|kts|java|xml|gradle|toml|pro|properties)$|AndroidManifest"
+    },
+    {
+      "id": "t4_impl_dir",
+      "phase": "T4", "subphase": null, "confidence": "MEDIUM", "time_class": "PRODUCTIVE", "wait_tag": null,
+      "tools": ["write_file", "edit_file"],
+      "path_regex": "(?i)/src/(main|debug|release)/|/res/"
+    },
+
+    {
+      "id": "t3_plan_write",
+      "phase": "T3", "subphase": null, "confidence": "HIGH", "time_class": "PRODUCTIVE", "wait_tag": null,
+      "tools": ["write_file", "edit_file"],
+      "path_regex": "(?i)(spec|plan|tasks|task|requirements|research|data-model|quickstart|constitution|checklist|contracts?|PRD|MISSION|BACKLOG|HOLDOUT|END-TO-END|journey|RFC)[^/]*\\.md$"
+    },
+    {
+      "id": "t3_plan_mode_file",
+      "phase": "T3", "subphase": null, "confidence": "HIGH", "time_class": "PRODUCTIVE", "wait_tag": null,
+      "tools": ["write_file", "edit_file"],
+      "path_regex": "(?i)/\\.commandcode/plans/"
+    },
+    {
+      "id": "t3_docs_write",
+      "phase": "T3", "subphase": null, "confidence": "HIGH", "time_class": "PRODUCTIVE", "wait_tag": null,
+      "tools": ["write_file", "edit_file"],
+      "path_regex": "(?i)/(docs?|_bmad-output|specs|\\.specify|\\.archon|\\.bmad)/.*\\.(md|json|ya?ml)$"
+    },
+    {
+      "id": "t3_plan_read",
+      "phase": "T3", "subphase": null, "confidence": "MEDIUM", "time_class": "PRODUCTIVE", "wait_tag": null,
+      "tools": ["read_file"],
+      "path_regex": "(?i)(spec|plan|tasks|requirements|PRD|MISSION|BACKLOG|HOLDOUT|constitution)[^/]*\\.md$"
+    },
+    {
+      "id": "t3_workflow_scripts",
+      "phase": "T3", "subphase": null, "confidence": "HIGH", "time_class": "PRODUCTIVE", "wait_tag": null,
+      "tools": ["shell_command"],
+      "command_regex": "(?i)(create-new-feature|setup-plan|setup-tasks|memlog\\.py|render_skill\\.py|/\\.specify/scripts/|specify\\s+(spec|plan|tasks))"
+    },
+
+    {
+      "id": "t9_readme",
+      "phase": "T9", "subphase": null, "confidence": "LOW", "time_class": "PRODUCTIVE", "wait_tag": null,
+      "tools": ["write_file", "edit_file"],
+      "path_regex": "(?i)(^|/)README\\.md$"
+    },
+    {
+      "id": "t6_verification_tree",
+      "phase": "T6", "subphase": null, "confidence": "MEDIUM", "time_class": "NECESSARY_OVERHEAD", "wait_tag": null,
+      "tools": ["write_file", "edit_file"],
+      "path_regex": "(?i)/verification/"
+    },
+
+    {
+      "id": "t1b_provider_probe",
+      "phase": "T1", "subphase": "T1b", "confidence": "HIGH", "time_class": "AVOIDABLE_WASTE", "wait_tag": "WAIT_PROVIDER",
+      "tools": ["shell_command"],
+      "command_regex": "(?i)(\\bclaude\\s+-p\\b|PROBE_|unrecognized_model|quota exhausted)"
+    },
+    {
+      "id": "t1b_provider_env",
+      "phase": "T1", "subphase": "T1b", "confidence": "MEDIUM", "time_class": "AVOIDABLE_WASTE", "wait_tag": "WAIT_PROVIDER",
+      "tools": ["shell_command"],
+      "command_regex": "(?i)(auth\\.json|providers?\\.json|env\\s*\\|[^\\n]*(provider|api_key|anthropic|openai|deepseek|model))"
+    },
+    {
+      "id": "t1b_bootstrap",
+      "phase": "T1", "subphase": "T1b", "confidence": "HIGH", "time_class": "NECESSARY_OVERHEAD", "wait_tag": "WAIT_DEPENDENCY",
+      "tools": ["shell_command"],
+      "command_regex": "(?i)(\\bdoctor\\b|factory\\.py\\s+init|bmad-method\\s+install|specify\\s+init|specify\\s+integration|npx\\s+[^|;&\\n]*install|gradle-[0-9][^|;&\\n]*-bin\\.zip|curl\\s+-|--list-tools|--list-options|git\\s+init|chmod\\s+\\+x|uv\\s+run\\s+--no-cache)"
+    },
+    {
+      "id": "t1b_studio_check",
+      "phase": "T1", "subphase": "T1b", "confidence": "MEDIUM", "time_class": "NECESSARY_OVERHEAD", "wait_tag": "WAIT_TOOL",
+      "tools": ["shell_command"],
+      "command_regex": "(?i)studio\\s+check"
+    },
+
+    {
+      "id": "t1a_routing_read",
+      "phase": "T1", "subphase": "T1a", "confidence": "MEDIUM", "time_class": "NECESSARY_OVERHEAD", "wait_tag": null,
+      "tools": ["read_file", "read_directory"],
+      "path_regex": "(?i)(archon|factory|bmad|specify|_bmad|\\.archon|\\.specify|workflow|consumer)"
+    },
+    {
+      "id": "t1a_routing_cmd",
+      "phase": "T1", "subphase": "T1a", "confidence": "MEDIUM", "time_class": "NECESSARY_OVERHEAD", "wait_tag": null,
+      "tools": ["shell_command"],
+      "command_regex": "(?i)(\\barchon\\b|bmad-method|\\bspecify\\b|factory\\.py|consumer\\.py|\\.factory/|render_skill\\.py)"
+    },
+
+    {
+      "id": "t2_tool_discovery",
+      "phase": "T2", "subphase": null, "confidence": "MEDIUM", "time_class": "NECESSARY_OVERHEAD", "wait_tag": null,
+      "tools": ["shell_command"],
+      "command_regex": "(?i)(android\\s+(docs|--help|--version|-V)|android\\s+\\S+\\s+--help|^\\s*android\\s*$)"
+    },
+    {
+      "id": "t2_explore_cmd",
+      "phase": "T2", "subphase": null, "confidence": "MEDIUM", "time_class": "NECESSARY_OVERHEAD", "wait_tag": null,
+      "tools": ["shell_command"],
+      "command_regex": "(?i)\\b(ls|cat|find|wc|env|command\\s+-v|which|head|tail|grep|rg|sed|du|file|stat|pwd|echo|python3\\s+-|git\\s+(status|log|diff|show|rev-parse|cat-file|branch|remote))\\b"
+    },
+    {
+      "id": "t2_scratch_tooling",
+      "phase": "T2", "subphase": null, "confidence": "LOW", "time_class": "NECESSARY_OVERHEAD", "wait_tag": null,
+      "tools": ["write_file", "edit_file"],
+      "path_regex": "(?i)(/scratchpad/|\\.hermes/(?:[^/]+/)*cache/scratch(?:/|$))"
+    },
+    {
+      "id": "t2_scratch_tooling_cmd",
+      "phase": "T2", "subphase": null, "confidence": "MEDIUM", "time_class": "NECESSARY_OVERHEAD", "wait_tag": null,
+      "tools": ["shell_command", "monitor_command"],
+      "command_regex": "(?i)\\.hermes/(?:[^/\\s]+/)*cache/scratch(?:/|\\b)|(?<![A-Za-z0-9_])scratchpad/"
+    },
+    {
+      "id": "t2_wrapper_tool_call",
+      "phase": "T2", "subphase": null, "confidence": "HIGH", "time_class": "NECESSARY_OVERHEAD", "wait_tag": "WAIT_TOOL",
+      "tools": ["tool_call", "process_manage"]
+    },
+    {
+      "id": "t9_evidence_write",
+      "phase": "T9", "subphase": null, "confidence": "HIGH", "time_class": "PRODUCTIVE", "wait_tag": null,
+      "tools": ["write_file", "edit_file"],
+      "path_regex": "(?i)(?:orchestration/hermes/evidence/|google-android-agent-stack/artifacts/)[^|;&\\n]*\\.(json|jsonl|md|csv|txt)$"
+    },
+    {
+      "id": "t3_todo",
+      "phase": "T3", "subphase": null, "confidence": "LOW", "time_class": "PRODUCTIVE", "wait_tag": null,
+      "tool_regex": "(?i)^todo_write$"
+    },
+    {
+      "id": "t2_read_any",
+      "phase": "T2", "subphase": null, "confidence": "LOW", "time_class": "NECESSARY_OVERHEAD", "wait_tag": null,
+      "tool_regex": "(?i)^(read_file|read_directory|glob|grep|search_tools|activate_skill)$"
+    }
+  ]
+}

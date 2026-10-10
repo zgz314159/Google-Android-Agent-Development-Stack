@@ -1,0 +1,15 @@
+{
+  "version": "0.2.3",
+  "comment": "WAIT is a secondary, orthogonal tag - never a Phase. USER_WAIT is the proven model->human->resume boundary (v0.2.2); it is reported separately and excluded from the agent-owned phase denominator. The sum of all tags is total_wait_tag_wall_sec (v0.2.3); user_wait_seconds is a deprecated alias for that total, NOT human wait.",
+  "wait_tags": [
+    "USER_WAIT",
+    "WAIT_PROVIDER",
+    "WAIT_BUILD",
+    "WAIT_DEVICE",
+    "WAIT_AI_NODE",
+    "WAIT_NETWORK",
+    "WAIT_DEPENDENCY",
+    "WAIT_INDEX",
+    "WAIT_TOOL"
+  ]
+}

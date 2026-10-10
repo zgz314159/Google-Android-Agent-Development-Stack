@@ -1,0 +1,68 @@
+{
+  "contract_id": "KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL-001",
+  "contract_version": "0.1.0",
+  "experiment_id": "KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL",
+  "status": "READY",
+  "package_role": "TEMPORARY_EXECUTION_CONTRACT",
+  "phase": "A1_EXPERIMENTAL_DATA_MODEL",
+  "human_authorization": true,
+  "human_decision": "D-15 YES_BOUNDED_ACCOUNT_NETWORK_UNLOCK",
+  "date": "2026-10-06",
+  "project_data_stage": "EXPERIMENTAL",
+  "test_data_disposable": true,
+  "old_test_db_compatibility": "NOT_REQUIRED",
+  "dev_database_reset_required": true,
+  "current_db_version": 2,
+  "target_db_version": 3,
+  "primary_key_strategy": "KEEP_LONG_LOCAL_PK_ADD_UNIQUE_CLIENT_UUID",
+  "execution_prompt": "KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL-EXECUTE.md",
+  "execute_status": "NOT_EXECUTED",
+  "applies_to": "KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL-EXECUTE (separate future task)",
+  "package_switch": {
+    "mechanism": "HERMES_CONTRACT_PACKAGE",
+    "guard_source_modified": false,
+    "hook_config_modified": false
+  },
+  "boundaries": {
+    "gradle": "BLOCK",
+    "network": "BLOCK",
+    "auth": "BLOCK",
+    "backend": "BLOCK",
+    "device": "NOT_USED",
+    "ui_change": "BLOCK",
+    "allowed_persistence_files": [
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/NoteEntity.kt",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/KeepLabDatabase.kt",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/NoteDao.kt",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/SyncState.kt",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/NoteRepository.kt"
+    ],
+    "allowed_test_paths": [
+      "KeepLab-Relay/app/src/test/java/com/keeplab/app/data/",
+      "KeepLab-Relay/app/src/test/java/com/keeplab/app/Fakes.kt"
+    ]
+  },
+  "validation": {
+    "acceptance": "PASS",
+    "boundaries": "PASS",
+    "hashes": "PASS",
+    "schema": "PASS",
+    "traceability": "PASS",
+    "guard_simulation": "PASS"
+  },
+  "validation_evidence": {
+    "manifest_integrity": "MANIFEST_OK (guard load_contract)",
+    "guard_simulation": "orchestration/hermes/evidence/keeplab-a1-experimental-data-model-contract/guard-simulation.json (module-level: 12/12 checks PASS, 14 ALLOW decisions, 31 BLOCK decisions, 7 terminal cases, status PASS)",
+    "hook_activation": "orchestration/hermes/evidence/keeplab-a1-experimental-data-model-contract/hook-contract-activation.log (hook-level: 9/9 cases, exit 0 allow / exit 2 block)",
+    "frozen_inputs": "orchestration/hermes/evidence/keeplab-a1-experimental-data-model-contract/before-hash.json"
+  },
+  "does_not_resolve": {
+    "D-14": "HUMAN_DECISION_PENDING",
+    "A2": "READY_FOR_SEPARATE_CONTRACT",
+    "A3": "BLOCKED_BY_HUMAN_DECISIONS",
+    "OBS-1": "NON_BLOCKING MINOR_BACKLOG (A0 stays READY and is not reopened)"
+  },
+  "implementation_authorization": "GRANTED_TO_A1_EXECUTION_TASK_ONLY",
+  "implementation_authorization_model": "PHASE_GATED",
+  "next": "KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL-EXECUTE"
+}

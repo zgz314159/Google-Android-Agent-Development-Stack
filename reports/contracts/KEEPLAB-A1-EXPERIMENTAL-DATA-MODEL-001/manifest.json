@@ -1,0 +1,87 @@
+{
+  "package": "KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL-001",
+  "generated_by": "A1 experimental data model contract authoring (specification/compiler manifest schema)",
+  "algorithm": "sha256",
+  "contract_id": "KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL-001",
+  "metadata": {
+    "phase": "A1_EXPERIMENTAL_DATA_MODEL",
+    "human_authorization": true,
+    "human_decision": "D-15 YES_BOUNDED_ACCOUNT_NETWORK_UNLOCK",
+    "human_decision_date": "2026-10-06",
+    "package_role": "TEMPORARY_EXECUTION_CONTRACT",
+    "package_access": "READ_ONLY_INPUT",
+    "project_data_stage": "EXPERIMENTAL",
+    "test_data_disposable": true,
+    "old_test_db_compatibility": "NOT_REQUIRED",
+    "dev_database_reset_required": true,
+    "schema_version_current": 2,
+    "schema_version_target": 3,
+    "migration_required": false,
+    "destructive_fallback": "FORBIDDEN",
+    "primary_key_strategy": "KEEP_LONG_LOCAL_PK_ADD_UNIQUE_CLIENT_UUID",
+    "implementation_authorization": "GRANTED_TO_A1_EXECUTION_TASK_ONLY",
+    "implementation_authorization_model": "PHASE_GATED",
+    "gradle_change": "FORBIDDEN",
+    "network_change": "FORBIDDEN",
+    "auth_change": "FORBIDDEN",
+    "backend_change": "FORBIDDEN",
+    "ui_change": "FORBIDDEN",
+    "device_operation": "FORBIDDEN",
+    "execution_status": "NOT_EXECUTED",
+    "guard_modified": false,
+    "hook_config_modified": false,
+    "stops_after": "A1_EXPERIMENTAL_DATA_MODEL",
+    "must_not_start": [
+      "A2",
+      "A3"
+    ],
+    "does_not_resolve": [
+      "D-14",
+      "A2",
+      "A3",
+      "OBS-1"
+    ]
+  },
+  "entries": [
+    {
+      "path": "implementation-contract.json",
+      "sha256": "b6118bf76b6cd74ad958b3be0733148382f4b0ec7e8d52ef98efce8ed1218691",
+      "size": 46510,
+      "role": "contract",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "project-context.json",
+      "sha256": "b3aa1f30312b862db235d8a1c158e365520b01e0ad6408ab1453d7eee5df26bb",
+      "size": 9121,
+      "role": "project_context",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "acceptance.md",
+      "sha256": "201067dd8aa802a7cbcaaae12d4664db84721ad9ee31225d7ba560e26390e5bd",
+      "size": 9202,
+      "role": "acceptance",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "EXECUTOR-PROMPT.md",
+      "sha256": "4fb104c18f4eb0ab9b0c1825cdbeba9b3c9ce8c687150146d0fbde44c1c1a588",
+      "size": 2649,
+      "role": "executor_prompt",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL-EXECUTE.md",
+      "sha256": "75e354bc6264ef873fa13a765b1a7e9efc5c1417afa7758f167c7680313275db",
+      "size": 11546,
+      "role": "execution_prompt",
+      "required": true,
+      "source": "authored"
+    }
+  ]
+}

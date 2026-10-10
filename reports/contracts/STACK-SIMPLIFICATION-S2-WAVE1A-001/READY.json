@@ -1,0 +1,14 @@
+{
+  "contract_version": "0.1.0",
+  "contract_id": "STACK-SIMPLIFICATION-S2-WAVE1A-001",
+  "experiment_id": "STACK-SIMPLIFICATION-S2-WAVE1A",
+  "status": "READY",
+  "unresolved_questions": [],
+  "validation": {
+    "schema": "PASS",
+    "traceability": "PASS",
+    "boundaries": "PASS",
+    "acceptance": "PASS",
+    "hashes": "PASS"
+  }
+}

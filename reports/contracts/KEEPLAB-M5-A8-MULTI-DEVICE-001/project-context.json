@@ -1,0 +1,422 @@
+{
+  "project": "KeepLab-Relay",
+  "project_type": "brownfield",
+  "source_root": "/mnt/AndroidDev/Projects",
+  "phase": "M5_A8_MULTI_DEVICE",
+  "contract_id": "KEEPLAB-M5-A8-MULTI-DEVICE-001",
+  "purpose": "Freeze the two human-approved A8 decisions and authorize the single milestone M5 = A8 multi-device hardening: independent device/session identities on one account, bidirectional propagation and convergence, the existing A6 conflict semantics under real two-client server concurrency, a server session list, per-session revoke, non-destructive remote session invalidation, account disable, and the D-05 30-day deletion grace state machine with a deterministic purge boundary — with PUSH_PROVIDER = NONE (D-11).",
+  "human_decisions_frozen": {
+    "D-05": {
+      "value": "ACCOUNT_DELETE_GRACE_30_DAYS",
+      "approved_by": "HUMAN_PROJECT_OWNER_APPROVAL",
+      "approved_on": "2026-10-07",
+      "record": "reports/KEEPLAB-M5-HUMAN-DECISIONS.md",
+      "canonical_refs": [
+        "AUTH-DEC-012",
+        "KEEPLAB-AUTH-SYNC-HUMAN-DECISIONS.md D-05"
+      ],
+      "semantics": [
+        "an account deletion request immediately enters DELETION_PENDING",
+        "normal account access becomes disabled",
+        "all server sessions are revoked immediately and their access/refresh capability becomes invalid",
+        "no new normal sync write is accepted while deletion is pending",
+        "purge_after = deletion_requested_at + 30 days under server clock authority",
+        "within the 30-day grace period the owner may cancel deletion through re-authentication using the EXISTING verified credential system",
+        "do NOT invent a new token family merely for recovery",
+        "cancellation restores ACTIVE; it does not resurrect deleted server data because purge has not yet occurred",
+        "after expiry an explicit deterministic purge boundary permanently deletes the server account data",
+        "M5 needs deterministic clock/service tests for the purge boundary; it does NOT need a production cloud scheduler",
+        "Android local Room data MUST NEVER be silently deleted because the remote account was disabled/deletion-pending/purged",
+        "local notes MUST NOT be silently reassigned to another account",
+        "D-06 TRASH_RETENTION_7_DAYS is unrelated",
+        "SYNC tombstone retention is unrelated",
+        "TOMBSTONE_GC stays DISABLED unless separately authorized"
+      ]
+    },
+    "D-11": {
+      "value": "NO_PUSH_PROVIDER_IN_A8_CORRECTNESS_PATH",
+      "approved_by": "HUMAN_PROJECT_OWNER_APPROVAL",
+      "approved_on": "2026-10-07",
+      "record": "reports/KEEPLAB-M5-HUMAN-DECISIONS.md",
+      "canonical_refs": [
+        "BACKEND-DEC-005",
+        "KEEPLAB-AUTH-SYNC-HUMAN-DECISIONS.md D-11"
+      ],
+      "semantics": [
+        "choose NO FCM/Firebase/vendor push provider for M5 correctness",
+        "no Google/Firebase dependency",
+        "no Xiaomi/Huawei/etc vendor push dependency",
+        "normal correctness remains pull/delta based",
+        "WorkManager / foreground / manual sync may detect remote state",
+        "authenticated API requests and refresh paths must detect revoked/disabled state",
+        "push may be a FUTURE latency optimization only",
+        "any future push implementation must sit behind a provider abstraction",
+        "A8 PASS must be possible with PUSH_PROVIDER = NONE"
+      ]
+    }
+  },
+  "frozen_completed_milestones": {
+    "A0": "READY",
+    "A1": "PASS",
+    "A2": "PASS",
+    "M2": "A3 + A4 PASS",
+    "M3": "A5 + A6 PASS",
+    "M4": "A7 ATTACHMENTS PASS / CLOSED",
+    "do_not_reopen": [
+      "D-01",
+      "D-04",
+      "D-06",
+      "D-07",
+      "D-08",
+      "D-09",
+      "D-10",
+      "D-13",
+      "D-15",
+      "A5 retry/outbox policy",
+      "A6 conflict policy",
+      "A7 attachment binary architecture",
+      "attachment limits",
+      "attachment UI",
+      "object storage",
+      "Google Keep reference research"
+    ],
+    "D-12": "FUTURE / A9 (not decided here)",
+    "D-14": "NON_BLOCKING (not decided here)"
+  },
+  "architecture": {
+    "product_repo": "KeepLab-Relay (the enumerated backend and Android surface is writable in this milestone; everything else under app/ and backend/ is read-only)",
+    "product_stack": "Kotlin 2.3.21, Jetpack Compose + Material 3, Navigation 3, Hilt, Room 2.8.4 (KSP), AGP 9.2.1 — as extended by M2 (Ktor CIO client, a Keystore-backed session store, one unique WorkManager `note_sync` pipeline), M3 (bounded retry, manual retry, a persisted conflict record, a 7-day product Trash distinct from the sync tombstone) and M4 (the A7 attachment foundation, the backend binary path, the Android offline/upload/download path, the minimal attachment UX)",
+    "backend_under_construction": {
+      "location": "KeepLab-Relay/backend/ (created by A2, extended by M2, M3 and M4; PRESENT)",
+      "build_model": "INDEPENDENT_GRADLE_PROJECT with its own backend/settings.gradle.kts and backend/build.gradle.kts",
+      "invocation": "cd /mnt/AndroidDev/Projects/KeepLab-Relay && ./gradlew -p backend <tasks>",
+      "stack": "Kotlin 2.4.20 + Ktor 3.6.0 (Netty) · PostgreSQL via HikariCP + JDBC · Flyway migrations · portable Docker assets (untouched, not executed)",
+      "existing_seams": "auth/AuthService.kt (register/login/refresh-rotation/logout/listSessions/revokeSession/authenticate), auth/AuthStore.kt (persistence port; InMemoryAuthStore + JdbcAuthStore), auth/AuthModels.kt (SessionRecord, RefreshState, AuthenticatedPrincipal, SessionView), auth/JwtService.kt (HS256 access tokens with sub/sid), auth/Clock.kt (injectable clock), routes/AuthRoutes.kt (GET /v1/auth/sessions; DELETE and POST /sessions/{sessionId}[/revoke]), routes/SyncRoutes.kt (POST /v1/sync/mutations; GET /v1/sync/changes; GET /v1/sync/checkpoint; the authoritative 409 conflict body), sync/SyncService.kt + sync/SyncStore.kt (server revision authority)",
+      "m5_additions": "an installation-distinguishing session identity; the account lifecycle component (ACTIVE / DISABLED / DELETION_PENDING / PURGED with deletion_requested_at and purge_after); disable/deletion-pending refusal on every authenticated path (authenticate seam, refresh, sync, attachments); a deliberate authenticated deletion request that immediately revokes all sessions and blocks normal sync writes; in-grace cancellation through the existing verified credential system; a deterministic purge boundary invoked with an injected clock; new Flyway migrations after V4; deterministic backend tests",
+      "backend_non_goals": "no cloud provisioning, no production scheduler, no push provider, no FCM/Firebase, no new dependency, no collaboration/multi-account code"
+    },
+    "android_under_construction": {
+      "new_local_state": "a KeepLab-generated, app-private installation identity, persisted and presented as the session's installation identity; local account lifecycle state",
+      "extended_packages": [
+        "data/auth/** (installation identity generation/persistence, session list + revoke, session-invalid state)",
+        "data/remote/** (session list/revoke and account lifecycle API client)",
+        "data/local/** (Room schema bump for the installation/session identity and account lifecycle state)",
+        "data/sync/** (non-destructive AUTH_REQUIRED on revoke/disable; no new pipeline concept)",
+        "ui/settings/** (session list, current marker, revoke, account lifecycle affordances)",
+        "ui/auth/** (re-authentication used as the in-grace cancellation path)",
+        "ui/navigation/** (routes for the session list and the lifecycle states)",
+        "ui/conflict/** (entry point only; A6 consumed unchanged)",
+        "di/**, data/NoteRepository.kt, model/ (wiring only where genuinely required)"
+      ],
+      "entry_points": [
+        "KeepLabApplication.kt (only if genuinely required)",
+        "MainActivity.kt (only if genuinely required)"
+      ],
+      "explicitly_absent_from_m5": "any push provider/FCM/Firebase/vendor push SDK; any new dependency; A9 multi-account or collaboration; sharing; release hardening; cloud deployment; a production purge scheduler; Trash retention changes (D-06); sync-tombstone retention or GC; any modification of the M4 attachment implementation; any device fingerprinting or invasive identifier"
+    },
+    "stack_repo": "Google-Android-Agent-Development-Stack (Specification Compiler, Verification Layer, Evaluation Core / Auto-Finalizer, Hermes orchestration kernel)",
+    "hermes": "pinned at /home/zhong/.hermes/hermes-agent; never upgraded, reinstalled or core-patched; the ~/.hermes profile and configuration are never touched by M5",
+    "guard": "the same unmodified orchestration/hermes/evaluation_adapter/contract_guard.py, invoked by the same fail-closed pre_tool_call hook",
+    "note": "M5 is a host-side backend + Android build/test milestone plus one real two-device journey. It provisions no cloud resource and adds no dependency."
+  },
+  "path_classes": {
+    "BACKEND_CONSTRUCTION_TARGET": [
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/auth/",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/account/",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/sync/",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/routes/"
+    ],
+    "ANDROID_M5_SURFACE": [
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/auth/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/sync/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/remote/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/NoteRepository.kt",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/model/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/settings/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/auth/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/navigation/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/conflict/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/KeepLabApplication.kt",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/MainActivity.kt"
+    ],
+    "TEST_SOURCE": [
+      "KeepLab-Relay/backend/src/test/",
+      "KeepLab-Relay/app/src/test/",
+      "KeepLab-Relay/app/src/androidTest/"
+    ],
+    "EVIDENCE_OUTPUT": [
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M5-A8-EXECUTION.md",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M5-HUMAN-DECISIONS.md",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-HUMAN-DECISIONS.md",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-DECISION-REGISTER.md",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-IMPLEMENTATION-ROADMAP.md",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-MINOR-BACKLOG.md",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-m5-a8/"
+    ],
+    "PRODUCTION_IMMUTABLE": [
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/attachment/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/attachment/",
+      "KeepLab-Relay/app/src/main/res/",
+      "KeepLab-Relay/app/src/benchmark/",
+      "KeepLab-Relay/app/schemas/",
+      "KeepLab-Relay/app/build.gradle.kts",
+      "KeepLab-Relay/build.gradle.kts",
+      "KeepLab-Relay/settings.gradle.kts",
+      "KeepLab-Relay/gradle/",
+      "KeepLab-Relay/gradle.properties",
+      "KeepLab-Relay/gradlew",
+      "KeepLab-Relay/gradlew.bat",
+      "KeepLab-Relay/MISSION.md",
+      "KeepLab-Relay/FACTORY_RULES.md",
+      "KeepLab-Relay/specs/",
+      "KeepLab-Relay/verification/",
+      "KeepLab-Relay/harness/",
+      "KeepLab-Relay/firebase/",
+      "KeepLab-Relay/cloud/",
+      "KeepLab-Relay/infra/",
+      "Google-Android-Agent-Development-Stack/specification/",
+      "Google-Android-Agent-Development-Stack/verification/",
+      "Google-Android-Agent-Development-Stack/verification-benchmark/",
+      "Google-Android-Agent-Development-Stack/evaluation/",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/HERMES-LOCK.json",
+      "Google-Android-Agent-Development-Stack/.hermes.md",
+      "Google-Android-Agent-Development-Stack/reports/contracts/"
+    ],
+    "FORBIDDEN": [
+      "Testapp/",
+      "PowerAi/",
+      "KeepLab-Relay-evidence/"
+    ]
+  },
+  "read_first": [
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-IMPLEMENTATION-ROADMAP.md",
+      "why": "Phase A8 multi-device hardening: scope, prerequisites, acceptance gate, rollback and what must not be bundled"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-HUMAN-DECISIONS.md",
+      "why": "the human decision table; D-05 and D-11 now carry the approved A8 values"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-DECISION-REGISTER.md",
+      "why": "AUTH-DEC-012 (account deletion distinct from sign-out) and BACKEND-DEC-005 (push provider), plus the frozen session/refresh and conflict decisions A8 consumes"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-API-CONTRACT.md",
+      "why": "the conceptual session/revoke/refresh and sync endpoint semantics and the error taxonomy"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M4-ATTACHMENTS-EXECUTION.md",
+      "why": "the M4 PASS/CLOSED state, the gate commands and the evidence conventions M5 must not reopen"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/auth/AuthService.kt",
+      "why": "the existing login/refresh-rotation/logout/listSessions/revokeSession/authenticate seam M5 extends"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/auth/AuthStore.kt",
+      "why": "the auth persistence port and the InMemoryAuthStore executable specification"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/auth/AuthModels.kt",
+      "why": "SessionRecord, RefreshState, AuthenticatedPrincipal, TokenPair, SessionView — the records M5 extends"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/auth/JwtService.kt",
+      "why": "the access-token claims (sub/sid) that make a session remotely invalidatable"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/auth/Clock.kt",
+      "why": "the injectable clock seam the D-05 fake-clock boundary tests must use"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/routes/AuthRoutes.kt",
+      "why": "the existing session list/revoke routes and their response models"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/routes/SyncRoutes.kt",
+      "why": "the sync routes and the authoritative 409 conflict body used by the two-client concurrency tests"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/sync/SyncService.kt",
+      "why": "the JWT-only authorization path that must refuse a revoked/disabled account"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/sync/SyncStore.kt",
+      "why": "the server revision/change-log authority the conflict tests assert against"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/Application.kt",
+      "why": "the service construction and module wiring point for the new account component"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/BackendServices.kt",
+      "why": "the single service graph the new account component joins"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/resources/db/migration/V2__auth_schema.sql",
+      "why": "the existing auth/session schema the new migration extends"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/resources/db/migration/V3__sync_schema.sql",
+      "why": "the existing sync/change-log schema M5 must preserve"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/auth/SessionManager.kt",
+      "why": "the one-active-account owner whose sign-out is non-destructive and which M5 must not make destructive"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/auth/SecureSessionStore.kt",
+      "why": "the encrypted credential store where the installation identity must not leak secrets"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/auth/AuthRepository.kt",
+      "why": "requireAccessToken/refreshNow and the non-destructive AccessTokenOutcome.AuthRequired signal"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/auth/DeviceLabelProvider.kt",
+      "why": "the existing device-label seam the installation identity extends"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/sync/SyncEngine.kt",
+      "why": "the sync engine that already returns AUTH_REQUIRED with Room and the outbox intact"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/KeepLabDatabase.kt",
+      "why": "the Room database version M5 bumps by a direct experimental bump"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/settings/SettingsScreen.kt",
+      "why": "the account surface where the session list, revoke and lifecycle affordances belong"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/conflict/ConflictScreen.kt",
+      "why": "the A6 surface M5 consumes unchanged as the conflict entry point"
+    }
+  ],
+  "allowed_paths": [
+    "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/auth/",
+    "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/account/",
+    "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/sync/",
+    "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/routes/",
+    "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/Application.kt",
+    "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/BackendServices.kt",
+    "KeepLab-Relay/backend/src/main/resources/db/migration/",
+    "KeepLab-Relay/backend/src/test/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/auth/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/sync/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/remote/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/NoteRepository.kt",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/model/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/settings/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/auth/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/navigation/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/conflict/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/KeepLabApplication.kt",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/MainActivity.kt",
+    "KeepLab-Relay/app/src/test/",
+    "KeepLab-Relay/app/src/androidTest/",
+    "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M5-A8-EXECUTION.md",
+    "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M5-HUMAN-DECISIONS.md",
+    "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-HUMAN-DECISIONS.md",
+    "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-DECISION-REGISTER.md",
+    "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-IMPLEMENTATION-ROADMAP.md",
+    "Google-Android-Agent-Development-Stack/reports/KEEPLAB-MINOR-BACKLOG.md",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-m5-a8/"
+  ],
+  "forbidden_paths": [
+    "Google-Android-Agent-Development-Stack/specification/",
+    "Google-Android-Agent-Development-Stack/verification/",
+    "Google-Android-Agent-Development-Stack/verification-benchmark/",
+    "Google-Android-Agent-Development-Stack/evaluation/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/HERMES-LOCK.json",
+    "Google-Android-Agent-Development-Stack/.hermes.md",
+    "Google-Android-Agent-Development-Stack/reports/contracts/",
+    "KeepLab-Relay/MISSION.md",
+    "KeepLab-Relay/FACTORY_RULES.md",
+    "KeepLab-Relay/specs/",
+    "KeepLab-Relay/verification/",
+    "KeepLab-Relay/harness/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/attachment/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/attachment/",
+    "KeepLab-Relay/app/src/main/res/",
+    "KeepLab-Relay/app/src/benchmark/",
+    "KeepLab-Relay/app/schemas/",
+    "KeepLab-Relay/app/build.gradle.kts",
+    "KeepLab-Relay/build.gradle.kts",
+    "KeepLab-Relay/settings.gradle.kts",
+    "KeepLab-Relay/gradle/",
+    "KeepLab-Relay/gradle.properties",
+    "KeepLab-Relay/gradlew",
+    "KeepLab-Relay/gradlew.bat",
+    "KeepLab-Relay/firebase/",
+    "KeepLab-Relay/cloud/",
+    "KeepLab-Relay/infra/",
+    "KeepLab-Relay-evidence/",
+    "Testapp/",
+    "PowerAi/"
+  ],
+  "boundary_notes": {
+    "source_root": "/mnt/AndroidDev/Projects",
+    "resolution": "allowed_paths and forbidden_paths are project-relative to the Contract Guard source_root; an entry is a directory prefix or an exact file.",
+    "no_overlap": "No allowed path is equal to, inside, or a parent of any forbidden path; the compiler reports zero E_PATH_CONFLICT.",
+    "no_broad_prefix": "No broad KeepLab-Relay/, KeepLab-Relay/app/ or Google-Android-Agent-Development-Stack/reports/ prefix is authorized.",
+    "unlisted_is_blocked": "Any path inside the project root matching neither list stays BLOCKED (UNCLASSIFIED_FAIL_CLOSED), which protects KeepLab code outside the enumerated surface, the compiler, the guard, the verification layer and every historical artifact.",
+    "not_guard_enforceable": "The Hermes profile config.yaml and the pinned Hermes source sit outside the guard source_root; they are declared read-only and are never touched."
+  },
+  "guard": {
+    "source": "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/contract_guard.py",
+    "hook_event": "pre_tool_call",
+    "matcher": "write_file|patch|terminal",
+    "fail_closed": true,
+    "package_switch": "HERMES_CONTRACT_PACKAGE",
+    "package_switch_semantics": "The guard resolves its package dir as os.environ['HERMES_CONTRACT_PACKAGE'] or the built-in default. Setting the variable for the Hermes process points the unmodified guard at this package; no guard, hook or config change is involved.",
+    "modified_by_this_phase": false,
+    "write_intent_note": "The guard's terminal write-intent extractor reads a literal '>' anywhere in a shell command as a redirect. Drive the guard by files and read-only commands; never inline heredocs or payload-bearing shell text."
+  },
+  "contract_notes": {
+    "temporary_execution_contract": true,
+    "project_data_stage": "EXPERIMENTAL (android DISPOSABLE_TEST_DATA + backend DISPOSABLE_TEST_DATA)",
+    "test_data_disposable": true,
+    "old_test_db_compatibility_required": false,
+    "dev_database_reset_required": "YES",
+    "implementation_authorization_model": "PHASE_GATED_MILESTONE",
+    "implementation_authorization": "GRANTED_FOR_M5_BY_THIS_CONTRACT",
+    "human_decisions_frozen": [
+      "D-05 ACCOUNT_DELETE_GRACE_30_DAYS",
+      "D-11 NO_PUSH_PROVIDER_IN_A8_CORRECTNESS_PATH"
+    ],
+    "human_decisions_untouched": [
+      "D-12 (FUTURE / A9)",
+      "D-14 (NON_BLOCKING)"
+    ],
+    "dependency_change_allowed": false,
+    "expected_dependency_change": "NO",
+    "push_allowed": false,
+    "push_provider": "NONE",
+    "cloud_provisioning_allowed": false,
+    "production_purge_scheduler_allowed": false,
+    "multi_account_allowed": false,
+    "collaboration_allowed": false,
+    "a9_allowed": false,
+    "m4_reopening_allowed": false,
+    "trash_retention_change_allowed": false,
+    "tombstone_gc_allowed": false,
+    "attachment_implementation_change_allowed": false,
+    "device_operation_allowed": true,
+    "device_pair_required": true,
+    "device_serial_primary": "87296ada",
+    "device_capacity": 1,
+    "device_lock_required": "verification/core/device_lock.sh (flock on device:<serial>) before any deterministic device run",
+    "rolling_back": "SINGLE_DEVICE_POSTURE; no destructive rollback; Room, outbox, A6 conflicts, A7 attachments and local notes remain intact",
+    "supersedes": "nothing; the P0B-CLOSE contract and the A0/A1/A2/M2/M3/M4 contract packages remain active and unedited"
+  }
+}

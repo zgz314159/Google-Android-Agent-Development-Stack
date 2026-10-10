@@ -1,0 +1,33 @@
+{
+  "verification_id": "KEEPLAB-REFERENCE-J1-MAESTRO",
+  "project": "KeepLab",
+  "description": "Challenger example: Maestro drives journey J1 and a separate oracle class produces the DB decision. Reference only — not the production engine.",
+  "android": {
+    "package_name": "com.keeplab.app",
+    "apk": "/mnt/AndroidDev/Projects/Google-Android-Agent-Development-Stack/verification-benchmark/frozen/app-debug-frozen.apk",
+    "test_apk": "/mnt/AndroidDev/Worktrees/KeepLab-Verification-Compression/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
+    "expected_app_sha256": "a8858bd1f57b328a5042a120023508ced8e1cbbf68446bab3ce0e5e80f6fdf06",
+    "runner": "androidx.test.runner.AndroidJUnitRunner"
+  },
+  "engine": "maestro",
+  "journey": {
+    "id": "J1",
+    "test_class": "com.keeplab.app.benchmark.DbProbe",
+    "flow": "/mnt/AndroidDev/Projects/Google-Android-Agent-Development-Stack/verification/examples/keeplab/maestro/J1.yaml"
+  },
+  "fixture": {
+    "class": "com.keeplab.app.benchmark.FixtureSeeder",
+    "method": "seedJ1"
+  },
+  "oracle": {
+    "class": "com.keeplab.app.benchmark.DbProbe",
+    "expected_outcome": "PASS"
+  },
+  "input_smoke": {
+    "enabled": true,
+    "flow": "/mnt/AndroidDev/Projects/Google-Android-Agent-Development-Stack/verification/examples/keeplab/maestro/INPUT-SMOKE.yaml"
+  },
+  "evidence_policy": "failure-only",
+  "measurement_class": "diagnostic",
+  "excluded_from_baseline": true
+}

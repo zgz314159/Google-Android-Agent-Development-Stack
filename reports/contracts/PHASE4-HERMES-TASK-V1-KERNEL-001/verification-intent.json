@@ -1,0 +1,26 @@
+{
+  "feature_id": "PHASE4-BRIDGE-INSTALL",
+  "journey_id": "PHASE4-INSTALL-STAGED-KERNEL",
+  "engine": "maestro",
+  "acceptance_ids": [
+    "AC-PHASE4-001",
+    "AC-PHASE4-002",
+    "AC-PHASE4-003",
+    "AC-PHASE4-004",
+    "AC-PHASE4-005"
+  ],
+  "required_selectors": [
+    "phase4_staged_kernel_source",
+    "phase4_bridge_kernel_installed"
+  ],
+  "persistence_checks": [
+    "the installed kernel modules persist at orchestration/hermes/bridge/ after the install command completes",
+    "the install-parity record persists under orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/"
+  ],
+  "rotation_checks": [],
+  "search_checks": [
+    "the installed module file set equals the staged module file set"
+  ],
+  "fixture_intent": "No Android fixture and no device. The fixtures are the staged kernel tree at orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/bridge/ and the installed tree at orchestration/hermes/bridge/.",
+  "oracle_intent": "Deterministic only: process exit codes and pass/fail counts from the bridge unit suite, plus sha256 equality between each staged and installed kernel module and equality of the two module file sets. Zero LLM judgment, zero visual judgment, zero device interaction, no network. The engine field records the stack's selector-driven replay family; the actual oracle for this install is byte equality. Verification is performed once; PASS = STOP."
+}

@@ -1,0 +1,18 @@
+{
+  "path": "/mnt/AndroidDev/Worktrees/KeepLab-Verification-Compression/app/build/outputs/apk/debug/app-debug.apk",
+  "frozen_copy": "/mnt/AndroidDev/Projects/Google-Android-Agent-Development-Stack/verification-benchmark/frozen/app-debug-frozen.apk",
+  "sha256": "a8858bd1f57b328a5042a120023508ced8e1cbbf68446bab3ce0e5e80f6fdf06",
+  "size_bytes": 19358670,
+  "package": "com.keeplab.app",
+  "applicationId": "com.keeplab.app",
+  "versionName": "0.1.0",
+  "versionCode": 1,
+  "build_variant": "debug",
+  "git_commit": "NO_GIT",
+  "isolation": "filesystem copy; NO_WORKTREE (repository has zero commits)",
+  "source_root": "/mnt/AndroidDev/Worktrees/KeepLab-Verification-Compression",
+  "apk_mtime": "2026-10-03 19:18:20.442627095 +0800",
+  "recorded_utc": "2026-10-03T11:19:32Z",
+  "production_changes": "semantics-only: testTagsAsResourceId=true on MainActivity root; testTag editor-title/editor-body/search-field. No business-behavior change.",
+  "notes": "Re-frozen after adding minimal testTags required for stable UI selectors. A/B/C install this exact APK."
+}

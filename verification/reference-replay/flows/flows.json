@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "app_package": "com.google.android.keep",
+  "reference_device": "87296ada",
+  "policy": {
+    "destructive": false,
+    "direct_adb_ui_input": false,
+    "assert_with_ai": false,
+    "selector_first": true,
+    "validated_on_device": true
+  },
+  "flows": [
+    {
+      "flow_id": "R1",
+      "name": "HOME_SEARCH",
+      "yaml": "R1-search.yaml",
+      "description": "launch -> home -> open Search -> assert Search surface -> screenshot -> return",
+      "destructive": false
+    },
+    {
+      "flow_id": "R2",
+      "name": "HOME_DRAWER_ARCHIVE",
+      "yaml": "R2-archive.yaml",
+      "description": "launch -> home -> open drawer -> assert Archive -> open Archive -> assert Archive surface -> screenshot -> return",
+      "destructive": false
+    },
+    {
+      "flow_id": "R3",
+      "name": "HOME_DRAWER_SETTINGS",
+      "yaml": "R3-settings.yaml",
+      "description": "launch -> home -> open drawer -> assert Settings -> open Settings -> assert Settings surface -> screenshot -> return",
+      "destructive": false
+    }
+  ]
+}

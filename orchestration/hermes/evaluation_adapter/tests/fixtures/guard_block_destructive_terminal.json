@@ -1,0 +1,6 @@
+{
+  "tool_name": "terminal",
+  "args": {
+    "command": "rm -rf /mnt/AndroidDev/Projects/KeepLab-Relay/app/src/main"
+  }
+}

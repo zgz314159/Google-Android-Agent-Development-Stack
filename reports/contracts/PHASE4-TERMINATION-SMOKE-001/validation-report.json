@@ -1,0 +1,44 @@
+{
+  "contract_sha256": "d23ae5229dc2521f1b33b90a0db96f9921e53cbfa3186b683492ee235d3ff52e",
+  "errors": [],
+  "gates": {
+    "acceptance": "PASS",
+    "boundaries": "PASS",
+    "hashes": "PASS",
+    "schema": "PASS",
+    "traceability": "PASS"
+  },
+  "manifest_sha256": "00f1fdcea0b5a4b6630b0d6b4691f100dfd79b86015506038d3107f62b1eeb21",
+  "status": "READY",
+  "traceability": [
+    {
+      "acceptance_ids": [
+        "AC-PHASE4SM-001",
+        "AC-PHASE4SM-002"
+      ],
+      "pc1_steps": [
+        "PC1-S01",
+        "PC1-S02"
+      ],
+      "requirement": "REQ-PHASE4SM-001",
+      "task_ids": [
+        "TASK-01"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE4SM-003",
+        "AC-PHASE4SM-004"
+      ],
+      "pc1_steps": [
+        "PC1-S03",
+        "PC1-S04"
+      ],
+      "requirement": "REQ-PHASE4SM-002",
+      "task_ids": [
+        "TASK-01",
+        "TASK-02"
+      ]
+    }
+  ]
+}

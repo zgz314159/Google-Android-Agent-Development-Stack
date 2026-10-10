@@ -1,0 +1,1421 @@
+{
+  "contract_id": "KEEPLAB-M3-OFFLINE-CONFLICT-001",
+  "contract_version": "0.1.0",
+  "experiment_id": "KEEPLAB-M3-OFFLINE-CONFLICT",
+  "experiment_type": "HUMAN_AUTHORIZED_MILESTONE_IMPLEMENTATION",
+  "mode": "brownfield",
+  "project": "KeepLab-Google-Keep-Parity",
+  "feature": {
+    "feature_id": "M3-OFFLINE-CONFLICT",
+    "title": "Durable offline-first sync (A5) plus explicit conflict handling (A6)",
+    "summary": "Turn the M2 single-user sync core into a durable offline-first system with explicit conflict handling: bounded retries that stop, a manual Retry sync, outbox durability across process reconstruction, lost-wakeup protection on the single serialized pipeline, reconnect resumption, safe minimal outbox coalescing; and a persisted conflict record with explicit title/body resolution (Keep Local / Keep Server / Keep Both with a NEW client UUID), item-level checklist merge, operation-ordered labels, server-authority metadata, explicit delete-vs-edit, a 7-day product Trash retention that is structurally distinct from the sync tombstone, and tombstone anti-resurrection with tombstone GC disabled."
+  },
+  "purpose": "This package is a TEMPORARY EXECUTION CONTRACT covering the whole M3 milestone (A5 + A6). It exists so that a later fresh session can implement A5 and then A6 through the SAME unmodified Contract Guard, under an explicit and bounded write surface, with A5 kept as a light checkpoint inside ONE session and ONE final verification pass. This contract-creation task performed targeted discovery and authored the package; it does not implement M3.",
+  "milestone": {
+    "name": "M3",
+    "components": [
+      "A5_OFFLINE_HARDENING",
+      "A6_CONFLICT_HANDLING"
+    ],
+    "execution_model": "PLAN ONCE -> A5 EXECUTE -> A5 LIGHT CHECKPOINT -> CONTINUE DIRECTLY TO A6 -> A6 EXECUTE -> VERIFY M3 ONCE -> PASS = STOP",
+    "contracts_in_milestone": 1,
+    "execution_sessions": 1,
+    "verification_passes": 1,
+    "must_not_create": [
+      "an A5 contract",
+      "an A6 contract",
+      "an A5 review",
+      "an A6 review",
+      "a post-PASS audit"
+    ],
+    "must_not_stop_after_a5": true,
+    "a5_checkpoint_is_a_checkpoint_not_a_stop": true,
+    "prior_milestone_state": {
+      "A0": "READY",
+      "A1": "PASS",
+      "A2": "PASS",
+      "M2": "PASS (A3 + A4, one contract, one session, one verification pass)",
+      "M3": "AUTHORIZED_BY_HUMAN",
+      "A7_PLUS": "NOT_STARTED"
+    },
+    "do_not_reopen": [
+      "A0",
+      "A1",
+      "A2",
+      "M2"
+    ]
+  },
+  "human_authorization_source": {
+    "authorizing_task": "KEEPLAB-M3-OFFLINE-CONFLICT-CONTRACT",
+    "date": "2026-10-06",
+    "timezone": "CST (UTC+08:00)",
+    "approval_kind": "HUMAN_PROJECT_OWNER_APPROVAL",
+    "primary_decision": {
+      "D-06": "TRASH_RETENTION_7_DAYS"
+    },
+    "decision_effect": "The human project owner explicitly approved product Trash retention of 7 days: Trash stays reversible for 7 days, after which a note may become eligible for FINAL_DELETE, which produces the normal sync deletion/tombstone path. This is NOT a sync-tombstone retention duration. SYNC_TOMBSTONE_RETENTION_OR_COMPACTION stays a separate protocol-correctness concern and is NOT automatically 7 days; for M3 the safe posture is TOMBSTONE_GC = DISABLED. M3 implementation is authorized as one phase-gated milestone covering A5 and A6 and nothing beyond.",
+    "decisions_deliberately_not_resolved_here": [
+      "D-05 — account-deletion retention",
+      "D-11 — push provider",
+      "D-12 — collaboration",
+      "D-13 — attachment limits",
+      "D-14 — formal spec package location",
+      "SYNC_TOMBSTONE_RETENTION_OR_COMPACTION — no permanent tombstone retention duration is chosen"
+    ],
+    "reinterpreted": false,
+    "reasked": false,
+    "substituted_with_model_preference": false
+  },
+  "authorization_semantics": {
+    "phase": "M3_OFFLINE_HARDENING_AND_CONFLICT",
+    "human_authorization": true,
+    "human_decisions": [
+      "D-06 TRASH_RETENTION_7_DAYS"
+    ],
+    "human_decision_date": "2026-10-06",
+    "human_decision_record": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M3-HUMAN-DECISIONS.md",
+    "mutation_scope": "KeepLab M3 offline-hardening and conflict-handling code only (KeepLab-Relay/backend/** plus the enumerated Android surface) plus the reporting and evidence locations named in allowed_paths",
+    "implementation_authorization_model": "PHASE_GATED_MILESTONE",
+    "implementation_authorization": "GRANTED_TO_M3_EXECUTION_TASK_ONLY",
+    "root_gradle_change_required": false,
+    "root_gradle_change": "FORBIDDEN",
+    "cloud_provisioning": "FORBIDDEN",
+    "device_operation": "FORBIDDEN",
+    "historical_evidence_mutation": "FORBIDDEN",
+    "guard_mutation": "FORBIDDEN",
+    "contract_mutation": "FORBIDDEN",
+    "requires_human_approval": true
+  },
+  "project_data_stage": {
+    "stage": "EXPERIMENTAL",
+    "scope": "local Android data AND backend data",
+    "test_data_disposable": true,
+    "old_test_db_compatibility": "NOT_REQUIRED",
+    "priority": "CLEAN_TARGET_ARCHITECTURE > PRESERVE_TEST_DATA",
+    "production_users": false,
+    "production_backend_data": false,
+    "dev_database_reset_required": "YES",
+    "room_version_bump": "A direct experimental version bump (current 4 -> next clean version) is allowed and expected if M3 needs new local structures; no migration chain is authored and exportSchema stays false",
+    "backend_schema_version_bump": "New Flyway migrations after V3 (V4+) are allowed; no production migration/rollback chain and no compatibility shim for old experimental rows",
+    "forbidden_consequences": [
+      "no production migration/rollback complexity is authored",
+      "no old-database upgrade path is built",
+      "no compatibility column or shim is kept for experimental rows",
+      "no data-preservation work is spent on disposable test data"
+    ]
+  },
+  "discovered_state": {
+    "android_and_backend_state": "M2 PASS: the A3 auth/session stack and the A4 single-user sync core exist and are green (backend 53 tests, Android JVM 116 tests at the recorded M2 gate).",
+    "android_local_model": {
+      "database": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/KeepLabDatabase.kt — version 4, exportSchema false, entities: NoteEntity, ChecklistItemEntity, LabelEntity, NoteLabelEntity, OutboxEntity, ClientCheckpointEntity",
+      "outbox": "data/local/SyncEntities.kt — OutboxEntity(mutationId PK, accountId, entityType, entityClientUuid, kind, baseRevision, payloadJson, createdAt, attemptCount, lastErrorCode); a client checkpoint table keyed by accountId",
+      "sync_state": "data/local/SyncState.kt — seven values LOCAL_ONLY, SYNC_PENDING, SYNCING, SYNCED, SYNC_FAILED, CONFLICT, DELETE_PENDING",
+      "trash": "NoteEntity has `trashed: Boolean` and `deletedAt: Long?`; there is NO Trash timestamp column yet. `trashed` is product Trash; `deletedAt` is the sync tombstone; they are structurally distinct and remain so.",
+      "checklist_item": "ChecklistItemEntity(id, noteId, text, checked, position, clientUuid UNIQUE, accountId nullable, syncState, serverRevision) — stable client UUID already present",
+      "label": "LabelEntity(id, name, createdAt, clientUuid UNIQUE, accountId nullable, syncState, serverRevision); NoteLabelEntity(noteId, labelId) is the add/remove relation",
+      "dao": "data/local/NoteDao.kt + data/local/SyncDao.kt; SyncDao.nextOutboxEntry is unused by the engine (MB-M2-001)"
+    },
+    "android_sync_engine": {
+      "engine": "data/sync/SyncEngine.kt — syncNow(): ensure session -> refresh if needed -> pushPending (oldest-first, with an in-run `attempted` set so a deliberately kept entry is not re-picked) -> pullChanges; 401 is refreshed once then AUTH_REQUIRED; 409 -> entity CONFLICT and the outbox row is deleted; 404 -> SYNC_FAILED with the outbox row kept; other HTTP/transport -> SYNC_FAILED + RETRY_LATER with the outbox row kept",
+      "error_mapping_today": "409 -> CONFLICT, 404 -> SYNC_FAILED (non-destructive), 5xx/transport -> RETRY_LATER; ApiResult.isRetryable() already exists (status >= 500 || 429 || transport) but is not used by the engine; there is no explicit classification enum, no bounded per-mutation attempt policy and no retry exhaustion",
+      "worker": "data/sync/NoteSyncWork.kt — object NoteSyncWork { NAME/TAG = note_sync; POLICY = ExistingWorkPolicy.KEEP; REQUIRED_NETWORK = NetworkType.CONNECTED }; SyncWorker maps COMPLETED/AUTH_REQUIRED -> Result.success(), RETRY_LATER -> Result.retry(). There is one unique pipeline and one enqueuer seam (UniqueWorkEnqueuer). There is no backoff criteria, no per-mutation attempt bound, no drain-until-stable and no persisted request generation.",
+      "lost_wakeup_risk": "With ExistingWorkPolicy.KEEP a trigger that arrives while a run is active is dropped by WorkManager. Today the drop is harmless only because the engine pushes ALL pending outbox rows in the run it is already doing. A5 must PROVE this property (or add the smallest correct mechanism) rather than assume it.",
+      "trigger": "data/sync/SyncTrigger.kt — fun interface SyncTrigger { fun requestSync() } plus NoopSyncTrigger",
+      "conflict_today": "A 409 sets the ENTITY to SyncState.CONFLICT and DELETES the outbox row. There is NO persisted conflict record, no local/remote payload capture, no conflict type, no resolution state, and no conflict UI. The backend 409 carries only { error: REVISION_CONFLICT } with NO current revision and NO current server payload, so a client cannot resolve a conflict from the response alone."
+    },
+    "android_repository": "data/NoteRepository.kt (DefaultNoteRepository) — the single creation/update boundary: every account-scoped mutation writes the entity and its outbox row through LocalStore.writeAtomically (one Room transaction); setTrashed writes product Trash only and never the tombstone; deleteNote tombstones an account-scoped note and enqueues DELETE.",
+    "android_ui": "ui/settings/{SettingsScreen,SettingsViewModel}.kt already has a `Sync now` button wired to SyncTrigger.requestSync() and a sign-out action; ui/navigation/NavigationKeys.kt has Home/Archive/Trash/Labels/Settings/Auth/LabelNotes/Editor keys; there is no sync-failed indicator, no retry semantics and no conflict surface.",
+    "backend": {
+      "schema": "backend/src/main/resources/db/migration/V3__sync_schema.sql — server_entities, account_revisions, sync_tombstones, change_log (cursor), mutation_dedupe",
+      "store": "sync/SyncStore.kt (InMemorySyncStore used by deterministic tests) + sync/JdbcSyncStore.kt (one JDBC transaction for dedupe claim + baseRevision check + revision bump + entity upsert + tombstone write + change-log append + dedupe record, with rollback on conflict)",
+      "service_routes": "sync/SyncService.kt + routes/SyncRoutes.kt — POST /v1/sync/mutations, GET /v1/sync/changes?since=, GET /v1/sync/checkpoint; authorization is the JWT subject only; Outcome.Failure(409, \"REVISION_CONFLICT\") carries no payload",
+      "tests": "backend/src/test/kotlin/com/keeplab/backend/ — ApplicationStartupTest, AuthRoutesTest, AuthServiceTest, ConfigurationTest, HealthRouteTest, M2TestSupport, ReadyRouteTest, SyncRoutesTest, SyncServiceTest, TestFixtures"
+    },
+    "environment_facts": {
+      "jdk": "OpenJDK 21.0.12.1",
+      "gradle_wrapper": "KeepLab-Relay/gradlew @ Gradle 9.5.1",
+      "android_sdk": "present (/home/zhong/Android/Sdk)",
+      "docker_available": false,
+      "podman_available": false,
+      "psql_available": false,
+      "adb_present": true,
+      "adb_use": "FORBIDDEN — M3 is device-free; the binary's presence is not an authorization",
+      "google_maven_reachable": false,
+      "gradle_init_script": "/home/zhong/.gradle/init.d/00-keeplab-google-mirror.gradle (user-level, OUTSIDE the project root; MB-M2-004) repoints dependency resolution at reachable mirrors",
+      "git_baseline": "UNAVAILABLE — KeepLab-Relay is a git repository with no commits (MB-A1-002 / MB-A2-002); verification is sha256 before/after plus a scope scan",
+      "device": "87296ada NOT used"
+    },
+    "existing_tests": {
+      "android": "app/src/test/java/com/keeplab/app/ — DefaultNoteRepositoryTest, M2AuthSessionTest, M2LocalModelTest, M2SyncEngineTest, M2SyncPipelineTest, NoteSyncMetadataTest, Fakes, M2Fakes, MainDispatcherRule, model/NoteTest, ui/*/ViewModelTest",
+      "backend": "10 test classes listed above"
+    },
+    "minor_backlog_carried": [
+      "MB-M2-001 SyncDao.nextOutboxEntry unused — A5 may delete it when it reshapes the push loop",
+      "MB-M2-003 legacy MIGRATION_1_2 beside the destructive experimental bump",
+      "MB-M2-004 dl.google.com unreachable -> user-level init script",
+      "MB-M2-006 the guard's '>' false positive — drive the guard by files and read-only commands",
+      "MB-A1-003 / MB-A2-008 — same class"
+    ]
+  },
+  "frozen_human_decisions": {
+    "D-06": {
+      "value": "TRASH_RETENTION_7_DAYS",
+      "source": "HUMAN_PROJECT_OWNER_APPROVAL",
+      "date": "2026-10-06",
+      "meaning": "the product Trash remains reversible for 7 days; after the 7-day retention period a note may become eligible for FINAL_DELETE, which produces the normal sync deletion/tombstone path",
+      "freeze": {
+        "TRASH_RETENTION": "7 DAYS",
+        "SYNC_TOMBSTONE_RETENTION_OR_COMPACTION": "SEPARATE / INDEPENDENT_IMPLEMENTATION_DECISION",
+        "TOMBSTONE_RETENTION_EQUALS_TRASH_RETENTION": "NO",
+        "SYNC_TOMBSTONE_RETENTION_7_DAYS": "NO",
+        "PERMANENT_TOMBSTONE_RETENTION_DURATION": "NOT CHOSEN — do not choose one",
+        "TOMBSTONE_GC_FOR_M3": "DISABLED"
+      },
+      "prohibited_reinterpretations": [
+        "SYNC_TOMBSTONE_RETENTION = 7 DAYS",
+        "garbage-collecting tombstones merely because they are older than 7 days",
+        "choosing a permanent tombstone retention duration"
+      ],
+      "record": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M3-HUMAN-DECISIONS.md"
+    },
+    "still_pending_not_blocking_m3": [
+      "D-05 account-deletion retention",
+      "D-11 push provider",
+      "D-12 collaboration",
+      "D-13 attachment limits",
+      "D-14 formal spec package location"
+    ]
+  },
+  "target_architecture": {
+    "diagram": "Android (Room SSOT + persisted outbox + persisted conflict records) --(HTTP, unique note_sync pipeline)--> KeepLab Backend (server revision authority + change log + tombstones) --(JDBC)--> PostgreSQL",
+    "android_side": "Room stays the local SSOT. The persisted Room outbox is the authority for pending work (never an in-memory list). One serialized `note_sync` pipeline. A5 adds bounded retry, manual retry, outbox durability, lost-wakeup protection, reconnect and safe coalescing. A6 adds a persisted conflict record, explicit resolution (Keep Local / Keep Server / Keep Both), item-level checklist merge, operation-ordered labels, server-authority metadata, explicit delete-vs-edit, and a 7-day product Trash distinct from the sync tombstone.",
+    "backend_side": "The server stays the single revision/order authority. M3 extends the sync schema only as required (conflict response payload carrying the current authoritative revision and current server state, Trash timestamp handling, final-delete/tombstone handling, change-log semantics as required). No attachments, no object storage, no collaboration, no multi-device feature, no push.",
+    "explicitly_out_of_scope": [
+      "attachments",
+      "binary upload/download",
+      "object storage",
+      "multi-device hardening",
+      "multi-account",
+      "collaboration",
+      "sharing",
+      "push provider",
+      "FCM",
+      "CRDT",
+      "automatic three-way text merge",
+      "account deletion",
+      "production cloud deployment",
+      "production email provider",
+      "Google/Firebase auth"
+    ]
+  },
+  "a5_scope": {
+    "bounded_retry": {
+      "temporary_conditions": [
+        "network transport failure",
+        "HTTP 429",
+        "generic 5xx",
+        "a temporary refresh/network condition",
+        "HTTP 401 that one refresh can recover"
+      ],
+      "must_not": [
+        "mark a temporary condition permanent by default",
+        "retry validation/permanent failures forever",
+        "delete local data on retry exhaustion"
+      ],
+      "after_exhaustion": [
+        "the entity and its outbox row remain durable",
+        "the sync state becomes SYNC_FAILED",
+        "manual retry becomes available",
+        "no local data is deleted"
+      ]
+    },
+    "manual_retry": {
+      "surface": "the existing Settings / Account / Sync status surface — do not redesign the app",
+      "behaviour": [
+        "reset/re-arm eligible temporary failures",
+        "request the same unique sync pipeline",
+        "preserve idempotency (the outbox mutationId stays the idempotency key)"
+      ]
+    },
+    "outbox_durability": {
+      "must_survive": [
+        "repository recreation",
+        "worker recreation",
+        "application process reconstruction"
+      ],
+      "forbidden": "in-memory-only pending-mutation authority",
+      "authority": "the persisted Room outbox table",
+      "test": "deterministic simulation: persist Room state, destroy/recreate the repository and sync objects, resume from the persisted outbox/checkpoint"
+    },
+    "lost_wakeup": {
+      "mandatory": true,
+      "current_state": "one unique `note_sync` pipeline with ExistingWorkPolicy.KEEP",
+      "required_evidence": "inspect the actual WorkManager version (androidx.work 2.10.5, declared in gradle/libs.versions.toml) and the current ExistingWorkPolicy, then choose the SMALLEST correct mechanism and PROVE it with a deterministic test",
+      "allowed_examples": [
+        "persistent request generation + drain-until-stable",
+        "serialized append/rerun",
+        "another deterministic equivalent"
+      ],
+      "forbidden": [
+        "parallel sync pipelines",
+        "blindly preserving ExistingWorkPolicy.KEEP if deterministic evidence shows it loses a trigger",
+        "blindly changing it either"
+      ],
+      "required_test": "TRIGGER_DURING_ACTIVE_SYNC -> all work is eventually observed/applied, no duplicate mutation apply, exactly one serialized pipeline"
+    },
+    "reconnect": {
+      "mechanism": "WorkManager constraints and the existing unique pipeline",
+      "forbidden": [
+        "FCM",
+        "any push provider",
+        "a permanent background socket"
+      ]
+    },
+    "coalescing": {
+      "goal": "avoid sending many obsolete UPDATE mutations for the same entity when a later mutation supersedes them",
+      "must_not_break": [
+        "CREATE",
+        "DELETE",
+        "Trash",
+        "revision semantics",
+        "mutation idempotency"
+      ],
+      "rule": "deterministic and tested; if safe coalescing for a combination is unclear, DO NOT coalesce that combination — correctness > optimization"
+    },
+    "process_death": {
+      "required": false,
+      "preferred": "deterministic simulation",
+      "forbidden": [
+        "adb",
+        "Maestro",
+        "UiAutomator",
+        "device installation"
+      ],
+      "optional": "if an existing WorkManager testing mechanism validates worker reconstruction cheaply, use it"
+    }
+  },
+  "a6_scope": {
+    "persisted_conflict": {
+      "requirement": "conflicts must survive process death; use a persisted conflict representation if the current model does not already provide one",
+      "minimum_information": [
+        "accountId",
+        "entity type",
+        "entity client UUID",
+        "conflict type",
+        "local state/payload",
+        "remote/server state/payload",
+        "local/base revision",
+        "server/current revision",
+        "createdAt",
+        "resolution state"
+      ],
+      "forbidden": [
+        "storing secrets",
+        "a generic giant event system"
+      ]
+    },
+    "server_conflict_response": {
+      "stale_base_revision": "HTTP 409 REVISION_CONFLICT",
+      "requirement": "A6 must provide enough authoritative server state/revision to resolve the conflict",
+      "forbidden": "relying on client wall clock; the server stays revision/order authority"
+    },
+    "title_body": {
+      "rule": "a concurrent title/body conflict MUST NOT silently overwrite text",
+      "choices": [
+        "KEEP_LOCAL",
+        "KEEP_SERVER",
+        "KEEP_BOTH"
+      ],
+      "keep_local": [
+        "preserve local title/body",
+        "rebase against the current server revision",
+        "enqueue a new mutation",
+        "use the current account scope"
+      ],
+      "keep_server": [
+        "accept the authoritative server version",
+        "update Room",
+        "clear the conflict safely"
+      ],
+      "keep_both": [
+        "the original note becomes/keeps the authoritative server version",
+        "create a SECOND logical local note from the user's local conflicting content",
+        "the new note MUST have a NEW client UUID, a new local identity as appropriate, the same accountId, SYNC_PENDING and a CREATE mutation in the outbox",
+        "never reuse the original client UUID or the original server revision identity"
+      ]
+    },
+    "checklist": {
+      "identity": "checklist items already have stable UUIDs",
+      "concurrent_additions": "both survive",
+      "different_items": "merge independently",
+      "same_item_text_conflict": "the server-accepted revision/order is authority; the client wall clock is NOT authority",
+      "deletion_vs_edit_of_an_item": "must be explicit/non-silent",
+      "forbidden": "CRDT"
+    },
+    "label": {
+      "semantics": "operation semantics (add/remove)",
+      "ordering": "server-accepted revision/order, never the client wall clock",
+      "invariant": "a later accepted remove must not be resurrected by replaying an older add",
+      "test": "deterministic"
+    },
+    "metadata": {
+      "fields": [
+        "archive",
+        "pin",
+        "colour",
+        "Trash state"
+      ],
+      "resolution": "last-server-accepted ordering by server revision / server change order",
+      "forbidden": "using an unsynchronized client updatedAt as conflict authority",
+      "note": "title/body remain explicit user-resolved conflicts"
+    },
+    "delete_vs_edit": {
+      "rule": "explicit; no silent resurrection; no silent discard of local edited content; the conflict is represented",
+      "choices": [
+        "ACCEPT_DELETE",
+        "RESTORE_LOCAL"
+      ],
+      "equivalent_names_allowed": true,
+      "restore_local": [
+        "creates/rebases a valid mutation against the current server state without reusing invalid deletion state",
+        "if the remote note is already final-deleted and restoration means a logically new note, use a NEW client UUID"
+      ],
+      "record_the_chosen_semantics_clearly": true
+    },
+    "trash_retention": {
+      "value": "TRASH_RETENTION = 7 DAYS (D-06)",
+      "trash_timestamp": "a note entering Trash must have a Trash timestamp",
+      "restore": "restoring clears/invalidates the Trash expiry state",
+      "local_only": "local time may drive local Trash retention",
+      "account_scoped": "do NOT permanently delete based solely on an unacknowledged offline client timestamp; prefer the authoritative server-accepted Trash time",
+      "offline_trash": "a note trashed offline may appear locally in Trash immediately, but automatic final deletion must wait until the server has accepted the Trash state (or another correctness-equivalent authority exists)",
+      "after_authoritative_expiry": "enqueue/perform FINAL_DELETE, which produces the normal tombstone path"
+    },
+    "tombstone": {
+      "trash_not_tombstone": "7 days applies to the PRODUCT TRASH, not the SYNC TOMBSTONE",
+      "TOMBSTONE_GC": "DISABLED",
+      "permanent_retention_duration": "NOT CHOSEN",
+      "no_gc_for_age": "do not garbage-collect tombstones merely because they are older than 7 days",
+      "future": "tombstone compaction may happen in a future Milestone only with an anti-resurrection protocol proving that old clients cannot legally replay pre-delete state"
+    },
+    "anti_resurrection": {
+      "rule": "a final-deleted note must not reappear because an old mutation or stale client state is replayed",
+      "required_tests": [
+        "final delete -> tombstone exists",
+        "old mutation arrives -> the note remains deleted",
+        "old delta/replay -> the note remains deleted"
+      ]
+    },
+    "not_found_rule": "a remote/server 404 must not silently delete a live local note; A6 may convert it into a resolvable/non-destructive failure state; no data loss",
+    "auth_required_rule": "AUTH_REQUIRED must preserve Room rows, the outbox, conflict records and the checkpoint; the user may sign in again and continue"
+  },
+  "error_retry_classification": {
+    "values": [
+      "AUTH_REQUIRED",
+      "CONFLICT",
+      "TEMPORARY_RETRYABLE",
+      "PERMANENT_VALIDATION_FAILURE",
+      "NOT_FOUND_NON_DESTRUCTIVE",
+      "SUCCESS"
+    ],
+    "rules": [
+      "a generic 5xx is TEMPORARY_RETRYABLE, never permanent",
+      "validation/permanent failures are not retried forever",
+      "the classification is small and explicit"
+    ]
+  },
+  "ui_scope": {
+    "allowed": [
+      "sync-failed indicator",
+      "Retry sync action",
+      "conflict indicator",
+      "conflict resolution screen/dialog",
+      "Keep Local",
+      "Keep Server",
+      "Keep Both",
+      "delete-vs-edit resolution"
+    ],
+    "forbidden": [
+      "redesigning Home",
+      "redesigning the theme",
+      "redesigning the navigation architecture",
+      "redesigning the note editor",
+      "any other visual redesign"
+    ],
+    "exception": "a tiny integration point (a button, a badge, an additive navigation key) is allowed where M3 genuinely needs it"
+  },
+  "backend_scope": {
+    "may_extend": [
+      "sync schema",
+      "conflict response payload",
+      "change-log semantics",
+      "Trash timestamp",
+      "final-delete/tombstone handling"
+    ],
+    "only_as_required_by_m3": true,
+    "forbidden": [
+      "attachments",
+      "object storage",
+      "collaboration",
+      "multi-device features",
+      "push",
+      "production deployment",
+      "cloud resources"
+    ]
+  },
+  "device_policy": {
+    "decision": "NO_DEVICE",
+    "forbidden": [
+      "adb",
+      "Maestro",
+      "UiAutomator",
+      "APK installation",
+      "physical-device testing",
+      "instrumented test execution"
+    ],
+    "reason": "M3 is device-free by default. Deterministic JVM and backend tests are the verification. True device hardening can occur later where Android behaviour genuinely requires it."
+  },
+  "cloud_policy": {
+    "decision": "NO_LIVE_CLOUD",
+    "forbidden": [
+      "provisioning any cloud resource",
+      "any production deployment",
+      "any cloud credential"
+    ],
+    "reason": "M3 is local and experimental. The existing portable Docker assets stay as they are and are never executed."
+  },
+  "live_postgres_policy": {
+    "host_state": "no docker, no podman, no psql",
+    "rule": "do not install infrastructure inside M3; use deterministic service/store tests",
+    "record": "LIVE_POSTGRES_INTEGRATION = SKIPPED_TOOL_UNAVAILABLE",
+    "must_not": "weaken transactional semantics"
+  },
+  "allowed_paths": [
+    "KeepLab-Relay/backend/",
+    "KeepLab-Relay/app/build.gradle.kts",
+    "KeepLab-Relay/gradle/libs.versions.toml",
+    "KeepLab-Relay/app/src/main/AndroidManifest.xml",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/KeepLabApplication.kt",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/MainActivity.kt",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/model/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/conflict/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/settings/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/auth/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/navigation/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/trash/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/note/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/editor/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/home/",
+    "KeepLab-Relay/app/src/test/",
+    "Google-Android-Agent-Development-Stack/reports/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-m3-offline-conflict/"
+  ],
+  "forbidden_paths": [
+    "KeepLab-Relay/app/src/main/res/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/theme/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/common/",
+    "KeepLab-Relay/app/src/androidTest/",
+    "KeepLab-Relay/app/src/benchmark/",
+    "KeepLab-Relay/app/src/debug/",
+    "KeepLab-Relay/app/src/release/",
+    "KeepLab-Relay/app/schemas/",
+    "KeepLab-Relay/app/proguard-rules.pro",
+    "KeepLab-Relay/benchmark/",
+    "KeepLab-Relay/build.gradle.kts",
+    "KeepLab-Relay/settings.gradle.kts",
+    "KeepLab-Relay/gradle/wrapper/",
+    "KeepLab-Relay/gradle.properties",
+    "KeepLab-Relay/gradlew",
+    "KeepLab-Relay/gradlew.bat",
+    "KeepLab-Relay/local.properties",
+    "KeepLab-Relay/specs/",
+    "KeepLab-Relay/verification/",
+    "KeepLab-Relay/harness/",
+    "KeepLab-Relay/docs/",
+    "KeepLab-Relay/factory/",
+    "KeepLab-Relay/.factory/",
+    "KeepLab-Relay/.agents/",
+    "KeepLab-Relay/.commandcode/",
+    "KeepLab-Relay/MISSION.md",
+    "KeepLab-Relay/FACTORY.md",
+    "KeepLab-Relay/FACTORY_RULES.md",
+    "KeepLab-Relay/AGENTS.md",
+    "KeepLab-Relay/HANDOFF.md",
+    "KeepLab-Relay/PHASE-A-RESULT.md",
+    "KeepLab-Relay/PHASE-B-RESULT.md",
+    "KeepLab-Relay/ANDROID-STACK-GAPS.md",
+    "KeepLab-Relay/Dockerfile",
+    "KeepLab-Relay/docker-compose.yml",
+    "KeepLab-Relay/docker/",
+    "KeepLab-Relay/server/",
+    "KeepLab-Relay/infra/",
+    "KeepLab-Relay/cloud/",
+    "KeepLab-Relay/firebase/",
+    "Testapp/",
+    "PowerAi/",
+    "KeepLab-Relay-evidence/",
+    "Google-Android-Agent-Development-Stack/.hermes.md",
+    "Google-Android-Agent-Development-Stack/specification/",
+    "Google-Android-Agent-Development-Stack/verification/",
+    "Google-Android-Agent-Development-Stack/verification-benchmark/",
+    "Google-Android-Agent-Development-Stack/references/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/HERMES-LOCK.json",
+    "Google-Android-Agent-Development-Stack/evaluation/",
+    "Google-Android-Agent-Development-Stack/reports/contracts/",
+    "KeepLab-Relay/specs/p0b-close-benchmarkability/",
+    "KeepLab-Relay/specs/p0b-performance-reliability/",
+    "KeepLab-Relay/specs/phase-c-pin-notes-b1/"
+  ],
+  "boundary_notes": {
+    "source_root": "/mnt/AndroidDev/Projects",
+    "resolution": "allowed_paths / forbidden_paths are project-relative to the Contract Guard's project-context source_root, exactly as the frozen P0B-CLOSE contract and the A0/A1/A2/M2 contracts are. Entries may be exact files or directory prefixes.",
+    "precedence": "The guard tests forbidden_paths first; a path matching both lists is BLOCKED. reports/ is allowed while reports/contracts/ (which contains this package and every earlier package) is forbidden, so an executor cannot write its own contract or any historical package.",
+    "unlisted_is_blocked": "Any path inside the project root that matches neither list is BLOCKED (UNCLASSIFIED_FAIL_CLOSED).",
+    "android_surface_is_enumerated_not_whole_app": "KeepLab-Relay/app/** is NOT authorized as a whole. The authorized Android surface is the data package, the DI package, the model package, the one new ui/conflict package, the named UI packages that carry sync-status/conflict/Trash state, the application and activity entry points, AndroidManifest.xml, app/build.gradle.kts, gradle/libs.versions.toml and app/src/test/**. Everything else under app/ — themes, shared UI widgets, resources, androidTest, benchmark, schemas, proguard rules — is BLOCKED.",
+    "android_surface_rationale": "A5 and A6 genuinely need: changes across data/sync (retry, lost wakeup, coalescing, conflict application), data/local (a persisted conflict record, a Trash timestamp, outbox status fields), the single repository boundary (conflict/Trash resolution entry points), DI wiring, one new ui/conflict package, and tiny integration points in settings/navigation/home/note/editor/trash. A whole-app authorization is therefore not required and is not granted.",
+    "new_ui_conflict_package": "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/conflict/ is newly authorized for M3: the minimal conflict-resolution surface. Creating it does not authorize any other new ui/ package.",
+    "root_gradle_blocked": "settings.gradle.kts, build.gradle.kts, gradle.properties, gradle/wrapper/** and gradlew are forbidden. Only app/build.gradle.kts and gradle/libs.versions.toml may change, and only to add the dependencies M3 genuinely needs (for example a WorkManager test artifact or an existing test library) without removing or gratuitously bumping unrelated entries. ROOT_GRADLE_CHANGE: NO. A needed root Gradle change is a STOP with M3_ROOT_GRADLE_CHANGE_REQUIRED.",
+    "backend_surface_is_whole_directory": "The whole KeepLab-Relay/backend/ prefix is authorized, so ordinary compile fixes, added source files, backend-local Gradle files, resources and new Flyway migrations never require another contract.",
+    "reports_contracts_read_only": "reports/contracts/ is forbidden while reports/ is allowed, so this package is a READ_ONLY_INPUT for the execution session: it may be read and hashed, never written.",
+    "cloud_blocked": "No cloud, infra, server or firebase path is authorized; the existing backend Docker assets stay untouched in content and are never executed.",
+    "device_blocked": "No Android device access and no adb. androidTest and benchmark source are read-only and are never executed.",
+    "out_of_project": "Paths outside /mnt/AndroidDev/Projects remain OUT_OF_CONTRACT_SCOPE/ALLOW as the guard is written today; this contract does not change that guard property and must never be read as authorizing writes outside the project.",
+    "guard_scope_note": "The frozen guard classifies WRITE targets, not tool choice: it has no path rule that blocks an `adb` binary, `./gradlew`, `docker compose` or a container run, and it cannot classify Hermes config/core paths outside the project root. The device prohibition, the cloud prohibitions, the Google/Firebase prohibition and the Hermes-core prohibition are enforced by this contract's declarations and the execution prompt's stop conditions, not by the path list. Violating one is a CONTRACT_DEVIATION. This limitation is stated rather than hidden.",
+    "hermes_config_core_limitation": "Hermes configuration and core live OUTSIDE the guard's source_root (/home/zhong/.hermes/...), so the guard's path lists cannot classify them. They are protected here by an explicit hard prohibition and stop condition, enforced by fail-closed operator discipline — not by the path list."
+  },
+  "frozen_inputs": {
+    "algorithm": "sha256",
+    "captured_at": "2026-10-06",
+    "captured_by": "KEEPLAB-M3-OFFLINE-CONFLICT-CONTRACT (live filesystem read)",
+    "state": "FROZEN",
+    "verified_live": true,
+    "note": "These files are READ-ONLY inputs (the M2 implementation M3 extends, the architecture reports M3 obeys, the frozen governance and the guard itself). The M3 execution session must re-hash them BEFORE its first write and STOP with STALE_M3_INPUT on any drift. Files inside allowed_paths that M3 is expected to CHANGE are NOT listed here; the Android files listed below are the M2 baselines the execution session reads before it edits them.",
+    "files": {
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/contract_guard.py": "e418fc28b08ac7afe4fdd42ec44d572ddaa2f23f6200de300ecac211404b3746",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-ARCHITECTURE-SPEC.md": "434280dbe7e04104bb912f8406d1cedbd21bd92c937c6fbb988b531c460dc489",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-IMPLEMENTATION-ROADMAP.md": "f2eed270b4f6744be01e162291f92b596023fa4aefdd46760c846c65e1057460",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-API-CONTRACT.md": "8fec6c43a8673792e5c08419c94aba59d14a8ab9db181d7df1675a2d7e080563",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-STATE-MODEL.md": "a75cfe84c38aa12482a7d251570fc54e90d36b70aa6eb7c7c49f7bbe4fd41970",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-DATA-MODEL.md": "ba618fa0e43cfa3186557c250749705f616ed28755bfc6cb397bdb6305ad24b1",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-DECISION-REGISTER.md": "3eafba7a337ef8daf4b1dc4c05cd49afb8bd49e54d9e6bb9b014476427b0fec1",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-HUMAN-DECISIONS.md": "64e9e8e79d91ea2688c9ffe034c3b02d5289bb352e3693957aa0f7100a6c3c32",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M2-AUTH-SINGLE-USER-SYNC-EXECUTION.md": "9de4003c187c29ee26e4b4cde1c618484f93664eb3164388d7e379c912887076",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M2-ACCEPTANCE.md": "de4b49bfeeafdba1a2adbf1bdcfca0c694b9f2f5def6e1c07024d727def209c5",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M2-HUMAN-DECISIONS.md": "a6c725d8e7224e1f16b532907486363154a20c8111a10757d2ef0f5564568cac",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL-EXECUTION.md": "ebde7eba49a486b88ed5d48475847b77305d6a3b3a224b310ae49e3b5705c00c",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-A2-BACKEND-FOUNDATION-EXECUTION.md": "11792fbf886d383ef728df611aa757577d2ca32dacb2e460f42cd47a0f2ac8a8",
+      "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-M2-AUTH-SINGLE-USER-SYNC-001/implementation-contract.json": "84993325585b101abd66491d6d40ee07ec00a1934561f263ca610d71824e11a6",
+      "KeepLab-Relay/MISSION.md": "f857295dd502ee64736fac04bc5e076874bcdb06a468ca1edad1eb7152d128cd",
+      "KeepLab-Relay/FACTORY_RULES.md": "7e6c489751a9f4ebbeb2d91005e56aa5ee06eb80fab65b7b623218f49ea268d1",
+      "KeepLab-Relay/settings.gradle.kts": "6513bf224002bb5691e72e7a933ee766d2dab58c47b3d075a9fc77cd913a0ae7",
+      "KeepLab-Relay/build.gradle.kts": "ba09d5f46d33a5feff2236f53f482d87f2608e7153950695bd7e1333d7c6fae8",
+      "KeepLab-Relay/gradle/libs.versions.toml": "4f4ede9c3f73fd00e26371d49584b33878afaa01155ac8d2dcff2ac5b62c6981",
+      "KeepLab-Relay/gradle/wrapper/gradle-wrapper.properties": "e0846bd420bf1543f500e0c9b35c01d84611b0f1afe01e24a82d0eca53c33ccb",
+      "KeepLab-Relay/gradle.properties": "0a3448fbcc780cc608e0adaa28c10cfe77cc7ba6592da689c15ab34b70c76680",
+      "KeepLab-Relay/gradlew": "ab5c0cad16305af2e619c159c1f58dd68d07fab9c11e36701e109c0277407f7a",
+      "KeepLab-Relay/app/build.gradle.kts": "ae428c4dadd0a29a440468293ae1d620d1b3f52f03dca5bdf1909be35c16eabf",
+      "KeepLab-Relay/app/src/main/AndroidManifest.xml": "b2bb7cd499f73c8837eec2bad5c133697b7bbc341e108ead10ae3b7fef109601",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/KeepLabApplication.kt": "48cb3974ba7be36e5709edb8028854b962ecd00e9fbd133e3aa735e33fea67a4",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/MainActivity.kt": "648bd90c0fe04813152607b3641f36137cd1f35b616bd4d26f769c44d84c0df7",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/NoteRepository.kt": "2916a7fbaa20c8b8cd401d3eb61f4d044bcf436e9c90938901e67b03cf3e925c",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/KeepLabDatabase.kt": "4efe464faff2639cc6b48d225ab5c4d41178ca73f243bcfb8047400964108e5b",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/NoteEntity.kt": "1470ae2f365d337f27f831136b16988904ecd403949878955fc6f9febc2f59a4",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/LabelEntity.kt": "88d91a1be7ad7b7d8b5d9149edbd8618a58e83a3ac6aec6df5054901878bcde9",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/NoteDao.kt": "96808cf27b8c50477c52ad5b236edd66c189271c68fc1869eddd8a31ec8f1a56",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/SyncDao.kt": "211e4146794c30e1f180a77b0d0fc37b47610ab19e538589dff1aca5d4bd2c35",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/SyncEntities.kt": "09fcec6d82a9a67d8280b1c207f28156e5f0440c7e91ccde223832b9639b9c39",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/SyncState.kt": "d330440fe5c3c8359cd0fd85e8a1ed12464f35b071980fd05d2554c03f30aeed",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/LocalStore.kt": "fec5de1d1ea658e3f2353d071a5ca082346f0d418a8e26d42696676555c8ccf9",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/Migrations.kt": "86acb6192262f14e5db58370a888ca5a86f6f24b756eda60c7ab6d5807200fca",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/sync/SyncEngine.kt": "0b62873f8f5e13b850e5be9db072ce5dc4890af36c170f2409bec1c141969e5d",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/sync/NoteSyncWork.kt": "484b5403a811af8b190977b268d14eeed7f15f17c6881cf73e579dcb9f20196e",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/sync/SyncTrigger.kt": "63b992a193e78ee954b08deb75519328c2a19ecae038fd8a13ff5530397c4a54",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/sync/SyncPayloads.kt": "e6ca53b96c34cb157ba3b7ff8e3ee5bdb01d8029f1403a238fd46a61f59baf95",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/remote/SyncApi.kt": "7884b2ee8dfa081b8a0627109d9e8ad0779f9b9304ffe9f39529cd2cb936eeb3",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/remote/ApiResult.kt": "44a4e3b4320871f32dd78f6e305bb0fd7792eac70d6bfd2eba70b70dea1f7e7c",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/remote/ApiModels.kt": "e0932c4d7474e585504272855766b2fd36d6a41a941213f263ea10f0da720c57",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/auth/AuthRepository.kt": "41529ff3d725f15f27db696d486168b1f23ac82e5b4f7d4fc583b7853bcfeee4",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/SyncModule.kt": "51694e19444cfdb54d406e4746089c1c4c3b06194b34c280633904b792842098",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/settings/SettingsViewModel.kt": "eaab8dbc9410ecaefcbbd846531fc597635e21e36fc90d65bd904b108f68f2d4",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/navigation/NavigationKeys.kt": "671f29979ad4be6ce7efa82d55c94924410992c79a4ffe8c2fc45f557827ee44",
+      "KeepLab-Relay/backend/build.gradle.kts": "ca3a63428b6870ff820390124e9c2d209cd0826788b6ed831e69d5c95f6c9a12",
+      "KeepLab-Relay/backend/settings.gradle.kts": "80e885f40fcca8730b8210033c9d8381a8696facb4d9cfd4fbc6348f02e52be0",
+      "KeepLab-Relay/backend/src/main/resources/db/migration/V1__create_keeplab_foundation_schema.sql": "31ff54592d4bdccf10e67bb16389773fe90b246556c6a4522614679609ee3148",
+      "KeepLab-Relay/backend/src/main/resources/db/migration/V2__auth_schema.sql": "03ce3f61f4399f0f56a48a17c67d006995198afa926108bba59f84ab6fe8ba42",
+      "KeepLab-Relay/backend/src/main/resources/db/migration/V3__sync_schema.sql": "5b6ca6ea8b73f53babfebf6bb92e52848c800fc5139670ea1c99af2e2c1fa724",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/sync/SyncModels.kt": "db6a7270c747634c26ca7c25aa22bf2106468a8529a294cc18e29b712c87a6ef",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/sync/SyncStore.kt": "2ef2e719351e72ac216ecfbd1db15379bc01d7da822613455fed0440f8a7098e",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/sync/SyncService.kt": "db427d0bdb605f0a4bb9c450ea1a6389595e66657a496199d43e7fcb93ac020b",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/sync/JdbcSyncStore.kt": "7123abae34efdd190811a79350cc27ce1ece19b7477551a7a2e602e6f075b73d",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/routes/SyncRoutes.kt": "6cc399a0592ac989b8304286785c5441602da18f249297a81608baeff145eea8",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/routes/RouteSupport.kt": "0a1efc6e9d5e6fc5c904aa9b1cea1e4d85d5af4cf911dd6646822d417a376053"
+    },
+    "authored_by_this_phase_not_frozen_as_input": [
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M3-HUMAN-DECISIONS.md",
+      "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-M3-OFFLINE-CONFLICT-001/**"
+    ],
+    "hook_and_core": {
+      "note": "Outside the guard source_root; recorded for the execution session's stop conditions, not enforceable by the guard's path lists.",
+      "/home/zhong/.hermes/profiles/android-stack/config.yaml": "recorded, not hashed here; the execution session re-reads it and STOPs if the hook wiring changed",
+      "/home/zhong/.hermes/profiles/android-stack/shell-hooks-allowlist.json": "recorded, not hashed here; the execution session re-reads it and STOPs if the hook wiring changed"
+    }
+  },
+  "protected_snapshot": {
+    "note": "The pre-existing Android product outside the enumerated M3 surface, the historical contract packages and the frozen governance must be provably untouched.",
+    "method": "Because KeepLab-Relay has no commits (MB-A1-002 / MB-A2-002), non-touch is proven by a scope scan asserting every created/modified file lies inside allowed_paths and that no forbidden path changed, plus re-hashing the frozen_inputs files.",
+    "must_remain_byte_identical": [
+      "KeepLab-Relay/app/src/main/res/**",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/theme/**",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/common/**",
+      "KeepLab-Relay/app/src/androidTest/**",
+      "KeepLab-Relay/app/src/benchmark/**",
+      "KeepLab-Relay/app/schemas/** (does not exist; exportSchema stays false)",
+      "KeepLab-Relay/settings.gradle.kts",
+      "KeepLab-Relay/build.gradle.kts",
+      "KeepLab-Relay/gradle.properties",
+      "KeepLab-Relay/gradle/wrapper/**",
+      "KeepLab-Relay/gradlew",
+      "KeepLab-Relay/MISSION.md",
+      "KeepLab-Relay/FACTORY_RULES.md",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-A0-*, KEEPLAB-A1-*, KEEPLAB-A2-*, KEEPLAB-M2-* execution and contract reports",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-*.md architecture reports",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/**"
+    ],
+    "contract_packages": {
+      "note": "Every earlier package is READ_ONLY and must stay byte-identical; their own manifests are the integrity source. All of them sit inside the forbidden reports/contracts/ prefix. This package is READ_ONLY_INPUT for its own execution session for the same reason.",
+      "paths": [
+        "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-WRITE-001/",
+        "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-TEXT-CLEANUP-001/",
+        "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL-001/",
+        "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A2-BACKEND-FOUNDATION-001/",
+        "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-M2-AUTH-SINGLE-USER-SYNC-001/"
+      ]
+    },
+    "p0b_contracts": [
+      "KeepLab-Relay/specs/p0b-close-benchmarkability/",
+      "KeepLab-Relay/specs/p0b-performance-reliability/",
+      "KeepLab-Relay/specs/phase-c-pin-notes-b1/"
+    ]
+  },
+  "verification_proof_mechanism": {
+    "git_baseline": "UNAVAILABLE — KeepLab-Relay is a git repository with no commits",
+    "used_instead": [
+      "the backend build/test result and the Android build/unit-test result themselves (the mandatory gates)",
+      "sha256 before/after of every frozen_inputs file",
+      "a scope scan asserting every created/modified file lies inside allowed_paths and that no forbidden path changed",
+      "a secret scan over the created/modified trees asserting no real credential and no token plaintext was committed or written into evidence"
+    ]
+  },
+  "contract_package_self_protection": {
+    "package": "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-M3-OFFLINE-CONFLICT-001/",
+    "declaration": "CONTRACT_PACKAGE: READ_ONLY_INPUT",
+    "enforcement": "The package path is inside the forbidden reports/contracts/ prefix, so the same guard blocks any write into it while this contract is active.",
+    "execution_rules": [
+      "The M3 session verifies the package sha256 manifest BEFORE its first write.",
+      "The M3 session must not rewrite, re-hash or extend its own contract package.",
+      "The M3 session must not broaden its own allowed paths; a needed broadening is a STOP and a new human-approved contract (except the declared STOP codes).",
+      "The frozen D-06 decision and PROJECT_DATA_STAGE are recorded in this package and may not be re-decided at execution time.",
+      "No A5 contract, no A6 contract, no A5/A6 review and no post-PASS audit may be created."
+    ]
+  },
+  "executor_prompt": {
+    "path": "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-M3-OFFLINE-CONFLICT-001/KEEPLAB-M3-OFFLINE-CONFLICT-EXECUTE.md",
+    "pointer": "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-M3-OFFLINE-CONFLICT-001/EXECUTOR-PROMPT.md",
+    "executed_in_this_phase": false,
+    "loop": "PLAN ONCE -> A5 EXECUTE -> A5 LIGHT CHECKPOINT -> A6 EXECUTE -> VERIFY M3 ONCE -> PASS = STOP",
+    "must_stop_after": "M3 (A5 + A6 verified once)",
+    "must_not_start": [
+      "A7 attachments",
+      "A8 multi-device",
+      "A9 multi-account/collaboration"
+    ],
+    "forbidden_behaviour": [
+      "no A5 contract",
+      "no A5 review",
+      "no A6 contract",
+      "no A6 review",
+      "no stopping after A5",
+      "no post-PASS review",
+      "no second audit",
+      "no full repository scan",
+      "no re-run of a passing task",
+      "no re-opening A0, A1, A2 or M2",
+      "no separate D-06 governance task"
+    ]
+  },
+  "acceptance_ids": [
+    "AC-M3-001",
+    "AC-M3-002",
+    "AC-M3-003",
+    "AC-M3-004",
+    "AC-M3-005",
+    "AC-M3-006",
+    "AC-M3-007",
+    "AC-M3-008",
+    "AC-M3-009",
+    "AC-M3-010",
+    "AC-M3-011",
+    "AC-M3-012",
+    "AC-M3-013",
+    "AC-M3-014",
+    "AC-M3-015",
+    "AC-M3-016",
+    "AC-M3-017",
+    "AC-M3-018",
+    "AC-M3-019",
+    "AC-M3-020",
+    "AC-M3-021",
+    "AC-M3-022",
+    "AC-M3-023",
+    "AC-M3-024",
+    "AC-M3-025",
+    "AC-M3-026"
+  ],
+  "requirements": [
+    {
+      "id": "REQ-M3-001",
+      "statement": "A small explicit error/retry classification exists (AUTH_REQUIRED, CONFLICT, TEMPORARY_RETRYABLE, PERMANENT_VALIDATION_FAILURE, NOT_FOUND_NON_DESTRUCTIVE, SUCCESS); transport failure, HTTP 429, generic 5xx and a temporary refresh/network condition are TEMPORARY_RETRYABLE and are never marked permanent by default, while validation/permanent failures are not retried forever.",
+      "acceptance_ids": ["AC-M3-001"],
+      "task_ids": ["TASK-A5-01"]
+    },
+    {
+      "id": "REQ-M3-002",
+      "statement": "Retries are bounded with simple recorded constants (AUTO_RETRY_MAX_ATTEMPTS, BACKOFF_POLICY, BACKOFF_INITIAL_DELAY, BACKOFF_MAX_DELAY) and automatic retries eventually stop.",
+      "acceptance_ids": ["AC-M3-002"],
+      "task_ids": ["TASK-A5-01"]
+    },
+    {
+      "id": "REQ-M3-003",
+      "statement": "After retry exhaustion the entity and its outbox row remain durable, the sync state becomes SYNC_FAILED, manual retry becomes available and no local data is deleted.",
+      "acceptance_ids": ["AC-M3-003"],
+      "task_ids": ["TASK-A5-01"]
+    },
+    {
+      "id": "REQ-M3-004",
+      "statement": "One simple user-visible `Retry sync` action exists on the existing Settings/Account/Sync-status surface, re-arms eligible temporary failures, requests the same unique sync pipeline and preserves idempotency; the app is not redesigned.",
+      "acceptance_ids": ["AC-M3-004"],
+      "task_ids": ["TASK-A5-01"]
+    },
+    {
+      "id": "REQ-M3-005",
+      "statement": "The persisted Room outbox is the authority for pending work and survives repository recreation, worker recreation and application process reconstruction; no in-memory-only pending-mutation authority exists. This is proven deterministically.",
+      "acceptance_ids": ["AC-M3-005"],
+      "task_ids": ["TASK-A5-02"]
+    },
+    {
+      "id": "REQ-M3-006",
+      "statement": "AUTH_REQUIRED preserves Room rows, the outbox, conflict records and the checkpoint; a later sign-in resumes work.",
+      "acceptance_ids": ["AC-M3-006"],
+      "task_ids": ["TASK-A5-01", "TASK-A6-01"]
+    },
+    {
+      "id": "REQ-M3-007",
+      "statement": "Network-required work resumes when connectivity returns, using WorkManager constraints and the existing unique pipeline; no FCM, no push provider, no permanent background socket.",
+      "acceptance_ids": ["AC-M3-007"],
+      "task_ids": ["TASK-A5-02"]
+    },
+    {
+      "id": "REQ-M3-008",
+      "statement": "A sync trigger that arrives while sync work is already running is not silently lost: the smallest correct mechanism is chosen with deterministic evidence against the actual WorkManager version and ExistingWorkPolicy, and the test TRIGGER_DURING_ACTIVE_SYNC proves that all work is eventually observed/applied, that no mutation is applied twice and that exactly one serialized pipeline exists.",
+      "acceptance_ids": ["AC-M3-008", "AC-M3-009"],
+      "task_ids": ["TASK-A5-02"]
+    },
+    {
+      "id": "REQ-M3-009",
+      "statement": "Safe minimal outbox coalescing avoids sending many obsolete UPDATE mutations for the same entity when a later mutation supersedes them, without breaking CREATE, DELETE, Trash, revision semantics or mutation idempotency; unclear combinations are not coalesced; the rules are deterministic and tested.",
+      "acceptance_ids": ["AC-M3-010"],
+      "task_ids": ["TASK-A5-02"]
+    },
+    {
+      "id": "REQ-M3-010",
+      "statement": "Conflicts are represented by a persisted record that survives process death, carrying at minimum accountId, entity type, entity client UUID, conflict type, local state/payload, remote/server state/payload, local/base revision, server/current revision, createdAt and resolution state; no secrets are stored and no generic giant event system is created.",
+      "acceptance_ids": ["AC-M3-011"],
+      "task_ids": ["TASK-A6-01"]
+    },
+    {
+      "id": "REQ-M3-011",
+      "statement": "A stale baseRevision remains HTTP 409 REVISION_CONFLICT, and the response carries enough authoritative server state/revision for the client to resolve the conflict without relying on a client wall clock; the server remains revision/order authority.",
+      "acceptance_ids": ["AC-M3-012"],
+      "task_ids": ["TASK-A6-01", "TASK-A6-04"]
+    },
+    {
+      "id": "REQ-M3-012",
+      "statement": "A concurrent title/body conflict is surfaced as an explicit conflict and never silently overwrites text, offering exactly KEEP_LOCAL, KEEP_SERVER and KEEP_BOTH.",
+      "acceptance_ids": ["AC-M3-013", "AC-M3-014", "AC-M3-015", "AC-M3-016"],
+      "task_ids": ["TASK-A6-01", "TASK-A6-02"]
+    },
+    {
+      "id": "REQ-M3-013",
+      "statement": "KEEP_BOTH keeps the authoritative server version on the original entity and creates a SECOND logical local note from the user's local conflicting content, with a NEW client UUID, the same accountId, SYNC_PENDING and a CREATE mutation in the outbox — never reusing the original client UUID or the original server revision identity.",
+      "acceptance_ids": ["AC-M3-016"],
+      "task_ids": ["TASK-A6-02"]
+    },
+    {
+      "id": "REQ-M3-014",
+      "statement": "Checklist conflicts use the existing stable item UUIDs: concurrent additions both survive, different items merge independently, a same-item text conflict is resolved by the server-accepted revision/order (never the client wall clock), and deletion-vs-edit of the same item is explicit and non-silent; no CRDT is introduced.",
+      "acceptance_ids": ["AC-M3-017", "AC-M3-018"],
+      "task_ids": ["TASK-A6-01", "TASK-A6-02"]
+    },
+    {
+      "id": "REQ-M3-015",
+      "statement": "Label membership uses operation semantics ordered by the server-accepted revision/order; a later accepted remove is not resurrected by replaying an older add, proven by a deterministic test.",
+      "acceptance_ids": ["AC-M3-019"],
+      "task_ids": ["TASK-A6-01"]
+    },
+    {
+      "id": "REQ-M3-016",
+      "statement": "Metadata (archive, pin, colour, Trash state) resolves by last-server-accepted ordering using the server revision / server change order; an unsynchronized client updatedAt is never the conflict authority; title/body stay explicitly user-resolved.",
+      "acceptance_ids": ["AC-M3-020"],
+      "task_ids": ["TASK-A6-01"]
+    },
+    {
+      "id": "REQ-M3-017",
+      "statement": "Delete-vs-edit is explicit (ACCEPT_DELETE or RESTORE_LOCAL / equivalent names): no silent resurrection, no silent discard of local edited content; RESTORE_LOCAL creates or rebases a valid mutation against the current server state without reusing invalid deletion state, and uses a NEW client UUID where restoration means a logically new note.",
+      "acceptance_ids": ["AC-M3-021"],
+      "task_ids": ["TASK-A6-02"]
+    },
+    {
+      "id": "REQ-M3-018",
+      "statement": "TRASH_RETENTION is 7 days (D-06): a note entering Trash carries a Trash timestamp, restoring clears/invalidates the Trash expiry, LOCAL_ONLY notes may use local time, and account-scoped synced notes use the authoritative server-accepted Trash time.",
+      "acceptance_ids": ["AC-M3-022"],
+      "task_ids": ["TASK-A6-03", "TASK-A6-04"]
+    },
+    {
+      "id": "REQ-M3-019",
+      "statement": "A note trashed offline appears locally in Trash immediately but is never automatically final-deleted until the server has accepted the Trash state; after the authoritative 7-day expiry FINAL_DELETE is enqueued/performed and produces the normal tombstone path.",
+      "acceptance_ids": ["AC-M3-023"],
+      "task_ids": ["TASK-A6-03", "TASK-A6-04"]
+    },
+    {
+      "id": "REQ-M3-020",
+      "statement": "Trash stays structurally distinct from the sync tombstone; TOMBSTONE_GC is DISABLED; no permanent tombstone retention duration is chosen; no tombstone is garbage-collected merely for being older than 7 days.",
+      "acceptance_ids": ["AC-M3-024"],
+      "task_ids": ["TASK-A6-03", "TASK-A6-04"]
+    },
+    {
+      "id": "REQ-M3-021",
+      "statement": "Anti-resurrection holds: after a final delete a tombstone exists, and an old mutation or a stale delta/replay cannot make the note reappear.",
+      "acceptance_ids": ["AC-M3-025"],
+      "task_ids": ["TASK-A6-03", "TASK-A6-04"]
+    },
+    {
+      "id": "REQ-M3-022",
+      "statement": "A remote 404 never silently deletes a live local note; A6 may convert it into a resolvable/non-destructive failure state with no data loss.",
+      "acceptance_ids": ["AC-M3-001", "AC-M3-021"],
+      "task_ids": ["TASK-A5-01", "TASK-A6-01"]
+    },
+    {
+      "id": "REQ-M3-023",
+      "statement": "Verification is ONE pass after A5 and A6: the backend gate and the Android gate each run once, a failure fixes only the failed path and re-runs only the failed task, the frozen inputs re-hash byte-identical, the scope scan shows changes only inside allowed_paths, the secret scan is clean, and PASS means STOP. No device, no cloud provisioning, no A7+ work.",
+      "acceptance_ids": ["AC-M3-026"],
+      "task_ids": ["TASK-VERIFY-01"]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "TASK-A5-01",
+      "goal": "A5: bounded retry policy with an explicit error/retry classification, retry exhaustion surfacing SYNC_FAILED, and a minimal manual `Retry sync` action on the existing sync-status surface.",
+      "boundary": "The enumerated Android surface plus KeepLab-Relay/backend/ only if a classification change is genuinely needed there. No conflict-resolution code. No design/redesign of the app.",
+      "depends": [],
+      "allowed_paths": [
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/settings/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/navigation/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/model/",
+        "KeepLab-Relay/app/src/test/",
+        "KeepLab-Relay/backend/"
+      ],
+      "acceptance_ids": ["AC-M3-001", "AC-M3-002", "AC-M3-003", "AC-M3-004", "AC-M3-006"],
+      "verification": "Deterministic JVM tests: a transport failure / 429 / generic 5xx is classified TEMPORARY_RETRYABLE and never permanent; a validation failure is PERMANENT_VALIDATION_FAILURE and is not retried; the attempt bound is reached and retries stop; exhausted work leaves the entity and the outbox row intact and surfaces SYNC_FAILED; the manual retry re-arms eligible temporary failures and requests the same unique `note_sync` pipeline without duplicating a mutation; AUTH_REQUIRED leaves the outbox and the rows untouched.",
+      "done_when": "The classification is a small explicit enumeration in code; AUTO_RETRY_MAX_ATTEMPTS, BACKOFF_POLICY, BACKOFF_INITIAL_DELAY and BACKOFF_MAX_DELAY are recorded as implementation decisions; automatic retries stop; SYNC_FAILED is observable; a `Retry sync` action exists in the existing sync-status area; no local data is deleted on any failure path."
+    },
+    {
+      "id": "TASK-A5-02",
+      "goal": "A5: outbox durability across process reconstruction, lost-wakeup protection on the single serialized pipeline, reconnect resumption, and safe minimal outbox coalescing.",
+      "boundary": "The enumerated Android surface. No conflict-resolution code. No second sync pipeline. No device, no adb, no Maestro, no UiAutomator.",
+      "depends": ["TASK-A5-01"],
+      "allowed_paths": [
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/model/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/KeepLabApplication.kt",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/MainActivity.kt",
+        "KeepLab-Relay/app/src/main/AndroidManifest.xml",
+        "KeepLab-Relay/app/build.gradle.kts",
+        "KeepLab-Relay/gradle/libs.versions.toml",
+        "KeepLab-Relay/app/src/test/"
+      ],
+      "acceptance_ids": ["AC-M3-005", "AC-M3-007", "AC-M3-008", "AC-M3-009", "AC-M3-010"],
+      "verification": "Deterministic tests: persist Room state, destroy/recreate the repository and sync objects and resume from the persisted outbox/checkpoint; a temporary failure retains every row and outbox entry; a connectivity/constraint change schedules or resumes the same unique pipeline; the TRIGGER_DURING_ACTIVE_SYNC test proves no lost work, no duplicate mutation apply and exactly one serialized pipeline; coalescing tests assert each safe combination and assert that an unclear combination is left alone.",
+      "done_when": "The persisted Room outbox is the only pending-mutation authority; the smallest correct lost-wakeup mechanism is implemented and recorded as an implementation decision with its evidence (the actual WorkManager version and ExistingWorkPolicy are inspected first, and KEEP is neither blindly preserved nor blindly replaced); reconnect uses constraints and the existing unique pipeline; coalescing is deterministic, tested and correctness-preserving; no parallel sync pipeline exists."
+    },
+    {
+      "id": "TASK-A5-03",
+      "goal": "A5 light checkpoint — record the checkpoint state and continue directly to A6. This is a checkpoint, not a stop and not a review.",
+      "boundary": "Reporting only. No new contract, no review, no session stop, no Milestone gate.",
+      "depends": ["TASK-A5-01", "TASK-A5-02"],
+      "allowed_paths": [
+        "Google-Android-Agent-Development-Stack/reports/",
+        "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-m3-offline-conflict/"
+      ],
+      "acceptance_ids": ["AC-M3-026"],
+      "verification": "A short checkpoint record states BOUNDED_RETRY: READY, MANUAL_RETRY: READY, OUTBOX_DURABLE: READY, LOST_WAKEUP: PROTECTED, AUTH_REQUIRED_PRESERVES_OUTBOX: YES, A5_CHECKPOINT: READY_FOR_A6.",
+      "done_when": "The A5 checkpoint is recorded and the session continues directly into A6 without running the Milestone gate."
+    },
+    {
+      "id": "TASK-A6-01",
+      "goal": "A6: the persisted conflict record, the backend authoritative conflict response, and the non-UI conflict-application paths (title/body, checklist, label, metadata, delete-vs-edit, 404 non-destructive).",
+      "boundary": "Only KeepLab-Relay/backend/** and the enumerated Android data/DI/test surface. No CRDT, no automatic three-way text merge, no attachments.",
+      "depends": ["TASK-A5-03"],
+      "allowed_paths": [
+        "KeepLab-Relay/backend/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/model/",
+        "KeepLab-Relay/app/src/test/"
+      ],
+      "acceptance_ids": ["AC-M3-011", "AC-M3-012", "AC-M3-013", "AC-M3-017", "AC-M3-018", "AC-M3-019", "AC-M3-020"],
+      "verification": "Deterministic tests: a stale baseRevision produces 409 REVISION_CONFLICT carrying the current authoritative revision and the current server payload; the conflict record is persisted with every required field and survives a simulated process reconstruction; a title/body divergence is an explicit conflict and the local text is not overwritten; concurrent checklist additions both survive and different items merge independently; a same-item conflict resolves by server order; a later accepted label remove is not resurrected by an older add; metadata resolves by server order and never by client updatedAt; delete-vs-edit and 404 are non-destructive.",
+      "done_when": "A persisted conflict record exists with the required minimum fields and no secrets; the 409 response carries enough authoritative state to resolve; every conflict class has a deterministic, non-silent outcome; no CRDT and no automatic text merge exists."
+    },
+    {
+      "id": "TASK-A6-02",
+      "goal": "A6: the minimal conflict-resolution surface — conflict indicator, resolution screen/dialog, Keep Local, Keep Server, Keep Both (with a NEW client UUID) and delete-vs-edit resolution.",
+      "boundary": "The enumerated Android surface including the new ui/conflict package. Tiny integration points only elsewhere; no redesign of Home, theme, navigation architecture or the note editor.",
+      "depends": ["TASK-A6-01"],
+      "allowed_paths": [
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/conflict/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/settings/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/navigation/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/home/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/note/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/editor/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/trash/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/model/",
+        "KeepLab-Relay/app/src/test/"
+      ],
+      "acceptance_ids": ["AC-M3-014", "AC-M3-015", "AC-M3-016", "AC-M3-021"],
+      "verification": "Deterministic JVM tests over the resolution entry points: KEEP_LOCAL preserves local title/body, rebases against the current server revision, enqueues a new mutation in the current account scope; KEEP_SERVER accepts the server version, updates Room and clears the conflict safely; KEEP_BOTH leaves the server version on the original entity, creates a second logical note with a NEW client UUID and a CREATE mutation in the same account and never reuses the original UUID/revision identity; ACCEPT_DELETE and RESTORE_LOCAL are both reachable and neither silently discards content; the conflict indicator is driven by persisted state.",
+      "done_when": "The three title/body choices and the two delete-vs-edit outcomes exist and are exercised; KEEP_BOTH provably creates a new client UUID and a CREATE mutation; the conflict indicator is visible; Home, the theme, the navigation architecture and the note editor are not redesigned."
+    },
+    {
+      "id": "TASK-A6-03",
+      "goal": "A6: 7-day product Trash retention distinct from the sync tombstone, Trash restore, offline-Trash safety, FINAL_DELETE eligibility, TOMBSTONE_GC disabled and tombstone anti-resurrection.",
+      "boundary": "The enumerated Android surface. No account deletion, no attachments, no tombstone GC.",
+      "depends": ["TASK-A6-01"],
+      "allowed_paths": [
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/model/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/trash/",
+        "KeepLab-Relay/app/src/test/"
+      ],
+      "acceptance_ids": ["AC-M3-022", "AC-M3-023", "AC-M3-024", "AC-M3-025"],
+      "verification": "Deterministic tests: trashing writes a Trash timestamp; Trash != tombstone (trashing never writes deletedAt); restoring before 7 days clears the expiry and restores the note; 7-day eligibility yields FINAL_DELETE and the normal tombstone path; an offline, unacknowledged client Trash timestamp never causes a permanent deletion; after a final delete a tombstone exists and an old mutation or stale delta replay cannot resurrect the note; no code path garbage-collects a tombstone by age.",
+      "done_when": "TRASH_RETENTION = 7 DAYS is implemented with a Trash timestamp and restore invalidation; the authoritative server-accepted Trash time governs account-scoped notes; FINAL_DELETE produces the normal tombstone path; TOMBSTONE_GC is disabled; no tombstone retention duration is chosen anywhere; anti-resurrection holds."
+    },
+    {
+      "id": "TASK-A6-04",
+      "goal": "A6 backend: the conflict response payload, Trash timestamp, final-delete/tombstone handling and change-log semantics, only as required by M3.",
+      "boundary": "Only KeepLab-Relay/backend/**. No attachments, no object storage, no collaboration, no multi-device feature, no push.",
+      "depends": ["TASK-A6-01"],
+      "allowed_paths": ["KeepLab-Relay/backend/"],
+      "acceptance_ids": ["AC-M3-012", "AC-M3-019", "AC-M3-020", "AC-M3-022", "AC-M3-023", "AC-M3-024", "AC-M3-025"],
+      "verification": "Deterministic backend tests: a stale baseRevision returns 409 with the current authoritative revision and current server payload; the server revision and change-log order remain the only ordering authority; a Trash state change carries a server-accepted Trash timestamp; a final delete writes a tombstone and the tombstone is never auto-purged; a stale/duplicate mutation still cannot double-apply or resurrect a tombstoned entity; new migrations exist only if genuinely needed and contain nothing beyond M3.",
+      "done_when": "The 409 response carries enough authoritative state to resolve; Trash timestamp handling and final-delete/tombstone handling exist as M3 requires; the atomic dedupe/apply/revision/change-log consistency boundary is unchanged; no attachments, collaboration, multi-device or push code exists; the transactional semantics are not weakened by the absence of a live PostgreSQL."
+    },
+    {
+      "id": "TASK-VERIFY-01",
+      "goal": "The single Milestone verification pass, the scope/secret scans and the M3 report.",
+      "boundary": "Run both frozen gates once each, write the evidence and the report. No further review, no second audit, no post-PASS cleanup, no device, no A7.",
+      "depends": ["TASK-A5-03", "TASK-A6-04"],
+      "allowed_paths": [
+        "Google-Android-Agent-Development-Stack/reports/",
+        "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-m3-offline-conflict/"
+      ],
+      "acceptance_ids": ["AC-M3-026"],
+      "verification": "Backend: cd /mnt/AndroidDev/Projects/KeepLab-Relay && ./gradlew -p backend test build (ONCE). Android: cd /mnt/AndroidDev/Projects/KeepLab-Relay && ./gradlew :app:testDebugUnitTest :app:assembleDebug (ONCE). On failure, read the failure once, fix the failed path only and rerun only the failed task.",
+      "done_when": "Both gates PASS, the frozen inputs re-hash byte-identical, the scope scan shows changes only inside allowed_paths, the secret scan is clean, no token plaintext was written, the A5 checkpoint and the M3 report are recorded, and PASS means STOP."
+    }
+  ],
+  "verification_intent": {
+    "feature_id": "M3-OFFLINE-CONFLICT",
+    "engine": "gradle_jvm_backend + gradle_android_jvm_unit",
+    "device_required": false,
+    "acceptance_ids": [
+      "AC-M3-001", "AC-M3-002", "AC-M3-003", "AC-M3-004", "AC-M3-005", "AC-M3-006", "AC-M3-007",
+      "AC-M3-008", "AC-M3-009", "AC-M3-010", "AC-M3-011", "AC-M3-012", "AC-M3-013", "AC-M3-014",
+      "AC-M3-015", "AC-M3-016", "AC-M3-017", "AC-M3-018", "AC-M3-019", "AC-M3-020", "AC-M3-021",
+      "AC-M3-022", "AC-M3-023", "AC-M3-024", "AC-M3-025", "AC-M3-026"
+    ],
+    "mandatory_gates": [
+      {
+        "name": "BACKEND",
+        "command": "cd /mnt/AndroidDev/Projects/KeepLab-Relay && ./gradlew -p backend test build",
+        "runs": "ONCE",
+        "note": "Run once, after A5 and A6 are complete. Do not re-run after PASS. Do not re-run the Android side because the backend side passed, or vice versa."
+      },
+      {
+        "name": "ANDROID",
+        "command": "cd /mnt/AndroidDev/Projects/KeepLab-Relay && ./gradlew :app:testDebugUnitTest :app:assembleDebug",
+        "runs": "ONCE",
+        "note": "Device-free. No connectedAndroidTest, no benchmark module, no APK install."
+      }
+    ],
+    "optional_checks": [
+      {
+        "check": "live PostgreSQL integration / crash injection",
+        "runs": "at most ONCE, only if a container runtime or a local PostgreSQL is genuinely available and the check is cheap",
+        "unavailable_result": "LIVE_POSTGRES_INTEGRATION = SKIPPED_TOOL_UNAVAILABLE",
+        "note": "Absence never blocks M3 and must never be replaced by an infrastructure installation effort. The transaction design must not be weakened because the runtime is unavailable."
+      }
+    ],
+    "oracle_intent": "Assert on deterministic, machine-readable evidence only: the backend Gradle build/test result, the Android unit-test and assembleDebug result, HTTP status and body of the sync routes under the in-process test host, the persisted Room outbox/conflict/Trash structures, the sha256 identity of the frozen inputs, the scope scan and the secret scan. No visual judgement, no LLM judgement, no screenshot, no device.",
+    "required_selectors": [],
+    "fixture_intent": "Fakes and in-process doubles only: a fake/in-memory sync store and a fake backend or Ktor MockEngine for the Android sync client, deterministic time, an injectable clock for the 7-day Trash boundary, and an injectable enqueuer seam for the unique pipeline. No live PostgreSQL, no live server, no device, no network.",
+    "required_checks": [
+      "backend build PASS",
+      "backend tests PASS",
+      "Android unit tests PASS",
+      "Android assembleDebug PASS",
+      "error/retry classification is explicit",
+      "temporary transport / 429 / 5xx are retryable and never permanent by default",
+      "validation/permanent failures are not retried forever",
+      "bounded retries reach their bound and stop",
+      "retry exhaustion surfaces SYNC_FAILED with the entity and outbox intact",
+      "no local data is deleted on any failure path",
+      "manual Retry sync re-arms eligible temporary failures",
+      "manual Retry sync uses the same unique note_sync pipeline",
+      "outbox durability across repository/worker/process reconstruction",
+      "AUTH_REQUIRED preserves Room rows, outbox, conflicts and checkpoint",
+      "reconnect schedules/resumes the unique pipeline",
+      "trigger during an active sync is not lost",
+      "no parallel duplicate sync pipeline",
+      "a duplicate mutation is still applied once",
+      "safe coalescing works and unclear combinations are not coalesced",
+      "persisted conflict record survives process death",
+      "409 carries the authoritative current revision and server state",
+      "title/body conflict is explicit and never silently overwritten",
+      "KEEP_LOCAL rebases and re-enqueues",
+      "KEEP_SERVER accepts the server version and clears the conflict",
+      "KEEP_BOTH creates a new logical note with a NEW client UUID and a CREATE mutation",
+      "concurrent checklist additions both survive",
+      "same checklist item resolved by server order, not client wall clock",
+      "label remove is not resurrected",
+      "metadata uses server authority, never client updatedAt",
+      "delete-vs-edit is explicit",
+      "remote delete does not silently destroy a local edit",
+      "Trash restore before 7 days works",
+      "7-day final-delete eligibility works",
+      "offline unacknowledged Trash does not prematurely final-delete",
+      "Trash != tombstone",
+      "tombstone GC disabled; no tombstone 7-day coupling",
+      "stale replay cannot resurrect a tombstone",
+      "404 does not delete a live local note",
+      "no Google/Firebase auth",
+      "no cloud deployment",
+      "no device work",
+      "no token plaintext in reports, evidence or logs",
+      "no real credential committed"
+    ],
+    "not_verified_here": [
+      "any production deployment",
+      "any live PostgreSQL behaviour beyond the optional single check",
+      "push notifications",
+      "attachments",
+      "collaboration",
+      "multi-device convergence",
+      "multi-account",
+      "Android device behaviour of any kind",
+      "production email delivery"
+    ]
+  },
+  "stop_conditions": [
+    "Any required write falls outside allowed_paths or targets a forbidden path: STOP and emit CONTRACT_DEVIATION.",
+    "Any frozen_inputs file has drifted: STOP and emit STALE_M3_INPUT.",
+    "The independent backend project cannot work without changing a repository-root Gradle file, or the Android side needs a change to settings.gradle.kts / build.gradle.kts / gradle.properties / the wrapper: STOP and emit M3_ROOT_GRADLE_CHANGE_REQUIRED with the exact file and change; do not make the change.",
+    "A needed Android change falls outside the enumerated surface (for example a theme, a shared UI widget, a resource file, androidTest, benchmark or a Room schema export): STOP and emit M3_SURFACE_BROADENING_REQUIRED with the exact file and reason; do not broaden silently.",
+    "Any account deletion would have to be implemented: STOP — D-05 is pending and account deletion is out of scope.",
+    "Any attachment, binary upload/download, object storage, sharing or collaboration feature would be needed: STOP.",
+    "Multi-device hardening or multi-account would be needed: STOP — A8/A9.",
+    "A push provider, FCM or a background push architecture would be needed: STOP.",
+    "A CRDT or an automatic three-way text merge would be needed: STOP — those are not adopted.",
+    "A permanent tombstone retention duration would have to be chosen, or a tombstone would have to be garbage-collected by age: STOP — SYNC_TOMBSTONE_RETENTION_OR_COMPACTION is a separate, unmade decision.",
+    "A tombstone GC/compaction mechanism would have to be implemented: STOP — TOMBSTONE_GC is DISABLED for M3.",
+    "Account-scoped offline Trash would be final-deleted on an unacknowledged client timestamp alone: STOP — that is a data-loss path.",
+    "A note would have to be resurrected, or a concurrent title/body conflict silently overwritten: STOP.",
+    "The Android device would have to be touched, or adb, Maestro, UiAutomator, an instrumentation run or an APK install used: STOP; M3 is device-free.",
+    "Any cloud resource would have to be provisioned, any cloud credential used, or any production deployment performed: STOP.",
+    "Docker, podman or PostgreSQL would have to be installed to proceed: STOP — record LIVE_POSTGRES_INTEGRATION = SKIPPED_TOOL_UNAVAILABLE and use deterministic tests.",
+    "A real secret would have to be written, committed or echoed into evidence, or a token/password/OTP/refresh secret logged: STOP.",
+    "Hermes configuration, the hook allowlist, Hermes core, contract_guard.py, the frozen P0B-CLOSE contract, an A0/A1/A2/M2 package or this package would have to be modified: STOP.",
+    "The contract package manifest does not verify: STOP.",
+    "The M3 session would have to broaden its own allowed paths: STOP; a new human-approved contract is required.",
+    "The session is about to stop after A5: STOP — A5 is a checkpoint, not a stop; continue directly to A6.",
+    "An A5 contract, an A6 contract, an A5/A6 review, a post-PASS audit or a separate D-06 governance task is being created: STOP — one milestone contract, one session, one verification pass.",
+    "A7, A8 or A9 work is being started: STOP.",
+    "A gate fails and the fix would reach outside allowed_paths: STOP.",
+    "The same failure survives two genuine fixes: STOP and perform ONE root-cause analysis; do not restart M3 from zero.",
+    "More than roughly 30 tool calls have occurred before meaningful product writes without a real blocker: STOP overhead work and execute (PROCESS_OVERHEAD_TOO_HIGH).",
+    "A minor wording, naming or warning issue is being turned into a new contract: STOP — append it compactly to reports/KEEPLAB-MINOR-BACKLOG.md instead."
+  ],
+  "failure_rule": {
+    "rule": "Read the failure once, fix the failed path only, rerun only the failed task. Do not restart M3 and do not re-run tasks that already passed.",
+    "repeated_failure": "If the same failure survives two genuine fixes: emit REPEATED_FAILURE and perform one root-cause analysis.",
+    "allowed_patch_surface": "Only files inside allowed_paths may be edited to fix a failure. A fix that would need a root Gradle change, a forbidden Android file or a new dependency outside the backend/Android dependency surface is a STOP, not a workaround.",
+    "gate_rule": "Do not re-run the already-passed gate side. A backend failure never justifies re-running the Android gate, and an Android failure never justifies re-running the backend gate."
+  },
+  "overhead_rule": {
+    "statement": "M3 is a large milestone and implementation may naturally take time, but process overhead must not dominate.",
+    "forbidden": [
+      "long periods rewriting governance docs",
+      "reviewing M2 again",
+      "re-validating PASS work",
+      "creating evidence before product work",
+      "re-reading the same architecture files",
+      "performing a full repository scan"
+    ],
+    "rule": "After contract activation, the stale-input check and one targeted discovery pass, begin implementation immediately. If process-only work dominates implementation: PROCESS_OVERHEAD_TOO_HIGH — simplify and execute."
+  },
+  "non_goals": [
+    "attachments",
+    "binary upload/download",
+    "object storage",
+    "multi-device hardening",
+    "multi-account",
+    "collaboration and sharing",
+    "push provider, FCM and background push architecture",
+    "a permanent background socket",
+    "CRDT",
+    "automatic three-way text merge",
+    "account deletion",
+    "production cloud deployment",
+    "production email provider",
+    "Google login, Google Identity, Firebase Auth, Google private API",
+    "full Room database encryption or any encryption claim",
+    "changing the root Android Gradle surface",
+    "tombstone GC or any tombstone retention duration",
+    "Google Keep work of any kind",
+    "Testapp and PowerAi",
+    "editing the frozen P0B-CLOSE contract, an A0/A1/A2/M2 package or this package",
+    "editing contract_guard.py, the hook configuration or Hermes core",
+    "A0/A1/A2/M2 re-opened",
+    "a separate D-06 governance task"
+  ],
+  "decisions": [
+    {
+      "id": "M3-001",
+      "statement": "M3 is executed as ONE milestone with ONE contract, ONE execution session and ONE final verification pass: A5 -> A5 light checkpoint -> A6 -> verify once. Phases are checkpoints, not bureaucratic stops.",
+      "rationale": "Separate A5/A6 contracts, reviews and post-PASS audits add overhead without adding a verifiable outcome, and the human directive explicitly forbids them."
+    },
+    {
+      "id": "M3-002",
+      "statement": "D-06 = TRASH_RETENTION_7_DAYS is frozen from HUMAN_PROJECT_OWNER_APPROVAL, 2026-10-06 and recorded in reports/KEEPLAB-M3-HUMAN-DECISIONS.md. SYNC_TOMBSTONE_RETENTION_OR_COMPACTION stays a separate IMPLEMENTATION_DECISION_PENDING concern; the two are never conflated, no permanent tombstone retention duration is chosen, and TOMBSTONE_GC is DISABLED for M3.",
+      "rationale": "The human directive freezes the product Trash duration and explicitly forbids reading it as a sync-tombstone retention and forbids GC'ing tombstones for age."
+    },
+    {
+      "id": "M3-003",
+      "statement": "The Android write surface is enumerated, not the whole app: the data/di/model packages, one new ui/conflict package, the sync-status/conflict/Trash UI packages, the application/activity entry points, AndroidManifest.xml, app/build.gradle.kts, gradle/libs.versions.toml and app/src/test/**.",
+      "rationale": "A5 and A6 genuinely need those surfaces; themes, shared widgets, resources, androidTest, benchmark and schemas are provably unrelated and stay blocked."
+    },
+    {
+      "id": "M3-004",
+      "statement": "The root Android Gradle surface is unchanged; only app/build.gradle.kts and gradle/libs.versions.toml may change, and only to add dependencies M3 genuinely needs (for example a WorkManager test artifact). ROOT_GRADLE_CHANGE: NO.",
+      "rationale": "A test/runtime dependency addition is an ordinary module-level change. Nothing M3 needs justifies touching settings.gradle.kts, the root build file, gradle.properties or the wrapper."
+    },
+    {
+      "id": "M3-005",
+      "statement": "Bounded retry is implemented with the smallest correct mechanism on the existing architecture. Recorded implementation decisions: AUTO_RETRY_MAX_ATTEMPTS = 5 per outbox mutation (the durable bound; matches STATE-MODEL §2 'attempts exhausted (e.g. 5)'); BACKOFF_POLICY = EXPONENTIAL (WorkManager BackoffPolicy.EXPONENTIAL for the run, plus a durable per-mutation attemptCount bound); BACKOFF_INITIAL_DELAY = 30 seconds; BACKOFF_MAX_DELAY = 5 hours (WorkManager's own exponential cap). The executor may adjust a constant if deterministic evidence requires it and must record the final values; it must not remove the bound.",
+      "rationale": "The directive asks for a small bounded policy with simple constants chosen from the current architecture, and forbids marking temporary conditions permanent by default. The existing outbox already carries attemptCount and lastErrorCode, so the durable bound needs no new authority."
+    },
+    {
+      "id": "M3-006",
+      "statement": "Manual retry is one user-visible `Retry sync` action on the existing Settings/Account/Sync-status surface; it re-arms eligible temporary failures and requests the same unique `note_sync` pipeline, preserving idempotency (the outbox mutationId stays the idempotency key). No app redesign.",
+      "rationale": "The directive requires one simple user-visible retry action preferring the existing sync-status surface and forbids redesigning the app."
+    },
+    {
+      "id": "M3-007",
+      "statement": "The persisted Room outbox is the only pending-mutation authority. No in-memory-only pending state may exist. Durability is proven by deterministic simulation: persist Room state, destroy/recreate the repository and sync objects, resume from the persisted outbox/checkpoint.",
+      "rationale": "The directive requires outbox durability across repository/worker/process reconstruction and forbids an in-memory-only authority; true device process death is explicitly not required for M3."
+    },
+    {
+      "id": "M3-008",
+      "statement": "Lost-wakeup protection is an A5 implementation decision, not a frozen choice. The executor inspects the actual WorkManager version (androidx.work 2.10.5) and the current ExistingWorkPolicy, then selects the smallest correct mechanism (allowed examples: persistent request generation + drain-until-stable; serialized append/rerun; a deterministic equivalent), records it, and proves it with the TRIGGER_DURING_ACTIVE_SYNC test: all work eventually observed/applied, no duplicate mutation apply, exactly one serialized pipeline. ExistingWorkPolicy.KEEP is neither blindly preserved nor blindly replaced.",
+      "rationale": "The directive forbids both blind preservation and blind change, requires evaluating the real WorkManager version, and forbids parallel sync pipelines."
+    },
+    {
+      "id": "M3-009",
+      "statement": "Reconnect resumption uses WorkManager constraints and the existing unique pipeline only: no FCM, no push provider, no permanent background socket.",
+      "rationale": "The directive prohibits a push architecture in M3 and the frozen architecture already specifies NetworkType.CONNECTED on the unique pipeline."
+    },
+    {
+      "id": "M3-010",
+      "statement": "Outbox coalescing is safe and minimal: it only collapses an obsolete UPDATE superseded by a later mutation for the same entity, and it must preserve CREATE, DELETE, Trash, revision semantics and mutation idempotency. An unclear combination is NOT coalesced. The rules are deterministic and tested. Correctness > optimization.",
+      "rationale": "The directive requires minimal safe coalescing and states that correctness outranks the optimization."
+    },
+    {
+      "id": "M3-011",
+      "statement": "Conflicts are persisted in Room as a first-class record carrying accountId, entity type, entity client UUID, conflict type, local payload, remote/server payload, local/base revision, server/current revision, createdAt and resolution state. No secrets are stored and no generic event system is built.",
+      "rationale": "The directive requires conflicts to survive process death with that minimum information, and explicitly forbids a generic giant event system and secret storage."
+    },
+    {
+      "id": "M3-012",
+      "statement": "The backend 409 REVISION_CONFLICT response is extended to carry the current authoritative revision and the current server payload for the entity, so a client can resolve without a client wall clock. The server remains the single revision/order authority.",
+      "rationale": "The directive requires enough authoritative server state/revision to resolve the conflict, and forbids relying on the client wall clock."
+    },
+    {
+      "id": "M3-013",
+      "statement": "Title/body conflicts are explicitly user-resolved with exactly KEEP_LOCAL, KEEP_SERVER and KEEP_BOTH. KEEP_LOCAL preserves local text, rebases against the current server revision, enqueues a new mutation and uses the current account scope. KEEP_SERVER accepts the authoritative server version, updates Room and clears the conflict safely. KEEP_BOTH leaves the authoritative server version on the original note and creates a SECOND logical local note (NEW client UUID, new local identity as appropriate, same accountId, SYNC_PENDING, CREATE mutation) without reusing the original client UUID or server revision identity.",
+      "rationale": "The directive specifies exactly these three outcomes and the new-UUID requirement for KEEP_BOTH."
+    },
+    {
+      "id": "M3-014",
+      "statement": "Checklist conflicts use the existing stable item UUIDs: concurrent additions both survive, different items merge independently, a same-item conflict resolves by the server-accepted revision/order (never the client wall clock), and deletion-vs-edit of the same item is explicit/non-silent. No CRDT is introduced.",
+      "rationale": "The directive specifies exactly this behaviour and explicitly forbids introducing a CRDT."
+    },
+    {
+      "id": "M3-015",
+      "statement": "Label membership uses operation semantics ordered by the server-accepted revision/order; a later accepted remove is never resurrected by replaying an older add, proven deterministically.",
+      "rationale": "SYNC-DEC-012/013 and the directive require operation semantics rather than a set union, with server order as the authority."
+    },
+    {
+      "id": "M3-016",
+      "statement": "Metadata (archive, pin, colour, Trash state) resolves by last-server-accepted ordering using the server revision / server change order; an unsynchronized client updatedAt is never the conflict authority. Title/body remain explicit user-resolved conflicts.",
+      "rationale": "SYNC-DEC-011 and the directive: a single global LWW on client timestamps would silently lose data."
+    },
+    {
+      "id": "M3-017",
+      "statement": "Delete-vs-edit is explicit with ACCEPT_DELETE and RESTORE_LOCAL (equivalent names allowed). No silent resurrection and no silent discard of local edited content. RESTORE_LOCAL creates/rebases a valid mutation against the current server state without reusing invalid deletion state, and uses a NEW client UUID where restoration means a logically new note.",
+      "rationale": "The directive requires an explicit, represented conflict with those two minimum outcomes."
+    },
+    {
+      "id": "M3-018",
+      "statement": "TRASH_RETENTION = 7 DAYS. A note entering Trash carries a Trash timestamp (a new local column is required; NoteEntity currently has none). Restoring clears/invalidates the Trash expiry. LOCAL_ONLY notes may use local time; account-scoped synced notes use the authoritative server-accepted Trash time. A note trashed offline appears locally in Trash immediately but is not automatically final-deleted until the server accepted the Trash state; after the authoritative 7-day expiry FINAL_DELETE is enqueued/performed and produces the normal tombstone path.",
+      "rationale": "D-06 plus the directive's explicit offline-Trash safety rule, which exists to prevent a client-only timestamp from causing permanent data loss."
+    },
+    {
+      "id": "M3-019",
+      "statement": "Trash is structurally distinct from the sync tombstone; TOMBSTONE_GC is DISABLED; no permanent tombstone retention duration is chosen; no tombstone is garbage-collected merely for being older than 7 days. Tombstone compaction is a future Milestone decision requiring an anti-resurrection protocol.",
+      "rationale": "The directive freezes this posture and forbids the 7-day coupling."
+    },
+    {
+      "id": "M3-020",
+      "statement": "A remote 404 never deletes a live local note; it is a NOT_FOUND_NON_DESTRUCTIVE state that may be converted into a resolvable/non-destructive failure state. A final delete never resurrects.",
+      "rationale": "INVARIANT ERR-3 and the directive's non-destructive 404 rule, which stays in force in M3."
+    },
+    {
+      "id": "M3-021",
+      "statement": "The error/retry classification is one small explicit enumeration: AUTH_REQUIRED, CONFLICT, TEMPORARY_RETRYABLE, PERMANENT_VALIDATION_FAILURE, NOT_FOUND_NON_DESTRUCTIVE, SUCCESS. A generic 5xx is TEMPORARY_RETRYABLE and never permanent by default.",
+      "rationale": "The directive requires the small explicit classification and forbids treating a generic 5xx as permanent."
+    },
+    {
+      "id": "M3-022",
+      "statement": "Room moves directly to the next clean schema version by an experimental bump with DEV_DATABASE_RESET_REQUIRED = YES when M3 needs new local structures (the persisted conflict record, the Trash timestamp, the outbox retry fields); no migration chain is authored. The backend gains new migrations only as M3 requires, with no production compatibility chain.",
+      "rationale": "Project data is disposable experimental data (CLEAN_TARGET_ARCHITECTURE > PRESERVE_TEST_DATA)."
+    },
+    {
+      "id": "M3-023",
+      "statement": "M3 is device-free and cloud-free: no adb, no Maestro, no UiAutomator, no APK install, no cloud provisioning, no infrastructure installation; a live-PostgreSQL check is optional and its absence is recorded as SKIPPED_TOOL_UNAVAILABLE without weakening the transactional semantics.",
+      "rationale": "The directive makes M3 device-free by default and forbids installing infrastructure inside M3."
+    },
+    {
+      "id": "M3-024",
+      "statement": "Verification is ONE pass with both gates run once each; a failure fixes the failed path and re-runs only the failed task; a repeated failure triggers ONE root-cause analysis; PASS means STOP.",
+      "rationale": "Milestone execution: no review of review, no post-PASS audit, no re-run of a passing task."
+    }
+  ],
+  "read_first": [
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-M3-OFFLINE-CONFLICT-001/KEEPLAB-M3-OFFLINE-CONFLICT-EXECUTE.md",
+      "why": "the execution prompt for this milestone contract"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M3-HUMAN-DECISIONS.md",
+      "why": "D-06 exactly as frozen, plus the pending-but-not-blocking decisions and the explicit Trash-vs-tombstone separation"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M2-AUTH-SINGLE-USER-SYNC-EXECUTION.md",
+      "why": "exactly what M2 established (the sync engine, the worker policy decision, the error mapping, the outbox transaction boundary) so M3 extends it instead of re-deriving it"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M2-ACCEPTANCE.md",
+      "why": "the M2 acceptance map, especially AC-M2-016/017/019/021/022 (revision authority, Trash != tombstone, 404, one unique pipeline, error mapping)"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-ARCHITECTURE-SPEC.md",
+      "why": "§18 the frozen WorkManager invariants (ONE ACTIVE SYNC EXECUTOR MAX; a trigger arriving while running MUST NOT be lost; drain-to-stable or a guaranteed follow-up run; OUTBOX DURABILITY is the source of work), §20 the per-field conflict policy, §21 delete/trash/tombstone and tombstone compaction, §26 the server invariants"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-API-CONTRACT.md",
+      "why": "the mutation result statuses (APPLIED / DUPLICATE_IGNORED / CONFLICT with current representation / REJECTED) and §4 the full error taxonomy with ERR-1/ERR-2/ERR-3"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-STATE-MODEL.md",
+      "why": "§2 the per-entity sync states with attempt_count/last_error semantics and the SYNC_FAILED retry transition, §3 the state diagram, §4 delete/trash/tombstone (INVARIANT DEL-2), §5 the error-to-state table"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-DATA-MODEL.md",
+      "why": "the local tables, §2.7-§2.8 outbox and checkpoint, §3 outbox fields and OUT-1..OUT-6, §4.1 the single server consistency boundary, TRASH-1/TRASH-2, INVARIANT LBL-1"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-DECISION-REGISTER.md",
+      "why": "SYNC-DEC-003/004/006/007/008/010/011/012/015 as frozen architecture, and SYNC-DEC-010's explicit statement that the ExistingWorkPolicy is a selected-by-test implementation decision"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-IMPLEMENTATION-ROADMAP.md",
+      "why": "Phase A5 and Phase A6 scope, acceptance gates and the explicit must-NOT-bundle lists"
+    },
+    {
+      "path": "KeepLab-Relay/MISSION.md",
+      "why": "hard invariant 1 (local-first mandatory, account/network optional and phase-gated, Room is the local SSOT, no local note may be silently assigned/uploaded/deleted/merged into an account, network or auth failure must never delete local data)"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/sync/SyncEngine.kt",
+      "why": "the exact engine M3 extends: the push loop, the 401/409/404/5xx handling, the pull loop and the checkpoint transaction the conflict and retry paths must respect"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/sync/NoteSyncWork.kt",
+      "why": "the one unique `note_sync` pipeline, its ExistingWorkPolicy and the SyncWorker result mapping the lost-wakeup and bounded-retry work must modify"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/NoteRepository.kt",
+      "why": "the single creation/update boundary and the outbox transaction discipline every M3 mutation (including KEEP_BOTH's new note and Trash restore) must go through"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/sync/SyncStore.kt",
+      "why": "the atomic dedupe/apply/revision/change-log consistency boundary the conflict response and tombstone work must not weaken"
+    }
+  ],
+  "unresolved_questions": [],
+  "does_not_resolve": {
+    "D-05": "HUMAN_DECISION_PENDING — account deletion is not implemented, therefore not blocking M3",
+    "D-11": "HUMAN_DECISION_PENDING — no push provider in M3",
+    "D-12": "HUMAN_DECISION_PENDING — collaboration out of scope",
+    "D-13": "HUMAN_DECISION_PENDING — attachments out of scope",
+    "D-14": "HUMAN_DECISION_PENDING — formal spec package location, does not block M3",
+    "SYNC_TOMBSTONE_RETENTION_OR_COMPACTION": "IMPLEMENTATION_DECISION_PENDING — separate from D-06; no permanent tombstone retention duration is chosen and TOMBSTONE_GC stays DISABLED in M3",
+    "A7": "NOT_STARTED — attachments",
+    "A8": "NOT_STARTED — multi-device hardening",
+    "A9": "NOT_STARTED — multi-account / collaboration"
+  },
+  "readiness": {
+    "status": "READY",
+    "gates": {
+      "acceptance": "PASS",
+      "boundaries": "PASS",
+      "hashes": "PASS",
+      "backend_path": "PASS (present, independent Gradle project, extended by M3)",
+      "android_surface": "PASS (enumerated, not whole-app)",
+      "traceability": "PASS",
+      "d06_frozen": "PASS (TRASH_RETENTION_7_DAYS; tombstone retention separate; TOMBSTONE_GC disabled)",
+      "milestone_model": "PASS (one contract, one session, one verification pass; A5 light checkpoint does not stop)"
+    }
+  }
+}

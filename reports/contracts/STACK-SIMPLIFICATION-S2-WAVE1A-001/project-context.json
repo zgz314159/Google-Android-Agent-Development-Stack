@@ -1,0 +1,82 @@
+{
+  "project": "Google-Android-Agent-Development-Stack",
+  "project_type": "brownfield",
+  "source_root": "/mnt/AndroidDev/Projects",
+  "phase": "S2_WAVE1A",
+  "contract_id": "STACK-SIMPLIFICATION-S2-WAVE1A-001",
+  "architecture": {
+    "stack_root": "Google-Android-Agent-Development-Stack (NOT a git repository)",
+    "custom_infrastructure": "evaluation/ ~4684 LOC, verification/ ~4566 LOC, orchestration/hermes/ ~4215 LOC, specification/ ~1217 LOC; total custom Python/Bash ~9468 LOC",
+    "evaluation_core": "evaluation/commandcode/core.py is the frozen v0.2.3 Command Code Evaluation Core. It is READ-ONLY in this wave: phase derivation, clock model, failure taxonomy and repair attribution are all outside WAVE1A's write surface.",
+    "phase_mapping": "evaluation/commandcode/phase_rules.json is a deterministic ordered rule table. core.py::PhaseMapper matches the FIRST rule whose declared conditions (tools, tool_regex, subagent_regex, command_regex, path_regex, result_regex) all match an effective item of a turn. phase, subphase, confidence, time_class and wait_tag are fully data-driven, which is why the two known classification defects are fixable without touching core.py.",
+    "hermes_adapter": "orchestration/hermes/evaluation_adapter/hermes_session_source.py normalises a completed pinned Hermes root session (state.db) into a Command Code v3-shaped JSONL shim so the canonical finalizer and the frozen core are reused verbatim. Its HERMES_TOOL_ALIAS maps terminal->shell_command, patch->edit_file, search_files->grep.",
+    "contract_guard": "orchestration/hermes/evaluation_adapter/contract_guard.py is the frozen P0B-CLOSE pre_tool_call write guard. It reads implementation-contract.json (allowed_paths/forbidden_paths), project-context.json (path_classes/source_root) and manifest.json (sha256 integrity). It is READ-ONLY in this wave.",
+    "specification_compiler": "specification/compiler/{spec_lib,build_contract,hash_manifest,validate_package}.py exist and are real. M4 bypassed the compiler; restoring it is WAVE2. WAVE1A reuses only its hashing/path helpers and must not modify it.",
+    "hermes_profile": "/home/zhong/.hermes/profiles/android-stack/config.yaml registers two shell hooks: pre_tool_call -> contract_guard.py (fail_closed) and on_session_finalize -> hermes-autofinalizer-hook.sh. Both are live and allowlisted. WAVE1A must not change this file.",
+    "pinned_hermes": "/home/zhong/.hermes/hermes-agent (HERMES-LOCK.json commit af90026aa09949579bd423d24def3d38f743cde0) is the authoritative source for the shell-hook payload schema. READ-ONLY."
+  },
+  "path_classes": {
+    "PRODUCTION_IMMUTABLE": [
+      "Google-Android-Agent-Development-Stack/evaluation/commandcode/core.py",
+      "Google-Android-Agent-Development-Stack/evaluation/commandcode/analyze_session.py",
+      "Google-Android-Agent-Development-Stack/evaluation/commandcode/finalize_session.py",
+      "Google-Android-Agent-Development-Stack/evaluation/commandcode/auto_finalize.py",
+      "Google-Android-Agent-Development-Stack/evaluation/commandcode/external_adapter.py",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/contract_guard.py",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/failure_evidence.py",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/hermes_run_summary.py",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/hooks/hermes-autofinalizer-hook.sh",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/HERMES-LOCK.json",
+      "Google-Android-Agent-Development-Stack/verification/",
+      "Google-Android-Agent-Development-Stack/verification-benchmark/",
+      "Google-Android-Agent-Development-Stack/specification/",
+      "Google-Android-Agent-Development-Stack/references/",
+      "Google-Android-Agent-Development-Stack/probes/",
+      "KeepLab-Relay/",
+      "KeepLab-Relay-evidence/",
+      "Testapp/",
+      "PowerAi/"
+    ],
+    "CONTRACT_SELF_PROTECTION": [
+      "Google-Android-Agent-Development-Stack/reports/contracts/"
+    ],
+    "CONTRACT_ALLOWED_SOURCE": [
+      "Google-Android-Agent-Development-Stack/evaluation/commandcode/phase_rules.json",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/hermes_session_source.py",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/hooks/hermes-transient-observer.py",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/tools/",
+      "Google-Android-Agent-Development-Stack/.hermes.md"
+    ],
+    "TEST_SOURCE": [
+      "Google-Android-Agent-Development-Stack/evaluation/commandcode/tests/",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/tests/"
+    ],
+    "EVIDENCE_OUTPUT": [
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/stack-simplification-s2-wave1a/",
+      "Google-Android-Agent-Development-Stack/reports/stack-simplification/"
+    ],
+    "RUNTIME_EPHEMERAL": [
+      "/home/zhong/.hermes/profiles/android-stack/cache/scratch/"
+    ]
+  },
+  "guard": {
+    "package": "Google-Android-Agent-Development-Stack/reports/contracts/STACK-SIMPLIFICATION-S2-WAVE1A-001/",
+    "activation_env": "HERMES_CONTRACT_PACKAGE",
+    "intended_integrity": "MANIFEST_OK",
+    "semantics": "inside an allowed path -> ALLOW; inside a forbidden path -> BLOCK; inside the project but unlisted -> BLOCK (UNCLASSIFIED_FAIL_CLOSED); outside the project root -> ALLOW labelled OUT_OF_CONTRACT_SCOPE.",
+    "known_limitation": "The guard cannot enforce the prohibitions on config.yaml, /home/zhong/.hermes/hermes-agent/** or any other path outside source_root. Those are declared-by-contract and proven by pre/post sha256 equality."
+  },
+  "contract_notes": {
+    "format": "TEMPORARY current-format package, smallest Guard-compatible shape. NOT compiler-generated; Specification Compiler restoration is WAVE2.",
+    "package_role": "TEMPORARY_EXECUTION_CONTRACT",
+    "package_access": "READ_ONLY_INPUT",
+    "execution_sessions": 1,
+    "verification_passes": 1,
+    "device_used": false,
+    "android_verification_behaviour": "UNCHANGED",
+    "keep_lab_product": "UNTOUCHED",
+    "m4": "CLOSED",
+    "m5": "NOT_STARTED",
+    "target": "EVALUATION_CLASSIFICATION + SHADOW_OBSERVABILITY + PROOF_TOOLING"
+  }
+}

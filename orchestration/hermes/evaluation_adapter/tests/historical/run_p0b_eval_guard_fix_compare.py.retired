@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+"""P0B-EVAL-GUARD-FIX — isolated, non-mutating BEFORE/AFTER comparison of the P0B-CLOSE session.
+
+Nothing here touches the production evaluation tree (``/mnt/AndroidDev/Projects/_evaluation``):
+the production run is opened READ-ONLY as the published reference, and both re-evaluations write
+into this phase's own evidence directory, so the production Auto-Finalizer index is never opened
+or duplicated.
+
+  PUBLISHED = the production run.json as the pre-fix Auto-Finalizer published it (reference).
+  BEFORE    = the same session re-evaluated with the fix's switch OFF (proves the baseline).
+  AFTER     = the same session re-evaluated with the improved source path (switch ON).
+
+Run:  python3 orchestration/hermes/evaluation_adapter/tests/run_p0b_eval_guard_fix_compare.py
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import sys
+
+REPO = "/mnt/AndroidDev/Projects/Google-Android-Agent-Development-Stack"
+SESSION_ID = "20261005_032302_4c6c40"
+RUN_ID = "HERMES-%s" % SESSION_ID
+PROJECT = "Google-Android-Agent-Development-Stack"
+PRODUCTION = "/mnt/AndroidDev/Projects/_evaluation/%s/%s/run.json" % (PROJECT, RUN_ID)
+EVID = os.path.join(REPO, "orchestration", "hermes", "evidence", "p0b-eval-guard-fix")
+BEFORE = os.path.join(EVID, "reeval-before", PROJECT, RUN_ID, "run.json")
+AFTER = os.path.join(EVID, "reeval-after", PROJECT, RUN_ID, "run.json")
+
+
+def load(path):
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def surface(path, label):
+    run = load(path)
+    pt = run.get("phase_totals", {})
+    unknown = pt.get("UNKNOWN", {})
+    tokens = run.get("tokens_raw") or {}
+    return {
+        "label": label,
+        "run_json": path,
+        "agent_host": run.get("agent_host"),
+        "model": run.get("model"),
+        "provider": tokens.get("provider"),
+        "tokens_raw": {k: tokens.get(k) for k in
+                       ("requests", "input", "output", "cache_read", "cache_write")},
+        "unknown_pct": round(100.0 * unknown.get("share", 0.0), 2),
+        "unknown_spans": unknown.get("spans", 0),
+        "observability_quality": run.get("observability_quality"),
+        "logical_failures": [
+            {"logical_failure_id": f["logical_failure_id"], "type": f["type"],
+             "phase": f.get("phase"), "raw_events": f.get("raw_events"),
+             "owner_row": f.get("owner_row"), "repair_id": f.get("repair_id"),
+             "repair_status": f.get("repair_status")}
+            for f in run.get("logical_failures", [])
+        ],
+        "removed_failures": run.get("failure_evidence_correction", {}).get("removed_failures"),
+        "repairs": [{"repair_id": r["repair_id"], "trigger_failure": r["trigger_failure"],
+                     "type": r["type"], "result": r["result"],
+                     "fix_row": r.get("fix_row"), "rerun_row": r.get("rerun_row")}
+                    for r in run.get("repairs", [])],
+        "repair_linkage": run.get("repair_linkage"),
+        "execution_deviations": run.get("execution_deviations"),
+    }
+
+
+def main():
+    for path in (PRODUCTION, BEFORE, AFTER):
+        if not os.path.isfile(path):
+            print("MISSING_RUN_JSON %s" % path)
+            return 2
+
+    published, before, after = (surface(PRODUCTION, "PUBLISHED"),
+                               surface(BEFORE, "BEFORE"),
+                               surface(AFTER, "AFTER"))
+    types_before = {f["type"] for f in before["logical_failures"]}
+    types_after = {f["type"] for f in after["logical_failures"]}
+    provider_before = any(f["type"].startswith("PROVIDER_") for f in before["logical_failures"])
+    provider_after = any(f["type"].startswith("PROVIDER_") for f in after["logical_failures"])
+
+    comparison = {
+        "session_id": SESSION_ID,
+        "run_id": RUN_ID,
+        "production_evaluation_tree_touched": False,
+        "production_index_duplicated": False,
+        "note": ("the production run.json is the published reference and is opened read-only; "
+                 "BEFORE and AFTER are isolated re-evaluations under this phase's evidence dir"),
+        "published": published,
+        "before": before,
+        "after": after,
+        "delta": {
+            "failures_removed": len(before["logical_failures"]) - len(after["logical_failures"]),
+            "removed_types": sorted(types_before - types_after),
+            "provider_auth_false_positive": {"before": provider_before, "after": provider_after},
+            "unknown_pct": round(before["unknown_pct"] - after["unknown_pct"], 2),
+            "unknown_spans": before["unknown_spans"] - after["unknown_spans"],
+            "phases_unchanged": before["unknown_spans"] == after["unknown_spans"],
+        },
+    }
+    out = os.path.join(EVID, "evaluation-reeval-comparison.json")
+    with open(out, "w", encoding="utf-8") as fh:
+        json.dump(comparison, fh, ensure_ascii=False, indent=2)
+
+    print(json.dumps({
+        "before_failures": [f["type"] for f in before["logical_failures"]],
+        "after_failures": [f["type"] for f in after["logical_failures"]],
+        "removed": comparison["delta"]["removed_types"],
+        "provider_false_positive_before": provider_before,
+        "provider_false_positive_after": provider_after,
+        "before_deviations": [d["type"] for d in before["execution_deviations"] or []],
+        "after_deviations": [d["type"] for d in after["execution_deviations"] or []],
+        "before_unknown_pct": before["unknown_pct"],
+        "after_unknown_pct": after["unknown_pct"],
+        "before_repairs": [(r["repair_id"], r["trigger_failure"], r["result"])
+                           for r in before["repairs"]],
+        "after_repairs": [(r["repair_id"], r["trigger_failure"], r["result"])
+                          for r in after["repairs"]],
+        "identity": {k: after[k] for k in ("agent_host", "model", "provider")},
+        "tokens": after["tokens_raw"],
+        "comparison_file": out,
+    }, ensure_ascii=False, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

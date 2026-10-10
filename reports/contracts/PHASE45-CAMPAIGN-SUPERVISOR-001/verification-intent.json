@@ -1,0 +1,47 @@
+{
+  "feature_id": "PHASE45-CAMPAIGN-SUPERVISOR",
+  "journey_id": "PHASE45-CAMPAIGN-SUPERVISOR-LOCAL",
+  "engine": "maestro",
+  "acceptance_ids": [
+    "AC-PHASE45SUP-001",
+    "AC-PHASE45SUP-002",
+    "AC-PHASE45SUP-003",
+    "AC-PHASE45SUP-004",
+    "AC-PHASE45SUP-005",
+    "AC-PHASE45SUP-006",
+    "AC-PHASE45SUP-007",
+    "AC-PHASE45SUP-008",
+    "AC-PHASE45SUP-009",
+    "AC-PHASE45SUP-010",
+    "AC-PHASE45SUP-011",
+    "AC-PHASE45SUP-012",
+    "AC-PHASE45SUP-013",
+    "AC-PHASE45SUP-014",
+    "AC-PHASE45SUP-015",
+    "AC-PHASE45SUP-016",
+    "AC-PHASE45SUP-017",
+    "AC-PHASE45SUP-018",
+    "AC-PHASE45SUP-019",
+    "AC-PHASE45SUP-020",
+    "AC-PHASE45SUP-021"
+  ],
+  "required_selectors": [
+    "campaign_supervisor_package_present",
+    "campaign_state_file_present",
+    "campaign_lock_present",
+    "campaign_evidence_dir_present"
+  ],
+  "persistence_checks": [
+    "the per-campaign state.json, journal.jsonl and campaign.lock persist under the private Supervisor state root across a restart",
+    "the campaign seen-assistant hash and round count survive a restart and prevent a duplicate dispatch",
+    "the two evidence files verification.json and supervisor-tests.log persist under orchestration/hermes/evidence/campaign-supervisor/"
+  ],
+  "rotation_checks": [],
+  "search_checks": [
+    "no Bridge file changed: every file under orchestration/hermes/bridge/ has the same sha256 before and after",
+    "the Specification Compiler files and the M5 contract manifest are unchanged",
+    "live Bridge sequence 5 is still unconsumed and the Bridge status is WAITING_FOR_GPT"
+  ],
+  "fixture_intent": "No Android fixture and no device. The fixtures are injected fakes for read_latest_assistant, bridge_status, bridge_round and the clock/sleep seams, plus a temporary private Supervisor state root. Verification opens no real Chrome, no real ChatGPT, no real Hermes and no live Bridge state.",
+  "oracle_intent": "Deterministic only: unit-test pass/fail counts from the fake-driven Supervisor suite, exact CLI help membership, strict campaign-protocol accept/reject decisions, persistence/restart equality, duplicate-prevention dispatch counts and bounded-limit outcomes, plus read-only sha256 comparisons proving the Bridge is byte-identical, sequence 5 is unconsumed and the M5 manifest is unchanged. Zero LLM judgment, zero visual judgment, zero device interaction, no browser, no network. The engine field records the stack's selector-driven replay family; the actual oracle for the Supervisor is byte and count equality. Verification is performed once; PASS = STOP."
+}

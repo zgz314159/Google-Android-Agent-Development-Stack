@@ -1,0 +1,160 @@
+{
+  "project": "KeepLab-Google-Keep-Parity",
+  "project_type": "brownfield",
+  "source_root": "/mnt/AndroidDev/Projects",
+  "phase": "A1_EXPERIMENTAL_DATA_MODEL",
+  "contract_id": "KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL-001",
+  "architecture": {
+    "product_repo": "KeepLab-Relay (only the persistence layer named in allowed_paths is writable in this phase)",
+    "product_stack": "Kotlin 2.x, Jetpack Compose + Material 3, Navigation 3, Hilt, Room 2.8.4 (KSP)",
+    "product_data_layer": {
+      "database_class": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/KeepLabDatabase.kt",
+      "entities": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/NoteEntity.kt (NoteEntity, ChecklistItemEntity, NoteWithDetails), LabelEntity.kt (LabelEntity, NoteLabelEntity, LabelWithCount)",
+      "dao": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/NoteDao.kt",
+      "migrations": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/Migrations.kt (MIGRATION_1_2 only)",
+      "repository": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/NoteRepository.kt (DefaultNoteRepository + entity-to-domain mapper)",
+      "di": "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/AppModule.kt (Room.databaseBuilder)"
+    },
+    "stack_repo": "Google-Android-Agent-Development-Stack (Specification Compiler, Verification Layer, Evaluation Core / Auto-Finalizer, Hermes orchestration kernel)",
+    "hermes": "pinned vgit.af90026 (2026.9.24) at /home/zhong/.hermes/hermes-agent; never upgraded, reinstalled or core-patched",
+    "guard": "the same unmodified orchestration/hermes/evaluation_adapter/contract_guard.py, invoked by the same fail-closed pre_tool_call hook",
+    "note": "This phase prepares the existing local persisted note model for a FUTURE sync architecture. It implements no sync, no network, no auth and no backend, and it changes no user-visible behaviour."
+  },
+  "path_classes": {
+    "PERSISTENCE_WRITE_TARGET": [
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/NoteEntity.kt",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/KeepLabDatabase.kt",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/NoteDao.kt",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/SyncState.kt",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/NoteRepository.kt"
+    ],
+    "TEST_SOURCE": [
+      "KeepLab-Relay/app/src/test/java/com/keeplab/app/data/",
+      "KeepLab-Relay/app/src/test/java/com/keeplab/app/Fakes.kt"
+    ],
+    "RUNTIME_EPHEMERAL": [
+      "KeepLab-Relay/app/build/",
+      "KeepLab-Relay/build/"
+    ],
+    "EVIDENCE_OUTPUT": [
+      "Google-Android-Agent-Development-Stack/reports/",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-a1-experimental-data-model/"
+    ],
+    "PRODUCTION_IMMUTABLE": [
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/model/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/UserPreferences.kt",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/LabelEntity.kt",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/Migrations.kt",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/MainActivity.kt",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/KeepLabApplication.kt",
+      "KeepLab-Relay/app/src/main/res/",
+      "KeepLab-Relay/app/src/main/AndroidManifest.xml",
+      "KeepLab-Relay/app/src/androidTest/",
+      "KeepLab-Relay/app/src/benchmark/",
+      "KeepLab-Relay/app/src/debug/",
+      "KeepLab-Relay/app/src/release/",
+      "KeepLab-Relay/app/schemas/",
+      "KeepLab-Relay/app/build.gradle.kts",
+      "KeepLab-Relay/app/proguard-rules.pro",
+      "KeepLab-Relay/build.gradle.kts",
+      "KeepLab-Relay/settings.gradle.kts",
+      "KeepLab-Relay/gradle/",
+      "KeepLab-Relay/gradle.properties",
+      "KeepLab-Relay/gradlew",
+      "KeepLab-Relay/gradlew.bat",
+      "KeepLab-Relay/local.properties",
+      "KeepLab-Relay/benchmark/",
+      "KeepLab-Relay/docs/",
+      "KeepLab-Relay/factory/",
+      "KeepLab-Relay/verification/",
+      "KeepLab-Relay/specs/",
+      "KeepLab-Relay/harness/",
+      "KeepLab-Relay/MISSION.md",
+      "KeepLab-Relay/FACTORY_RULES.md",
+      "KeepLab-Relay/FACTORY.md",
+      "KeepLab-Relay/AGENTS.md",
+      "KeepLab-Relay/HANDOFF.md",
+      "KeepLab-Relay/PHASE-A-RESULT.md",
+      "KeepLab-Relay/PHASE-B-RESULT.md",
+      "KeepLab-Relay/ANDROID-STACK-GAPS.md",
+      "Google-Android-Agent-Development-Stack/.hermes.md",
+      "Google-Android-Agent-Development-Stack/specification/",
+      "Google-Android-Agent-Development-Stack/verification/",
+      "Google-Android-Agent-Development-Stack/verification-benchmark/",
+      "Google-Android-Agent-Development-Stack/references/",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/HERMES-LOCK.json",
+      "Google-Android-Agent-Development-Stack/evaluation/commandcode/core.py",
+      "Google-Android-Agent-Development-Stack/evaluation/taxonomy/",
+      "Google-Android-Agent-Development-Stack/reports/contracts/"
+    ],
+    "NETWORK_AUTH_BACKEND_FORBIDDEN": [
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/remote/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/network/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/sync/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/api/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/auth/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/backend/",
+      "KeepLab-Relay/backend/",
+      "KeepLab-Relay/server/",
+      "KeepLab-Relay/infra/",
+      "KeepLab-Relay/docker/",
+      "KeepLab-Relay/Dockerfile",
+      "KeepLab-Relay/docker-compose.yml",
+      "KeepLab-Relay/cloud/",
+      "KeepLab-Relay/firebase/"
+    ],
+    "FORBIDDEN": [
+      "Testapp/",
+      "PowerAi/",
+      "KeepLab-Relay-evidence/"
+    ]
+  },
+  "persistence_facts": {
+    "database": "KeepLabDatabase (Room, database name keeplab.db)",
+    "schema_version_current": 2,
+    "schema_version_target": 3,
+    "migration_authored_in_a1": false,
+    "destructive_fallback_present": false,
+    "schema_export": "exportSchema = false; no app/schemas/ directory exists; ksp arg room.schemaLocation is configured but unused while exportSchema is false",
+    "notes_pk_current": "Long @PrimaryKey(autoGenerate = true) — rowid alias, referenced by checklist_items.noteId and note_labels.noteId foreign keys",
+    "notes_pk_target": "unchanged (see primary_key_strategy in implementation-contract.json)",
+    "compile_time_schema_evidence": "Room KSP validates the entity schema and every DAO query at build time; the generated KeepLabDatabase_Impl under KeepLab-Relay/app/build/generated/ksp/ is the phase's schema evidence and is READ-ONLY (a generated artifact)"
+  },
+  "guard": {
+    "source": "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/contract_guard.py",
+    "guard_version": "p0b-close-1",
+    "guard_sha256": "e418fc28b08ac7afe4fdd42ec44d572ddaa2f23f6200de300ecac211404b3746",
+    "hook_event": "pre_tool_call",
+    "matcher": "write_file|patch|terminal",
+    "fail_closed": true,
+    "package_switch": "HERMES_CONTRACT_PACKAGE",
+    "package_switch_semantics": "The guard resolves its package dir as os.environ['HERMES_CONTRACT_PACKAGE'] or the built-in default. The hook subprocess inherits the Hermes process environment. Setting the variable for the Hermes process points the SAME unmodified guard at this package; no guard, hook or config change is involved.",
+    "modified_by_this_phase": false,
+    "known_limitation": "Hermes configuration, Hermes core and the hook allowlist live OUTSIDE the guard's source_root (/home/zhong/.hermes/...), so the guard's path lists cannot classify them. They are protected by an explicit hard prohibition and stop condition in this contract and in the A1 execution prompt, enforced by fail-closed operator discipline — not by the path list. Stated rather than hidden."
+  },
+  "contract_notes": {
+    "temporary_execution_contract": true,
+    "project_data_stage": "EXPERIMENTAL",
+    "test_data_disposable": true,
+    "old_test_db_compatibility_required": false,
+    "dev_database_reset_required": true,
+    "implementation_authorization_model": "PHASE_GATED",
+    "implementation_authorization": "NOT_GRANTED_IN_THIS_TASK",
+    "device_operation_allowed": false,
+    "network_change_allowed": false,
+    "auth_change_allowed": false,
+    "backend_change_allowed": false,
+    "gradle_change_allowed": false,
+    "ui_change_allowed": false,
+    "historical_evidence_mutation_allowed": false,
+    "supersedes": "nothing; the frozen P0B-CLOSE contract and both A0 contract packages remain active and unedited",
+    "does_not_resolve": [
+      "D-14 (HUMAN_DECISION_PENDING)",
+      "A2 (READY_FOR_SEPARATE_CONTRACT)",
+      "A3 (BLOCKED_BY_HUMAN_DECISIONS)"
+    ]
+  }
+}

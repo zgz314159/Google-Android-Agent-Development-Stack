@@ -1,0 +1,115 @@
+{
+  "project": "KeepLab-Google-Keep-Parity",
+  "project_type": "brownfield",
+  "source_root": "/mnt/AndroidDev/Projects",
+  "phase": "A0_GOVERNANCE_TEXT_CLEANUP",
+  "contract_id": "KEEPLAB-A0-GOVERNANCE-TEXT-CLEANUP-001",
+  "architecture": {
+    "product_repo": "KeepLab-Relay (unchanged by this contract; app/** is PRODUCTION_IMMUTABLE here)",
+    "product_stack": "Kotlin, Jetpack Compose + Material 3, Navigation 3, Hilt, Room (all read-only in this phase)",
+    "stack_repo": "Google-Android-Agent-Development-Stack (Specification Compiler, Verification Layer, Evaluation Core / Auto-Finalizer, Hermes orchestration kernel)",
+    "hermes": "pinned vgit.af90026 (2026.9.24) at /home/zhong/.hermes/hermes-agent; never upgraded, reinstalled or core-patched",
+    "guard": "the same unmodified orchestration/hermes/evaluation_adapter/contract_guard.py, invoked by the same fail-closed pre_tool_call hook",
+    "note": "This phase rewrites exactly one descriptive sentence inside one canonical governance file. It adds no product code path and no backend."
+  },
+  "path_classes": {
+    "GOVERNANCE_WRITE_TARGET": [
+      "KeepLab-Relay/MISSION.md"
+    ],
+    "EVIDENCE_OUTPUT": [
+      "Google-Android-Agent-Development-Stack/reports/",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-a0-governance-text-cleanup/"
+    ],
+    "CONTRACT_PACKAGE_READ_ONLY": [
+      "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-TEXT-CLEANUP-001/",
+      "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-WRITE-001/"
+    ],
+    "PRODUCTION_IMMUTABLE": [
+      "KeepLab-Relay/app/src/main/",
+      "KeepLab-Relay/app/src/debug/",
+      "KeepLab-Relay/app/src/release/",
+      "KeepLab-Relay/app/src/test/",
+      "KeepLab-Relay/app/src/androidTest/",
+      "KeepLab-Relay/app/src/benchmark/",
+      "KeepLab-Relay/app/proguard-rules.pro",
+      "KeepLab-Relay/app/schemas/",
+      "KeepLab-Relay/gradle.properties",
+      "KeepLab-Relay/gradle/",
+      "KeepLab-Relay/gradlew",
+      "KeepLab-Relay/gradlew.bat",
+      "Google-Android-Agent-Development-Stack/.hermes.md",
+      "Google-Android-Agent-Development-Stack/specification/",
+      "Google-Android-Agent-Development-Stack/evaluation/commandcode/core.py",
+      "Google-Android-Agent-Development-Stack/evaluation/commandcode/phase_rules.json",
+      "Google-Android-Agent-Development-Stack/evaluation/commandcode/analyze_session.py",
+      "Google-Android-Agent-Development-Stack/evaluation/taxonomy/",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/HERMES-LOCK.json",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/",
+      "Google-Android-Agent-Development-Stack/verification/",
+      "KeepLab-Relay/specs/p0b-close-benchmarkability/",
+      "KeepLab-Relay/specs/p0b-performance-reliability/",
+      "KeepLab-Relay/specs/phase-c-pin-notes-b1/"
+    ],
+    "FORBIDDEN": [
+      "KeepLab-Relay/FACTORY_RULES.md",
+      "KeepLab-Relay/FACTORY.md",
+      "KeepLab-Relay/specs/google-keep-parity/ROADMAP.md",
+      "KeepLab-Relay/harness/",
+      "KeepLab-Relay/.factory/",
+      "KeepLab-Relay/AGENTS.md",
+      "KeepLab-Relay/HANDOFF.md",
+      "KeepLab-Relay/build.gradle.kts",
+      "KeepLab-Relay/settings.gradle.kts",
+      "Testapp/",
+      "PowerAi/",
+      "KeepLab-Relay-evidence/",
+      "Google-Android-Agent-Development-Stack/verification-benchmark/",
+      "Google-Android-Agent-Development-Stack/references/",
+      "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-TEXT-CLEANUP-001/",
+      "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-WRITE-001/"
+    ]
+  },
+  "governance_targets": {
+    "read_before_write": [
+      "KeepLab-Relay/MISSION.md"
+    ],
+    "expected_before_hashes": {
+      "KeepLab-Relay/MISSION.md": "f857295dd502ee64736fac04bc5e076874bcdb06a468ca1edad1eb7152d128cd"
+    },
+    "protected_must_stay_byte_identical": {
+      "KeepLab-Relay/FACTORY_RULES.md": "7e6c489751a9f4ebbeb2d91005e56aa5ee06eb80fab65b7b623218f49ea268d1",
+      "KeepLab-Relay/specs/google-keep-parity/ROADMAP.md": "5ab14973778852e8021ecd522237f1561221b9164e345697dab8228b2314aef2"
+    },
+    "staleness_failure": "STALE_GOVERNANCE_INPUT"
+  },
+  "guard": {
+    "source": "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/contract_guard.py",
+    "guard_version": "p0b-close-1",
+    "guard_sha256": "e418fc28b08ac7afe4fdd42ec44d572ddaa2f23f6200de300ecac211404b3746",
+    "hook_event": "pre_tool_call",
+    "matcher": "write_file|patch|terminal",
+    "fail_closed": true,
+    "package_switch": "HERMES_CONTRACT_PACKAGE",
+    "package_switch_semantics": "The guard resolves its package dir as os.environ['HERMES_CONTRACT_PACKAGE'] or the built-in default. The hook subprocess inherits the Hermes process environment. Setting the variable for the Hermes process points the SAME unmodified guard at this package; no guard, hook or config change is involved.",
+    "modified_by_this_phase": false
+  },
+  "database": {
+    "engine": "Room",
+    "schema_version_current": 2,
+    "schema_version_target": 2,
+    "migration_required": false,
+    "notes": "No schema change of any kind is authorized or conceivable in a text-consistency phase."
+  },
+  "contract_notes": {
+    "governance_text_cleanup_only": true,
+    "product_change_allowed": false,
+    "implementation_authorization": "NOT_GRANTED",
+    "implementation_authorization_model": "PHASE_GATED",
+    "device_operation_allowed": false,
+    "backend_change_allowed": false,
+    "historical_evidence_mutation_allowed": false,
+    "d14_status": "HUMAN_DECISION_PENDING",
+    "temporary_execution_contract": true,
+    "supersedes": "nothing; the frozen P0B-CLOSE contract and the earlier A0 governance-write contract both remain active and unedited"
+  }
+}

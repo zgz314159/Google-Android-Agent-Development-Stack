@@ -1,0 +1,47 @@
+{
+  "package": "STACK-SIMPLIFICATION-S2-WAVE1A-001",
+  "generated_by": "STACK-SIMPLIFICATION-S2-WAVE1A-CONTRACT (specification/compiler manifest schema)",
+  "algorithm": "sha256",
+  "entries": [
+    {
+      "path": "implementation-contract.json",
+      "sha256": "a26c7fb32b1263f7bd02e3506ecfcf962f90139aa96d44fac65c2551755c4bd5",
+      "size": 39951,
+      "role": "contract",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "project-context.json",
+      "sha256": "680e203e1a9f28460fa4c97032fb41c5832e5693aeb35ab492680b03fc02f9ad",
+      "size": 6402,
+      "role": "project_context",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "acceptance.md",
+      "sha256": "cd30b439629baa08eff32faec3bec56903a4b703982dacbc2ea19fe9571a9c28",
+      "size": 14896,
+      "role": "acceptance",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "EXECUTOR-PROMPT.md",
+      "sha256": "a7fff34269c51b5294a54d73b630b6c4705cf7b0fd0d8ec80cab44a2bcb28553",
+      "size": 3022,
+      "role": "executor_prompt",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "STACK-SIMPLIFICATION-S2-WAVE1A-EXECUTE.md",
+      "sha256": "d11e7075ee004961d56050a206f18758269ddb187794343bc4cce3bbe8105c97",
+      "size": 7247,
+      "role": "execution_prompt",
+      "required": true,
+      "source": "authored"
+    }
+  ]
+}

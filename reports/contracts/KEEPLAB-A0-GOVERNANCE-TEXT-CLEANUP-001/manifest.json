@@ -1,0 +1,71 @@
+{
+  "package": "KEEPLAB-A0-GOVERNANCE-TEXT-CLEANUP-001",
+  "generated_by": "A0 governance-text-cleanup contract authoring (specification/compiler manifest schema)",
+  "algorithm": "sha256",
+  "contract_id": "KEEPLAB-A0-GOVERNANCE-TEXT-CLEANUP-001",
+  "metadata": {
+    "phase": "A0_GOVERNANCE_TEXT_CLEANUP",
+    "human_authorization": true,
+    "human_decision": "D-15 YES_BOUNDED_ACCOUNT_NETWORK_UNLOCK",
+    "human_decision_date": "2026-10-06",
+    "observation": "OBS-1 residual pre-D-15 descriptive sentence",
+    "package_role": "TEMPORARY_EXECUTION_CONTRACT",
+    "package_access": "READ_ONLY_INPUT",
+    "mutation_scope": [
+      "KeepLab-Relay/MISSION.md"
+    ],
+    "mutation_unit": "ONE_SEMANTIC_SENTENCE",
+    "product_source_mutation": "FORBIDDEN",
+    "implementation_mutation": "FORBIDDEN",
+    "backend_mutation": "FORBIDDEN",
+    "device_mutation": "FORBIDDEN",
+    "historical_evidence_mutation": "FORBIDDEN",
+    "guard_mutation": "FORBIDDEN",
+    "implementation_authorization_model": "PHASE_GATED",
+    "implementation_authorization": "NOT_GRANTED",
+    "d14_status": "HUMAN_DECISION_PENDING",
+    "apply_executed": false
+  },
+  "entries": [
+    {
+      "path": "implementation-contract.json",
+      "sha256": "219f2b0d66e25426273112101d10b0a1688cd9b5d1ea738823616b2ccbbed761",
+      "size": 20674,
+      "role": "contract",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "project-context.json",
+      "sha256": "f5c37525d23644f05d7b868eacef4b3ccc571cbde6ac94d854dbe4d3ca5c244a",
+      "size": 5892,
+      "role": "project_context",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "acceptance.md",
+      "sha256": "fcce91b59ea74aad6ada422c88c873dfa58f7524037c702ac30bd4742398d0d6",
+      "size": 6215,
+      "role": "acceptance",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "EXECUTOR-PROMPT.md",
+      "sha256": "88e70f529011aa3ae49c318c7b2a8ae4de7ba285be355691547bd3e310b4d8ac",
+      "size": 1909,
+      "role": "executor_prompt",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "KEEPLAB-A0-GOVERNANCE-TEXT-CLEANUP-APPLY.md",
+      "sha256": "4567557f188914f0ec4ddb68cd93ea7c46bca54df7a4ae08da2df3a9d82c9f64",
+      "size": 8501,
+      "role": "apply_prompt",
+      "required": true,
+      "source": "authored"
+    }
+  ]
+}

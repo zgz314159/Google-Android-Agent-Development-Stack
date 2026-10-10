@@ -1,0 +1,98 @@
+{
+  "package": "KEEPLAB-A2-BACKEND-FOUNDATION-001",
+  "generated_by": "A2 backend-foundation contract authoring (specification/compiler manifest schema)",
+  "algorithm": "sha256",
+  "contract_id": "KEEPLAB-A2-BACKEND-FOUNDATION-001",
+  "metadata": {
+    "phase": "A2_BACKEND_FOUNDATION",
+    "human_authorization": true,
+    "human_decisions": [
+      "D-07 KOTLIN_KTOR",
+      "D-08 TENCENT_CLOUD + PORTABLE_DOCKER",
+      "D-09 POSTGRESQL",
+      "D-15 YES_BOUNDED_ACCOUNT_NETWORK_UNLOCK"
+    ],
+    "human_decision_date": "2026-10-06",
+    "package_role": "TEMPORARY_EXECUTION_CONTRACT",
+    "package_access": "READ_ONLY_INPUT",
+    "project_data_stage": "EXPERIMENTAL",
+    "backend_data_stage": "EXPERIMENTAL",
+    "test_data_disposable": true,
+    "old_test_db_compatibility": "NOT_REQUIRED",
+    "backend_db_recreatable": true,
+    "frozen_technology": "KOTLIN + KTOR · POSTGRESQL · PORTABLE_DOCKER (future cloud TENCENT_CLOUD, not provisioned)",
+    "backend_path": "/mnt/AndroidDev/Projects/KeepLab-Relay/backend/",
+    "backend_path_state": "ABSENT",
+    "backend_build_model": "INDEPENDENT_GRADLE_PROJECT",
+    "root_android_gradle_change_required": false,
+    "root_android_gradle_modified": "NO",
+    "allowed_backend_path": "KeepLab-Relay/backend/",
+    "implementation_authorization": "GRANTED_TO_A2_EXECUTION_TASK_ONLY",
+    "implementation_authorization_model": "PHASE_GATED",
+    "android_product_change": "FORBIDDEN",
+    "android_gradle_change": "FORBIDDEN",
+    "auth_change": "FORBIDDEN",
+    "sync_change": "FORBIDDEN",
+    "cloud_provisioning": "FORBIDDEN",
+    "device_operation": "FORBIDDEN",
+    "execution_status": "NOT_EXECUTED",
+    "guard_modified": false,
+    "hook_config_modified": false,
+    "stops_after": "A2_BACKEND_FOUNDATION",
+    "must_not_start": [
+      "A3",
+      "A4"
+    ],
+    "does_not_resolve": [
+      "D-01",
+      "D-04",
+      "D-10",
+      "D-14",
+      "A3",
+      "A4",
+      "OBS-1"
+    ]
+  },
+  "entries": [
+    {
+      "path": "implementation-contract.json",
+      "sha256": "cb1f87964bf8ed5eb2a9b23141f85d3d7d9607f7437541b8e18545deebe58dde",
+      "size": 54776,
+      "role": "contract",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "project-context.json",
+      "sha256": "ca88e14e30800be546e0834846c24b9414d0bbc2d89b83f182e0839d50319064",
+      "size": 7798,
+      "role": "project_context",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "acceptance.md",
+      "sha256": "c7806aa28e7d341dd786ad8d50cc502dee90f0b8175641109f0ecb0b1e803ba3",
+      "size": 11676,
+      "role": "acceptance",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "EXECUTOR-PROMPT.md",
+      "sha256": "476fbd868fc884b57a9b0e490628cbeb1a3ef6c0aa3e4dee5c33ea841c69c0b3",
+      "size": 3238,
+      "role": "executor_prompt",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "KEEPLAB-A2-BACKEND-FOUNDATION-EXECUTE.md",
+      "sha256": "66a20906a9e6ec0a6eff4145da71db24dfc2696ed794d7c169bd6c86c6cd7c71",
+      "size": 11728,
+      "role": "execution_prompt",
+      "required": true,
+      "source": "authored"
+    }
+  ]
+}

@@ -1,0 +1,88 @@
+{
+  "contract_id": "KEEPLAB-A2-BACKEND-FOUNDATION-001",
+  "contract_version": "0.1.0",
+  "experiment_id": "KEEPLAB-A2-BACKEND-FOUNDATION",
+  "status": "READY",
+  "package_role": "TEMPORARY_EXECUTION_CONTRACT",
+  "phase": "A2_BACKEND_FOUNDATION",
+  "human_authorization": true,
+  "human_decisions": [
+    "D-07 KOTLIN_KTOR",
+    "D-08 TENCENT_CLOUD + PORTABLE_DOCKER",
+    "D-09 POSTGRESQL",
+    "D-15 YES_BOUNDED_ACCOUNT_NETWORK_UNLOCK"
+  ],
+  "date": "2026-10-06",
+  "project_data_stage": "EXPERIMENTAL",
+  "backend_data_stage": "EXPERIMENTAL",
+  "test_data_disposable": true,
+  "old_test_db_compatibility": "NOT_REQUIRED",
+  "clean_foundation_over_backward_compatibility": true,
+  "backend_path": "/mnt/AndroidDev/Projects/KeepLab-Relay/backend/",
+  "backend_path_state": "ABSENT",
+  "backend_path_conflict": false,
+  "backend_build_model": "INDEPENDENT_GRADLE_PROJECT",
+  "allowed_backend_path": "KeepLab-Relay/backend/",
+  "root_android_gradle_change_required": false,
+  "root_android_gradle_modified": "NO (required outcome)",
+  "gradle_wrapper": "reuse KeepLab-Relay/gradlew (Gradle 9.5.1) via `./gradlew -p backend`",
+  "language": "KOTLIN",
+  "server": "KTOR",
+  "database": "POSTGRESQL",
+  "deployment": "PORTABLE_DOCKER",
+  "future_cloud": "TENCENT_CLOUD (not provisioned)",
+  "execution_prompt": "KEEPLAB-A2-BACKEND-FOUNDATION-EXECUTE.md",
+  "execute_status": "NOT_EXECUTED",
+  "applies_to": "KEEPLAB-A2-BACKEND-FOUNDATION-EXECUTE (separate future task)",
+  "package_switch": {
+    "mechanism": "HERMES_CONTRACT_PACKAGE",
+    "guard_source_modified": false,
+    "hook_config_modified": false
+  },
+  "boundaries": {
+    "android_app": "BLOCK",
+    "android_gradle": "BLOCK",
+    "auth": "BLOCK",
+    "sync": "BLOCK",
+    "cloud_provisioning": "BLOCK",
+    "device": "NOT_USED",
+    "allowed_paths": [
+      "KeepLab-Relay/backend/",
+      "Google-Android-Agent-Development-Stack/reports/",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-a2-backend-foundation/"
+    ]
+  },
+  "validation": {
+    "acceptance": "PASS",
+    "boundaries": "PASS",
+    "hashes": "PASS",
+    "backend_path": "PASS",
+    "traceability": "PASS",
+    "guard_simulation": "PASS"
+  },
+  "validation_evidence": {
+    "manifest_integrity": "MANIFEST_OK (guard load_contract against this package)",
+    "guard_simulation": "orchestration/hermes/evidence/keeplab-a2-backend-foundation/guard-simulation.json (module-level: 11/11 checks PASS, 17 ALLOW decisions, 30 BLOCK decisions, 11 terminal cases, 6 hook cases, status PASS)",
+    "frozen_inputs": "orchestration/hermes/evidence/keeplab-a2-backend-foundation/before-hash.json",
+    "gate_note": "This contract-creation task ran ONE contract validation pass. No review of the review, no second audit, no A2 implementation."
+  },
+  "environment_facts": {
+    "jdk": "OpenJDK 21.0.12.1 available",
+    "docker_available": false,
+    "docker_runtime_smoke": "SKIPPED_TOOL_UNAVAILABLE (expected; never a blocker for A2)",
+    "psql_available": false,
+    "git_baseline": "UNAVAILABLE — KeepLab-Relay has no commits; verification is sha256-based"
+  },
+  "does_not_resolve": {
+    "D-01": "HUMAN_DECISION_PENDING (A3 blocker)",
+    "D-04": "HUMAN_DECISION_PENDING (A3 blocker)",
+    "D-10": "HUMAN_DECISION_PENDING (A3 blocker)",
+    "D-14": "HUMAN_DECISION_PENDING",
+    "A3": "BLOCKED_BY_HUMAN_DECISIONS",
+    "A4": "NOT_STARTED",
+    "OBS-1": "NON_BLOCKING MINOR_BACKLOG (A0 stays READY and is not reopened)"
+  },
+  "implementation_authorization": "GRANTED_TO_A2_EXECUTION_TASK_ONLY",
+  "implementation_authorization_model": "PHASE_GATED",
+  "next": "KEEPLAB-A2-BACKEND-FOUNDATION-EXECUTE"
+}

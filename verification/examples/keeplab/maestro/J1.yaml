@@ -1,0 +1,29 @@
+appId: com.keeplab.app
+name: J1-compose-crud
+tags:
+  - reference
+---
+- launchApp:
+    clearState: false
+- tapOn: "New text note"
+- tapOn:
+    id: "editor-title"
+- inputText: "VC-J1-Title"
+- tapOn:
+    id: "editor-body"
+- inputText: "VC-J1-Body"
+- tapOn: "Back"
+- assertVisible: "KeepLab"
+- tapOn: "Search"
+- tapOn:
+    id: "search-field"
+- inputText: "VC-J1-Title"
+- assertVisible: "VC-J1-Title"
+- tapOn: "Close search"
+- tapOn: "VC-J1-Title"
+- tapOn:
+    id: "editor-body"
+- eraseText
+- inputText: "VC-J1-Body-Edited"
+- tapOn: "Back"
+- assertVisible: "KeepLab"

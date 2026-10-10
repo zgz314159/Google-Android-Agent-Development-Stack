@@ -1,0 +1,71 @@
+{
+  "algorithm": "sha256",
+  "entries": [
+    {
+      "path": "PRODUCT.md",
+      "required": true,
+      "role": "product",
+      "sha256": "a5cccba94bd1546ab86b9ae0638ebfc47757925c12c04f95c1209435a13fdc59",
+      "size": 5870,
+      "source": "authored"
+    },
+    {
+      "path": "requirements.md",
+      "required": true,
+      "role": "requirements",
+      "sha256": "d70c16d7530373b6cc210c0ca15d4d7fd4344a01fa154b8d00e7677374505329",
+      "size": 11851,
+      "source": "authored"
+    },
+    {
+      "path": "design.md",
+      "required": true,
+      "role": "design",
+      "sha256": "18561d3b70050ee736c7bc1cd6aaef0bf1537c48843f7e16fb4e527ce2b53c6f",
+      "size": 19761,
+      "source": "authored"
+    },
+    {
+      "path": "tasks.md",
+      "required": true,
+      "role": "tasks",
+      "sha256": "a6cda56d0632a027f08c7aa54984352db1d4f328f969a24b956fa3a18bb76b4c",
+      "size": 12822,
+      "source": "authored"
+    },
+    {
+      "path": "DESIGN.md",
+      "required": true,
+      "role": "ui_design",
+      "sha256": "8a1b8fe89a0dc2ae7573fef8ac85e3ab992da7d2fb2ae8eeebb2ce147d50c672",
+      "size": 3351,
+      "source": "authored"
+    },
+    {
+      "path": "acceptance.md",
+      "required": true,
+      "role": "acceptance",
+      "sha256": "141a89507b75e2e5742023431963dab7967a7b019385d315d830745874820800",
+      "size": 12068,
+      "source": "authored"
+    },
+    {
+      "path": "project-context.json",
+      "required": true,
+      "role": "project_context",
+      "sha256": "5a9c0495bba2651a3997f0136e461cd871a5a755c697d06c387be96b13b608a5",
+      "size": 25107,
+      "source": "authored"
+    },
+    {
+      "path": "verification-intent.json",
+      "required": true,
+      "role": "verification_intent",
+      "sha256": "c8bd081cb51e468e7c8ed4f44f27b0266071abbcd7359fd0afc524346c83ae47",
+      "size": 3433,
+      "source": "authored"
+    }
+  ],
+  "generated_by": "specification/compiler/hash_manifest.py",
+  "package": "KEEPLAB-M5-A8-MULTI-DEVICE-001"
+}

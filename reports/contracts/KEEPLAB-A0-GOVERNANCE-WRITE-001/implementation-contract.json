@@ -1,0 +1,290 @@
+{
+  "contract_id": "KEEPLAB-A0-GOVERNANCE-WRITE-001",
+  "contract_version": "0.1.0",
+  "experiment_id": "KEEPLAB-A0-GOVERNANCE-WRITE",
+  "experiment_type": "HUMAN_APPROVED_GOVERNANCE_AMENDMENT",
+  "mode": "governance",
+  "project": "KeepLab-Google-Keep-Parity",
+  "feature": {
+    "feature_id": "A0-GOVERNANCE-WRITE",
+    "title": "A0 canonical governance amendment (bounded account/network unlock)",
+    "summary": "Authorize, for one narrowly scoped future apply session, the minimal canonical governance amendment that lifts the absolute account/network prohibition to a bounded, phase-gated policy, and records RISK-GOV-001 account/network resolution in ROADMAP.md. Nothing else."
+  },
+  "purpose": "This package is a TEMPORARY EXECUTION CONTRACT. It exists so that a later fresh session can perform the already human-approved A0 governance amendment through the SAME Contract Guard, under an explicit path boundary. It does not itself perform the amendment and does not authorize any implementation.",
+  "human_authorization_source": {
+    "authorizing_task": "KEEPLAB-HUMAN-ARCHITECTURE-DECISIONS-A0",
+    "date": "2026-10-06",
+    "timezone": "CST (UTC+08:00)",
+    "approval_kind": "HUMAN_PROJECT_OWNER_APPROVAL",
+    "decisions": {
+      "D-02": "YES_LOCAL_ONLY_BEFORE_SIGNIN",
+      "D-03": "SINGLE_ACTIVE_ACCOUNT_PHASE1",
+      "D-07": "KOTLIN_KTOR",
+      "D-08": "TENCENT_CLOUD + PORTABLE_DOCKER",
+      "D-09": "POSTGRESQL",
+      "D-15": "YES_BOUNDED_ACCOUNT_NETWORK_UNLOCK"
+    },
+    "primary_unlock_decision": "D-15",
+    "evidence": [
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-human-architecture-decisions-a0/human-approval.json",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-human-architecture-decisions-a0/governance-amendment-proposal.json",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-human-architecture-decisions-a0/governance-diff.json"
+    ],
+    "reinterpreted": false,
+    "reasked": false,
+    "substituted_with_model_preference": false
+  },
+  "authorization_semantics": {
+    "phase": "A0_GOVERNANCE_WRITE",
+    "human_authorization": true,
+    "human_decision": "D-15 YES_BOUNDED_ACCOUNT_NETWORK_UNLOCK",
+    "human_decision_date": "2026-10-06",
+    "mutation_scope": [
+      "KeepLab-Relay/MISSION.md",
+      "KeepLab-Relay/FACTORY_RULES.md",
+      "KeepLab-Relay/specs/google-keep-parity/ROADMAP.md"
+    ],
+    "mutation_scope_count": 3,
+    "implementation_authorization_model": "PHASE_GATED",
+    "implementation_authorization": "NOT_GRANTED",
+    "product_source_mutation": "FORBIDDEN",
+    "implementation_mutation": "FORBIDDEN",
+    "backend_mutation": "FORBIDDEN",
+    "device_mutation": "FORBIDDEN",
+    "historical_evidence_mutation": "FORBIDDEN",
+    "guard_mutation": "FORBIDDEN",
+    "contract_mutation": "FORBIDDEN",
+    "governance_write_only": true,
+    "requires_human_approval": true
+  },
+  "allowed_paths": [
+    "KeepLab-Relay/MISSION.md",
+    "KeepLab-Relay/FACTORY_RULES.md",
+    "KeepLab-Relay/specs/google-keep-parity/ROADMAP.md",
+    "Google-Android-Agent-Development-Stack/reports/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-a0-governance-write/"
+  ],
+  "forbidden_paths": [
+    "KeepLab-Relay/app/",
+    "KeepLab-Relay/app/src/main/",
+    "KeepLab-Relay/app/src/debug/",
+    "KeepLab-Relay/app/src/release/",
+    "KeepLab-Relay/app/src/test/",
+    "KeepLab-Relay/app/src/androidTest/",
+    "KeepLab-Relay/app/src/benchmark/",
+    "KeepLab-Relay/app/proguard-rules.pro",
+    "KeepLab-Relay/app/schemas/",
+    "KeepLab-Relay/build.gradle.kts",
+    "KeepLab-Relay/build.gradle",
+    "KeepLab-Relay/settings.gradle.kts",
+    "KeepLab-Relay/settings.gradle",
+    "KeepLab-Relay/gradle/",
+    "KeepLab-Relay/gradle.properties",
+    "KeepLab-Relay/gradlew",
+    "KeepLab-Relay/gradlew.bat",
+    "KeepLab-Relay/harness/",
+    "KeepLab-Relay/.factory/",
+    "KeepLab-Relay/AGENTS.md",
+    "KeepLab-Relay/HANDOFF.md",
+    "KeepLab-Relay/FACTORY.md",
+    "KeepLab-Relay/specs/p0b-close-benchmarkability/",
+    "KeepLab-Relay/specs/p0b-performance-reliability/",
+    "KeepLab-Relay/specs/phase-c-pin-notes-b1/",
+    "Google-Android-Agent-Development-Stack/.hermes.md",
+    "Google-Android-Agent-Development-Stack/specification/",
+    "Google-Android-Agent-Development-Stack/evaluation/commandcode/core.py",
+    "Google-Android-Agent-Development-Stack/evaluation/commandcode/phase_rules.json",
+    "Google-Android-Agent-Development-Stack/evaluation/commandcode/analyze_session.py",
+    "Google-Android-Agent-Development-Stack/evaluation/taxonomy/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/HERMES-LOCK.json",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/",
+    "Google-Android-Agent-Development-Stack/verification/core/",
+    "Google-Android-Agent-Development-Stack/verification/runner/",
+    "Google-Android-Agent-Development-Stack/verification/adapters/",
+    "Google-Android-Agent-Development-Stack/verification/contracts/",
+    "Google-Android-Agent-Development-Stack/verification/reference-replay/",
+    "Google-Android-Agent-Development-Stack/verification/android/",
+    "Google-Android-Agent-Development-Stack/verification/tests/",
+    "Google-Android-Agent-Development-Stack/verification/docs/",
+    "Google-Android-Agent-Development-Stack/verification-benchmark/",
+    "Google-Android-Agent-Development-Stack/references/",
+    "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-WRITE-001/",
+    "KeepLab-Relay-evidence/",
+    "Testapp/",
+    "PowerAi/"
+  ],
+  "boundary_notes": {
+    "source_root": "/mnt/AndroidDev/Projects",
+    "resolution": "allowed_paths / forbidden_paths are project-relative to the Contract Guard's project-context source_root, exactly as the current frozen P0B-CLOSE contract is.",
+    "precedence": "The guard tests forbidden_paths first; any path matching both lists is BLOCKED. The three governance files are therefore absent from forbidden_paths by design and present in allowed_paths.",
+    "unlisted_is_blocked": "Any path inside the project root that matches neither list is BLOCKED (UNCLASSIFIED_FAIL_CLOSED). The two evidence locations above are the ONLY non-governance writes this contract authorizes.",
+    "preserved_protections": "Every unrelated forbidden path of the current frozen P0B-CLOSE contract is preserved verbatim. This contract only removes the two governance-file prohibitions it must unlock and only adds prohibitions (app/**, build/settings gradle, the frozen P0B package, the guard adapter, this package).",
+    "out_of_project": "Paths outside /mnt/AndroidDev/Projects remain OUT_OF_CONTRACT_SCOPE/ALLOW as in the current guard; this contract does not change that guard property and must not be read as authorizing writes outside the project."
+  },
+  "governance_write_scope": {
+    "KeepLab-Relay/MISSION.md": {
+      "required": true,
+      "semantics": "Replace the absolute account/network prohibition (hard invariant 1 and the 'Sync and identity' out-of-scope entry) with BOUNDED_ACCOUNT_NETWORK_POLICY, preserving LOCAL_FIRST mandatory, account optional for local notes, network optional for local notes, offline read mandatory, offline write mandatory, existing local notes protected, Room as local SSOT, remote sync optional and never the canonical UI source, Google/Firebase auth forbidden unless separately human-approved, and network/auth failure cannot delete local data.",
+      "must_not_add": "No A1/A2/A3 implementation detail: no endpoints, no schema, no vendor sub-choices, no stack specifics beyond the already-approved D-07/D-08/D-09 values."
+    },
+    "KeepLab-Relay/FACTORY_RULES.md": {
+      "required": false,
+      "conditional": true,
+      "semantics": "MAY be amended ONLY IF its current text categorically conflicts with the approved bounded account/network policy. Inspection of the current text (871 bytes, 2026-10-02) finds no categorical account/network prohibition, so the expected outcome is BYTE_IDENTICAL. Permission is not an obligation to mutate.",
+      "must_preserve": "All general safety rules: irreversible-change protection, human-approval requirements, the fail-closed guard, the no-silent-data-loss rule and the phase/contract gates."
+    },
+    "KeepLab-Relay/specs/google-keep-parity/ROADMAP.md": {
+      "required": true,
+      "semantics": "Update ONLY the RISK-GOV-001 / account-network governance status to RESOLVED_BY_BOUNDED_HUMAN_UNLOCK with D-15, 2026-10-06, scope=account/network architecture phases only, limits=phase-gated / local-first / own-backend / no Google-Firebase by default, and an explicit residual naming the still-gated items.",
+      "must_not_change": "No unrelated roadmap risk, phase, matrix ID, sequencing line or P-item may be closed, re-scoped or deleted. RISK-GOV-001's remaining (non account/network) governance scope stays open."
+    }
+  },
+  "expected_before_hashes": {
+    "algorithm": "sha256",
+    "captured_at": "2026-10-06",
+    "source": "orchestration/hermes/evidence/keeplab-human-architecture-decisions-a0/{before-governance.json,after-governance.json} confirmed against a live filesystem read",
+    "files": {
+      "KeepLab-Relay/MISSION.md": "9e9107b1f31491b1400eaccaa3faac269c02e8b41911ef2b430d035a3ae6b06a",
+      "KeepLab-Relay/FACTORY_RULES.md": "7e6c489751a9f4ebbeb2d91005e56aa5ee06eb80fab65b7b623218f49ea268d1",
+      "KeepLab-Relay/specs/google-keep-parity/ROADMAP.md": "58d6505b1456ac2ee1e0463317894ea10fc0e50d7e10fbf353b88373d9cb0d47"
+    },
+    "state": "FROZEN",
+    "verified_live": true
+  },
+  "staleness_policy": {
+    "rule": "The apply session MUST re-read and re-hash all three protected files BEFORE any mutation and fail closed if any hash differs from expected_before_hashes.",
+    "on_mismatch": "STOP with STALE_GOVERNANCE_INPUT.",
+    "forbidden_behaviour": "Never silently patch a newer or different file; never re-baseline the expected hashes to match the filesystem."
+  },
+  "contract_package_self_protection": {
+    "package": "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-WRITE-001/",
+    "declaration": "CONTRACT_PACKAGE: READ_ONLY_INPUT",
+    "enforcement": "The package path is listed in forbidden_paths, so the same guard blocks any write into it while this contract is active.",
+    "apply_rules": [
+      "The apply session verifies the package sha256 manifest BEFORE touching any governance file.",
+      "The apply session must not rewrite, re-hash or extend its own contract package.",
+      "The apply session must not broaden its own allowed paths; a needed broadening is a STOP and a new human-approved contract."
+    ]
+  },
+  "apply_prompt": {
+    "path": "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-WRITE-001/KEEPLAB-A0-GOVERNANCE-WRITE-APPLY.md",
+    "executed_in_this_phase": false,
+    "must_stop_after": "A0",
+    "must_not_start": ["A1", "A2", "A3"]
+  },
+  "phase_gates": {
+    "A0": "READY_AFTER_APPLY",
+    "A1": "READY_FOR_SEPARATE_CONTRACT",
+    "A2": "READY_FOR_SEPARATE_CONTRACT",
+    "A3": "BLOCKED_BY_HUMAN_DECISIONS",
+    "pending_human_decisions": ["D-01", "D-04", "D-10"],
+    "note": "This contract authorizes NO implementation. A1/A2 become eligible for their own separate contracts only after the A0 governance amendment has landed and been verified."
+  },
+  "relationship_to_other_contracts": {
+    "current_frozen_contract": "KEEPLAB-P0B-CLOSE-001 (KeepLab-Relay/specs/p0b-close-benchmarkability/), untouched by this phase, protected here",
+    "d14_status": "HUMAN_DECISION_PENDING",
+    "d14_note": "This is a TEMPORARY EXECUTION CONTRACT created under an already-authorized Stack reports location. It is NOT D-14's permanent formal spec-package decision and does not resolve D-14.",
+    "does_not_modify": [
+      "KeepLab-Relay/specs/p0b-close-benchmarkability/**",
+      "orchestration/hermes/evaluation_adapter/contract_guard.py",
+      "Hermes core",
+      "hook configuration",
+      "project-wide guard defaults"
+    ]
+  },
+  "decisions": [
+    {
+      "id": "GOV-W-001",
+      "statement": "This contract is created as a separate package; the active frozen P0B-CLOSE contract is never edited to make a write pass.",
+      "rationale": "Editing the governing contract to permit a write destroys the boundary the contract exists to enforce."
+    },
+    {
+      "id": "GOV-W-002",
+      "statement": "The same Contract Guard, the same fail-closed pre_tool_call hook and the same guard source are used; only the package the guard loads differs, via the guard's own supported HERMES_CONTRACT_PACKAGE environment switch.",
+      "rationale": "Same guard, new contract. No guard patch, no hook removal, no file renaming to evade classification, no out-of-project write-and-copy."
+    },
+    {
+      "id": "GOV-W-003",
+      "statement": "The allowed-path surface is only three governance files plus two evidence locations. Everything else in the project stays blocked by failing closed.",
+      "rationale": "A governance amendment must not become a general write authorization."
+    },
+    {
+      "id": "GOV-W-004",
+      "statement": "FACTORY_RULES.md is permitted but not required to change; if no categorical conflict exists it stays byte-identical.",
+      "rationale": "Permission is not mandatory mutation."
+    },
+    {
+      "id": "GOV-W-005",
+      "statement": "The package protects itself: it is listed in forbidden_paths and the apply prompt must verify its manifest before mutating governance files.",
+      "rationale": "An executor must not be able to widen its own authority."
+    },
+    {
+      "id": "GOV-W-006",
+      "statement": "Expected before hashes are frozen in this contract; any drift fails closed with STALE_GOVERNANCE_INPUT.",
+      "rationale": "The amendment must apply to exactly the reviewed text, never to a newer or different one."
+    }
+  ],
+  "non_goals": [
+    "performing the governance amendment (that is the separate APPLY task)",
+    "A1 or A2 implementation of any kind",
+    "authentication or backend implementation",
+    "Room or any product schema change",
+    "any change under KeepLab-Relay/app/**",
+    "any Gradle, Ktor, Docker, PostgreSQL or Tencent Cloud artefact",
+    "any device operation, adb, Maestro or UiAutomator run",
+    "editing the frozen P0B-CLOSE contract",
+    "editing contract_guard.py, the hook configuration or Hermes core",
+    "resolving D-14",
+    "Testapp and PowerAi"
+  ],
+  "stop_conditions": [
+    "Any required write falls outside allowed_paths or targets a forbidden path: STOP and emit CONTRACT_DEVIATION.",
+    "Any expected before hash no longer matches: STOP and emit STALE_GOVERNANCE_INPUT.",
+    "The guard source, the hook configuration or the active frozen P0B-CLOSE contract would have to be modified: STOP.",
+    "The contract package manifest does not verify: STOP.",
+    "A change would exceed the three-file mutation scope or reach into implementation: STOP.",
+    "The apply session would have to broaden its own allowed paths: STOP; a new human-approved contract is required.",
+    "The governance files disagree after the amendment: STOP with GOVERNANCE_INCONSISTENT."
+  ],
+  "read_first": [
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-human-architecture-decisions-a0/governance-amendment-proposal.json",
+      "why": "the exact, human-reviewed amendment text proposed for the three governance files"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-human-architecture-decisions-a0/human-approval.json",
+      "why": "the human approval record (D-15 plus the approved D-02/D-03/D-07/D-08/D-09)"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-human-architecture-decisions-a0/governance-diff.json",
+      "why": "what the A0 phase attempted, what the guard blocked, and the exact before/after hashes"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-A0-BOUNDED-ACCOUNT-NETWORK-GOVERNANCE.md",
+      "why": "the bounded policy the amendment must land in canonical form"
+    },
+    {
+      "path": "KeepLab-Relay/MISSION.md",
+      "why": "the file whose hard invariant 1 and out-of-scope entry are superseded"
+    },
+    {
+      "path": "KeepLab-Relay/FACTORY_RULES.md",
+      "why": "the conditional file whose current text must be checked for a categorical account/network prohibition"
+    },
+    {
+      "path": "KeepLab-Relay/specs/google-keep-parity/ROADMAP.md",
+      "why": "the RISK-GOV-001 section whose account/network status is updated"
+    }
+  ],
+  "unresolved_questions": [],
+  "readiness": {
+    "status": "READY",
+    "gates": {
+      "acceptance": "PASS",
+      "boundaries": "PASS",
+      "hashes": "PASS",
+      "schema": "PASS",
+      "traceability": "PASS"
+    }
+  }
+}

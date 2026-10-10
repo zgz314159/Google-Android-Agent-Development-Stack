@@ -1,0 +1,51 @@
+# verify-layout.sh allowlist — relative globs that may legitimately mention absolute host paths.
+#
+# Every entry is a documented exception. Do NOT add active runtime writers here: live writers
+# must resolve paths through scripts/lib/stack_paths.py instead.
+#
+# 1. Historical phase one-shot comparison harnesses: encode specific old-host session ids,
+#    Hermes DB paths and Command Code project slugs. They are not part of any live loop.
+orchestration/hermes/evaluation_adapter/tests/run_p0b_eval_guard_fix_compare.py
+orchestration/hermes/evaluation_adapter/tests/run_p0b_eval_guard_fix_verification.sh
+orchestration/hermes/evaluation_adapter/tests/run_p0b_eval_inspection_context_fix_compare.py
+orchestration/hermes/evaluation_adapter/tests/run_p0b_eval_inspection_context_fix_verification.sh
+orchestration/hermes/evaluation_adapter/tests/run_p0b_eval_wrapper_role_fix_compare.py
+orchestration/hermes/evaluation_adapter/tests/run_p0b_eval_wrapper_role_fix_verification.sh
+orchestration/hermes/evaluation_adapter/tests/run_reeval_compare.py
+orchestration/hermes/evaluation_adapter/tests/run_guard_verification.sh
+#
+# 2. Historical test fixtures that reproduce exact old-host run output for the failure-evidence
+#    parser. They are data, not paths the runtime resolves.
+orchestration/hermes/evaluation_adapter/tests/fixtures/failure_evidence_cases.json
+orchestration/hermes/evaluation_adapter/tests/fixtures/guard_allow_benchmark_write.json
+orchestration/hermes/evaluation_adapter/tests/fixtures/guard_block_destructive_terminal.json
+orchestration/hermes/evaluation_adapter/tests/fixtures/guard_block_production_write.json
+orchestration/hermes/evaluation_adapter/tests/test_failure_evidence.py
+#
+# 3. Frozen Evaluation Core tests whose literal fixtures encode old-host command text.
+evaluation/commandcode/tests/test_phase_rules_device_classification.py
+evaluation/commandcode/tests/test_phase_rules_hermes_artifacts.py
+evaluation/tests/test_hermes_source.py
+evaluation/commandcode/analyze_session.py
+#
+# 4. Docstring-only references (not executable paths).
+orchestration/hermes/evaluation_adapter/hermes_session_source.py
+orchestration/hermes/evaluation_adapter/hooks/hermes-transient-observer.py
+#
+# 5. The verifier itself names the detection patterns in its comments.
+scripts/verify-layout.sh
+#
+# 6. Frozen / synthetic APK fixtures used as deterministic test inputs (not build outputs).
+verification-benchmark/frozen/app-debug-frozen.apk
+verification/tests/fixtures/synthetic-app.apk
+#
+# 7. Authored example plans and benchmark metadata that name product APK paths; the live
+#    plans are generated per run, these are documentation-grade examples.
+verification/examples/keeplab/verification-plan.json
+verification/examples/keeplab/verification-plan.maestro.json
+verification/examples/keeplab/verification-plan.physical-b1.json
+verification-benchmark/benchmark-apk.json
+#
+# 8. This repo's own tests deliberately embed host-path literals to prove detection.
+scripts/tests/test_verify_layout.py
+scripts/tests/test_stack_paths.py

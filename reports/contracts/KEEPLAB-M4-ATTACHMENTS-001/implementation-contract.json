@@ -1,0 +1,1686 @@
+{
+  "contract_id": "KEEPLAB-M4-ATTACHMENTS-001",
+  "contract_version": "0.1.0",
+  "experiment_id": "KEEPLAB-M4-ATTACHMENTS",
+  "experiment_type": "HUMAN_AUTHORIZED_MILESTONE_IMPLEMENTATION",
+  "mode": "brownfield",
+  "project": "KeepLab-Google-Keep-Parity",
+  "feature": {
+    "feature_id": "M4-ATTACHMENTS",
+    "title": "A7 attachments: content-addressed attachment metadata with a deferred, resumable, authorized binary path",
+    "summary": "Add attachments to KeepLab as a content-addressed, append-only, account-authorized, deferred binary path: a server-configurable D-13 limit set; a portable ObjectStorage abstraction with a filesystem development reference driver; a durable app-private local attachment model that streams the selected bytes, enforces the 25 MiB limit, computes SHA-256 and validates the real MIME signature; a separate resumable attachment transfer pipeline so a pending binary upload never blocks note usability; server-verified content addressing and MIME; account-scoped authorization for upload and download; same-account content deduplication that never bypasses quota, count or authorization; quota reservation inside an atomic persistence boundary; safe removal and conservative orphan handling; and a minimal attachment UX (attach an existing JPEG/PNG/WebP/PDF, show name/type/size/state, Retry, Remove)."
+  },
+  "purpose": "This package is a TEMPORARY EXECUTION CONTRACT covering the whole M4 milestone (A7 attachments). It exists so that a later fresh session can implement the attachment foundation, the backend binary path, and the Android offline/upload/download path plus the minimal UX through the SAME unmodified Contract Guard, under an explicit and bounded write surface, with ONE final verification pass. This contract-creation task performed targeted discovery and authored the package; it does not implement M4.",
+  "milestone": {
+    "name": "M4",
+    "components": [
+      "A7_ATTACHMENTS"
+    ],
+    "execution_model": "PLAN ONCE -> IMPLEMENT ATTACHMENT FOUNDATION -> IMPLEMENT BACKEND BINARY PATH -> IMPLEMENT ANDROID OFFLINE/UPLOAD/DOWNLOAD PATH -> IMPLEMENT MINIMAL UX -> VERIFY M4 ONCE -> PASS = STOP",
+    "contracts_in_milestone": 1,
+    "execution_sessions": 1,
+    "verification_passes": 1,
+    "must_not_create": [
+      "a metadata contract",
+      "an upload contract",
+      "a download contract",
+      "a storage contract",
+      "an Attachment Review",
+      "a Storage Review",
+      "an Upload Review",
+      "a post-PASS audit"
+    ],
+    "must_not_split_metadata_upload_download": true,
+    "prior_milestone_state": {
+      "A0": "READY",
+      "A1": "PASS",
+      "A2": "PASS",
+      "M2": "PASS (A3 + A4)",
+      "M3": "PASS (A5 + A6, one contract, one session, one verification pass)",
+      "M4": "AUTHORIZED_BY_HUMAN",
+      "A8_PLUS": "NOT_STARTED"
+    },
+    "do_not_reopen": [
+      "A0",
+      "A1",
+      "A2",
+      "M2",
+      "M3"
+    ]
+  },
+  "human_authorization_source": {
+    "authorizing_task": "KEEPLAB-M4-ATTACHMENTS-CONTRACT",
+    "date": "2026-10-06",
+    "timezone": "CST (UTC+08:00)",
+    "approval_kind": "HUMAN_PROJECT_OWNER_APPROVAL",
+    "primary_decision": {
+      "D-13": "ATTACHMENT_LIMITS_V1"
+    },
+    "decision_effect": "The human project owner explicitly approved the attachment limit set ATTACHMENT_LIMITS_V1: a maximum single attachment of 26214400 bytes, a maximum of 20 attachments per note, an account attachment quota of 1073741824 logical bytes, and exactly four allowed MIME types (image/jpeg, image/png, image/webp, application/pdf). The limits are SERVER_CONFIGURABLE and the backend is authoritative. Audio, video, application/octet-stream, arbitrary binary files, executables and archives are out of scope unless separately approved later. M4 implementation is authorized as one phase-gated milestone covering A7 attachments and nothing beyond.",
+    "decisions_deliberately_not_resolved_here": [
+      "D-05 — account-deletion retention",
+      "D-11 — push provider",
+      "D-12 — collaboration",
+      "D-14 — formal spec package location",
+      "SYNC_TOMBSTONE_RETENTION_OR_COMPACTION — no permanent tombstone retention duration is chosen"
+    ],
+    "reinterpreted": false,
+    "reasked": false,
+    "substituted_with_model_preference": false
+  },
+  "authorization_semantics": {
+    "phase": "M4_ATTACHMENTS",
+    "human_authorization": true,
+    "human_decisions": [
+      "D-13 ATTACHMENT_LIMITS_V1"
+    ],
+    "human_decision_date": "2026-10-06",
+    "human_decision_record": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M4-HUMAN-DECISIONS.md",
+    "mutation_scope": "KeepLab M4 attachment code only (KeepLab-Relay/backend/** plus the enumerated Android surface) plus the reporting and evidence locations named in allowed_paths",
+    "implementation_authorization_model": "PHASE_GATED_MILESTONE",
+    "implementation_authorization": "GRANTED_TO_M4_EXECUTION_TASK_ONLY",
+    "root_gradle_change_required": false,
+    "root_gradle_change": "FORBIDDEN",
+    "cloud_provisioning": "FORBIDDEN",
+    "device_operation": "FORBIDDEN",
+    "historical_evidence_mutation": "FORBIDDEN",
+    "guard_mutation": "FORBIDDEN",
+    "contract_mutation": "FORBIDDEN",
+    "requires_human_approval": true
+  },
+  "project_data_stage": {
+    "stage": "EXPERIMENTAL",
+    "scope": "local Android data AND backend data",
+    "test_data_disposable": true,
+    "old_test_db_compatibility": "NOT_REQUIRED",
+    "priority": "CLEAN_TARGET_ARCHITECTURE > PRESERVE_TEST_DATA",
+    "production_users": false,
+    "production_backend_data": false,
+    "dev_database_reset_required": "YES",
+    "room_version_bump": "A direct experimental version bump (current 5 -> next clean version, expected 6) is allowed and expected for the new local attachment structures; no migration chain is authored and exportSchema stays false",
+    "backend_schema_version_bump": "New Flyway migrations after V3 (V4+) are allowed and expected; no production migration/rollback chain and no compatibility shim for old experimental rows",
+    "forbidden_consequences": [
+      "no production migration/rollback complexity is authored",
+      "no old-database upgrade path is built",
+      "no compatibility column or shim is kept for experimental rows",
+      "no data-preservation work is spent on disposable test data"
+    ]
+  },
+  "discovered_state": {
+    "android_and_backend_state": "M3 PASS: the A3 auth/session stack, the A4 single-user sync core, the A5 offline hardening and the A6 conflict handling exist and are green (at the M3 gate: backend 62 tests, 0 failures; Android JVM 159 tests, 0 failures; app-debug.apk built).",
+    "live_versions": {
+      "android": "Kotlin 2.3.21 · AGP 9.2.1 · KSP 2.3.9 · Room 2.8.4 · androidx.work 2.10.5 · Navigation 3 (navigation3-runtime/ui 1.1.2, lifecycle-viewmodel-navigation3 2.10.0) · Compose BOM 2026.05.01 · Hilt 2.59.2 · Ktor client (CIO) 3.6.0 · kotlinx-serialization 1.11.0 · compileSdk 36 · minSdk 24 · targetSdk 36",
+      "gradle_wrapper": "Gradle 9.5.1 (KeepLab-Relay/gradlew)",
+      "backend": "Kotlin 2.4.20 · Ktor (Netty) 3.6.0 · kotlinx-serialization 1.11.0 · HikariCP 7.1.0 · PostgreSQL JDBC 42.7.13 · Flyway 13.9.0 · Logback 1.6.5 · BouncyCastle 1.83 · JUnit Jupiter 6.1.3 · jvmToolchain 21",
+      "jdk": "OpenJDK 21.0.12.1"
+    },
+    "android_local_model": {
+      "database": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/KeepLabDatabase.kt — version 5, exportSchema false, entities: NoteEntity, ChecklistItemEntity, LabelEntity, NoteLabelEntity, OutboxEntity, ClientCheckpointEntity, ConflictEntity; the builder uses fallbackToDestructiveMigration(dropAllTables = true) with only the legacy MIGRATION_1_2 registered",
+      "note": "data/local/NoteEntity.kt — id (autoGenerate, localStorage PK), kind, title, body, color, pinned, archived, trashed, createdAt, updatedAt, clientUuid UNIQUE, accountId nullable, syncState (SyncState), serverRevision, deletedAt (sync tombstone), trashedAt (product Trash, D-06)",
+      "checklist_item": "ChecklistItemEntity(id, noteId FK CASCADE, text, checked, position, clientUuid UNIQUE, accountId nullable, syncState, serverRevision)",
+      "label": "LabelEntity(id, name, createdAt, clientUuid UNIQUE, accountId nullable, syncState, serverRevision); NoteLabelEntity(noteId, labelId) plus a per-relation revision",
+      "outbox": "data/local/SyncEntities.kt — OutboxEntity(mutationId PK, accountId, entityType, entityClientUuid, kind, baseRevision, payloadJson, createdAt, attemptCount, lastErrorCode); ClientCheckpointEntity(accountId PK, cursor)",
+      "sync_state": "data/local/SyncState.kt — seven values LOCAL_ONLY, SYNC_PENDING, SYNCING, SYNCED, SYNC_FAILED, CONFLICT, DELETE_PENDING",
+      "conflict": "data/local/ConflictEntity.kt — conflictId PK, accountId, entityType, entityClientUuid, conflictType, localPayloadJson, remotePayloadJson, baseRevision, serverRevision, remoteDeleted, createdAt, resolutionState",
+      "local_write_boundary": "data/local/LocalStore.kt — LocalStore.writeAtomically runs inside one Room transaction (RoomLocalStore); DirectLocalStore is the pass-through test double",
+      "dao": "data/local/NoteDao.kt, SyncDao.kt (outbox + checkpoint + observeFailedOutboxCount), ConflictDao (via database.conflictDao())",
+      "attachments": "ABSENT. There is no attachment entity, no attachment DAO, no local attachment storage, no FileProvider and no picker anywhere in the app today."
+    },
+    "android_sync_engine": {
+      "engine": "data/sync/SyncEngine.kt — syncNow(): ensure session -> refresh if needed -> pushPending (drain-until-stable, in-run `attempted` set) -> pullChanges (page apply + checkpoint in ONE transaction); 401 refreshed once then AUTH_REQUIRED; 409 -> persisted CONFLICT; 404 -> SYNC_FAILED non-destructive; other HTTP/transport -> SYNC_FAILED + RETRY_LATER",
+      "retry": "data/sync/RetryPolicy.kt — AUTO_RETRY_MAX_ATTEMPTS = 5, BACKOFF_POLICY = EXPONENTIAL, BACKOFF_INITIAL_DELAY_SECONDS = 30, BACKOFF_MAX_DELAY_SECONDS = 5h; eligibleForAutoRetry(entry) is the durable bound",
+      "classification": "data/sync/SyncErrorClass.kt — AUTH_REQUIRED, CONFLICT, TEMPORARY_RETRYABLE, PERMANENT_VALIDATION_FAILURE, NOT_FOUND_NON_DESTRUCTIVE, SUCCESS",
+      "worker": "data/sync/NoteSyncWork.kt — ONE unique work name `note_sync`, ExistingWorkPolicy.KEEP, NetworkType.CONNECTED, EXPONENTIAL backoff, SyncWorker maps SyncRunResult onto Result.success()/Result.retry(); resolved through SyncEngineEntryPoint (a Hilt EntryPoint)",
+      "trigger": "data/sync/SyncTrigger.kt + UniqueWorkEnqueuer (the testable seam over WorkManager)",
+      "remote_api": "data/remote/SyncApi.kt (KtorSyncApi over the shared client), ApiModels.kt (MutationPayload/ConflictPayload/...), HttpClientProvider.kt (DEFAULT_BACKEND_BASE_URL = http://10.0.2.2:8080, KeepLabJson, keepLabHttpClient(), Backend.call/parseErrorCode/parseConflict), ApiResult.kt (Success / HttpFailure(status, code, body) / TransportFailure)",
+      "account_scope": "data/auth/SessionManager.kt — ActiveAccountProvider.activeAccountId(): String? and activeAccountIdFlow; null means signed out and means LOCAL_ONLY",
+      "one_repository": "data/NoteRepository.kt — the single creation/update boundary; every mutating method runs through one LocalStore.writeAtomically block and enqueues its outbox row in the same transaction; requireAccountForNonLocalState enforces that only LOCAL_ONLY may exist without an account"
+    },
+    "android_ui": {
+      "navigation": "ui/navigation/NavigationKeys.kt + KeepLabNavigation.kt — Navigation 3 NavKey objects (Home, Archive, Trash, Labels, Settings, Auth, Conflicts, LabelNotes(labelId), Editor(noteId)); no attachment route exists",
+      "editor": "ui/editor/EditorScreen.kt + EditorViewModel.kt — the note editor with back/pin/colour/labels/archive/trash actions; the natural place for the minimal attachment listing/attach/remove affordance",
+      "settings": "ui/settings/SettingsScreen.kt + SettingsViewModel.kt — the existing sync-status surface carrying the manual `Retry sync` action from M3",
+      "note_surfaces": "ui/note/NoteCard.kt, NoteCollection.kt, NoteColors.kt; ui/home/HomeScreen.kt",
+      "manifest": "app/src/main/AndroidManifest.xml declares only android.permission.INTERNET; no storage permission of any kind exists",
+      "resources": "app/src/main/res/{drawable,mipmap-anydpi,mipmap-anydpi-v26,values,values-night,xml} exist (xml holds backup_rules.xml and data_extraction_rules.xml); no FileProvider is declared"
+    },
+    "backend_state": {
+      "layout": "KeepLab-Relay/backend/ — an INDEPENDENT Gradle project with its own settings.gradle.kts and build.gradle.kts, invoked with `./gradlew -p backend <tasks>` using the repository wrapper",
+      "config": "com/keeplab/backend/config/AppConfig.kt — ConfigKeys (KEEPLAB_HTTP_PORT, KEEPLAB_DB_*, KEEPLAB_JWT_SIGNING_KEY, KEEPLAB_REFRESH_TOKEN_PEPPER, KEEPLAB_AUTH_CODE_PEPPER, KEEPLAB_ACCESS_TOKEN_TTL_SECONDS, KEEPLAB_REFRESH_TOKEN_TTL_SECONDS, KEEPLAB_REFRESH_REPLAY_WINDOW_SECONDS, KEEPLAB_EMAIL_MODE) resolved by AppConfig.fromEnvironment(env) with injectable env reader; application.conf mirrors the keys as HOCON substitution but is not read by embeddedServer",
+      "auth": "auth/AuthService.kt + auth/JwtService.kt + auth/AuthStore.kt (InMemory + Jdbc) + auth/AuthModels.kt; every service derives the account from the authenticated JWT subject and never from a request body",
+      "sync": "sync/SyncService.kt, sync/SyncStore.kt (SyncStore port + InMemorySyncStore), sync/JdbcSyncStore.kt (one JDBC transaction for the dedupe claim + apply + revision + change-log append), sync/SyncModels.kt (SyncEntityType, SyncMutationKind, SyncMutation, MutationResult, SyncChange, ConflictState, MutationApplyOutcome)",
+      "routes": "routes/Routes.kt (health/ready + conditional authRoutes/syncRoutes), routes/AuthRoutes.kt, routes/SyncRoutes.kt, routes/RouteSupport.kt (bearerToken/respondMissingToken/respondValidationError/respondOutcome), routes/ApiModels.kt (HealthResponse/ReadyResponse/ErrorResponse)",
+      "services_wiring": "BackendServices(auth, sync) built by productionServices(config, database) in Application.kt; Application.keeplabModule(config, readiness, services) installs ContentNegotiation(json), CallLogging, StatusPages and configureRouting",
+      "migrations": "src/main/resources/db/migration/V1__create_keeplab_foundation_schema.sql, V2__auth_schema.sql, V3__sync_schema.sql — schema `keeplab`; server_entities(account_id, entity_type, client_uuid, revision, deleted, payload, updated_at), sync_tombstones, change_log(cursor BIGSERIAL), mutation_dedupe(account_id, mutation_id); FlywayMigrations.migrate(dataSource) migrates classpath:db/migration at start-up, best-effort",
+      "object_storage": "ABSENT. There is no object storage, no binary route, no upload session, no attachment table and no quota accounting of any kind.",
+      "tests": "backend/src/test/kotlin/com/keeplab/backend/ — JUnit 5 (Jupiter) with Ktor's in-process test host; M2TestSupport.kt builds M2TestEnvironment (in-memory auth store, InMemorySyncStore, deterministic clock, SequentialIdGenerator, reduced Argon2id parameters, BackendServices); TestFixtures.kt, SyncRoutesTest.kt, SyncServiceTest.kt, ConfigurationTest.kt. No live PostgreSQL, no Docker, no network in the suite.",
+      "env_template": "backend/.env.example — placeholders only for the existing keys; the project never creates backend/.env"
+    },
+    "environment_facts": {
+      "jdk": "OpenJDK 21.0.12.1",
+      "gradle_wrapper": "KeepLab-Relay/gradlew @ Gradle 9.5.1",
+      "android_sdk": "present",
+      "docker_available": false,
+      "podman_available": false,
+      "psql_available": false,
+      "adb_present": true,
+      "adb_use": "FORBIDDEN",
+      "git_baseline": "UNAVAILABLE — KeepLab-Relay has no commits; verification is sha256 + scope-scan based",
+      "device": "87296ada NOT used"
+    },
+    "attachment_relevant_prior_art": {
+      "architecture_spec_22": "KEEPLAB-AUTH-SYNC-ARCHITECTURE-SPEC.md §22 — attachment semantics are content-addressed and append-only with no merge; upload is deferred, unmetered-preferred, resumable and a separate outbox op (ATTACHMENT_ADD); download is authorized per account with non-guessable object ids; object storage is future backend infrastructure with no provider chosen now; a failing/abandoned upload is retried and an abandoned binary becomes an orphan candidate (RISK-ATTACH-001); INVARIANT ATT-1: a local note MUST NOT block merely because a binary upload is pending",
+      "data_model_2_6": "KEEPLAB-AUTH-SYNC-DATA-MODEL.md §2.6 — attachment_id (client UUID PK), note_id, account_id (NULL only while its note is LOCAL_ONLY), local_uri, content_hash, size_bytes, mime_type, upload_state, remote_object_id, attempt_count/last_error",
+      "data_model_5": "KEEPLAB-AUTH-SYNC-DATA-MODEL.md §5 — note row commits locally then the attachment metadata row is UPLOAD_PENDING, then the deferred ATTACHMENT_ADD op uploads the binary and on success sets remote_object_id and UPLOADED",
+      "api_contract_2_4": "KEEPLAB-AUTH-SYNC-API-CONTRACT.md §2.4 — POST /attachments (register + upload a binary, idempotent by attachment_id) and GET /attachments/{id} (authorized per account); §4 attaches ATTACHMENT_FAILED to the error taxonomy; AUTHZ-1: CLIENT_ACCOUNT_ID_IS_NOT_AUTHORITY",
+      "roadmap_a7": "KEEPLAB-AUTH-SYNC-IMPLEMENTATION-ROADMAP.md Phase A7 — scope: attachment metadata + deferred binary upload/download, content-addressing, per-account authorization, orphan handling; acceptance gate: a note with a pending upload stays fully usable, uploads resume, downloads are per-account authorized, abandoned uploads do not corrupt note state; must NOT bundle image/drawing/voice capture UX",
+      "abstraction_requirement": "ARCHITECTURE-SPEC §23 places object storage behind the backend services (the API edge and services own object storage; nothing else talks to it), and §23.1 leaves the object-storage product to be selected at implementation/deployment level"
+    }
+  },
+  "frozen_human_decisions": {
+    "D-13": {
+      "name": "ATTACHMENT_LIMITS_V1",
+      "source": "HUMAN_PROJECT_OWNER_APPROVAL",
+      "date": "2026-10-06",
+      "record": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M4-HUMAN-DECISIONS.md",
+      "MAX_SINGLE_ATTACHMENT_BYTES": 26214400,
+      "MAX_ATTACHMENTS_PER_NOTE": 20,
+      "ACCOUNT_ATTACHMENT_QUOTA_BYTES": 1073741824,
+      "ALLOWED_MIME_TYPES": [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "application/pdf"
+      ],
+      "LIMIT_AUTHORITY": "SERVER_CONFIGURABLE",
+      "out_of_scope_mime": [
+        "audio/*",
+        "video/*",
+        "application/octet-stream",
+        "arbitrary binary files",
+        "executables",
+        "archives (unless separately approved later)"
+      ],
+      "quota_semantics": {
+        "unit": "LOGICAL_ATTACHMENT_BYTES_OWNED_BY_THE_ACCOUNT",
+        "duplicate_files_bypass_quota": false,
+        "same_hash_may_deduplicate_binary": true,
+        "each_logical_attachment_still_counts": true,
+        "pending_reservation_counts_while_active": true,
+        "reservation_released_on": [
+          "abort",
+          "expiry",
+          "failed initiation before commitment"
+        ]
+      },
+      "android_pre_validation": "Android may pre-validate for UX using cached server limits or the D-13 defaults; server enforcement stays authoritative."
+    },
+    "implementation_defaults_not_product_decisions": {
+      "KEEPLAB_ATTACHMENT_CHUNK_BYTES": 1048576,
+      "KEEPLAB_ATTACHMENT_ORPHAN_GRACE_SECONDS": 86400,
+      "note": "Chunk size and orphan grace are IMPLEMENTATION_DEFAULTS, not D-13 product decisions. They must be configurable."
+    }
+  },
+  "target_architecture": {
+    "attachment_metadata_vs_binary": {
+      "rule": "ATTACHMENT METADATA != ATTACHMENT BINARY. The metadata row commits locally and independently of the binary transfer.",
+      "invariant": "ATT-1: a local note MUST NOT block because a binary upload is pending."
+    },
+    "attachment_semantics": [
+      "CONTENT_ADDRESSED",
+      "APPEND_ONLY_BINARY",
+      "NO_BINARY_MERGE",
+      "DEFERRED_UPLOAD",
+      "AUTHORIZED_DOWNLOAD",
+      "ORPHAN_HANDLING"
+    ],
+    "object_storage": {
+      "port": "ObjectStorage — production business logic depends on this abstraction, never directly on a Tencent COS SDK, an AWS SDK or filesystem APIs",
+      "reference_driver": "FilesystemObjectStorage — the M4 development/test reference driver",
+      "configuration": "environment variables KEEPLAB_OBJECT_STORAGE_DRIVER (filesystem) and KEEPLAB_OBJECT_STORAGE_ROOT (<path>)",
+      "future": "a Tencent COS adapter may be added later at deployment/infrastructure time without changing attachment domain logic",
+      "provisioning": "NO cloud resource is installed or provisioned in M4"
+    },
+    "content_addressing": {
+      "hash": "SHA-256",
+      "server_verifies": "the server MUST verify the actual uploaded bytes; it never trusts only the client hash, filename or Content-Type header",
+      "object_identity": "account scope + verified SHA-256",
+      "recommended_key_shape": "accounts/<accountId>/sha256/<hash>",
+      "filename": "the user filename is NEVER the object key or the storage identity",
+      "user_metadata_must_not_influence_paths": [
+        "../",
+        "path traversal",
+        "absolute paths"
+      ],
+      "cross_account": "authorization stays mandatory; the server must not expose whether another account already has an identical hash"
+    },
+    "backend_database_model": {
+      "minimum_concepts": [
+        "attachments (account-scoped attachment metadata keyed by accountId + note identity + attachment UUID)",
+        "attachment_uploads (the upload session / resume state)",
+        "content objects / object references for content addressing",
+        "quota reservation state",
+        "orphan/abandoned upload state"
+      ],
+      "account_scope": "every attachment is scoped by accountId + note identity + attachment UUID",
+      "authorization": "the account is derived from the authenticated JWT subject; a client-supplied accountId is never authority"
+    },
+    "upload_protocol": {
+      "initiate": "POST /v1/attachments/uploads — request: attachmentId, noteClientUuid, contentHash, sizeBytes, mimeType, displayName; response: uploadId, chunkBytes, acceptedOffset, deduplicated/uploadRequired",
+      "append": "PUT /v1/attachments/uploads/{uploadId} with offset + binary body (or an equivalent clean Ktor route)",
+      "status": "GET /v1/attachments/uploads/{uploadId} — status/resume semantics",
+      "complete": "POST /v1/attachments/uploads/{uploadId}/complete — the server verifies total byte count, SHA-256, MIME, quota reservation and note/account authorization",
+      "naming": "exact route naming may follow the existing Ktor style; multipart and cloud-presigned architecture must NOT be overbuilt"
+    },
+    "download": {
+      "route": "GET /v1/attachments/{attachmentId}/content",
+      "authorization": "the authenticated account must own/access the attachment's parent note; no public anonymous object URLs",
+      "android": "stream to a temporary app-private file, verify SHA-256, atomically replace/finalize the local attachment file; a hash mismatch is FAILED and must not replace known-good local data"
+    },
+    "local_model_minimum_fields": [
+      "attachmentId — stable client UUID",
+      "noteId / noteClientUuid — parent note",
+      "accountId — nullable for LOCAL_ONLY",
+      "localPath — app-private imported file path",
+      "contentHash — SHA-256",
+      "sizeBytes",
+      "mimeType",
+      "displayName",
+      "uploadState",
+      "remoteObjectId — nullable",
+      "uploadedBytes — resume state",
+      "lastErrorCode — nullable",
+      "createdAt",
+      "deleted/removed state if required"
+    ],
+    "states": [
+      "LOCAL_ONLY",
+      "UPLOAD_PENDING",
+      "UPLOADING",
+      "UPLOADED",
+      "DOWNLOAD_PENDING",
+      "DOWNLOADING",
+      "FAILED",
+      "REMOVED"
+    ],
+    "state_rule": "Use a small explicit model. Exact names may follow project style. Do not create dozens of states.",
+    "mime_validation": {
+      "allowed": [
+        "JPEG",
+        "PNG",
+        "WebP",
+        "PDF"
+      ],
+      "method": "basic magic/signature validation of the real bytes; the extension alone is never trusted",
+      "signatures": {
+        "JPEG": "FF D8 FF",
+        "PNG": "standard PNG signature (89 50 4E 47 0D 0A 1A 0A)",
+        "WebP": "RIFF....WEBP",
+        "PDF": "%PDF-"
+      },
+      "mismatch": "VALIDATION_ERROR — never uploaded",
+      "not_required": [
+        "an executable-detection framework",
+        "archive support"
+      ]
+    },
+    "local_file_durability": {
+      "rule": "when the user selects an allowed attachment, do NOT depend permanently on a transient external content URI; import/copy the selected bytes into KeepLab app-private storage",
+      "during_import": [
+        "stream the data",
+        "enforce the 25 MiB limit",
+        "compute SHA-256",
+        "verify the basic MIME signature",
+        "store safely"
+      ],
+      "unknown_source_size": "enforce the limit while streaming",
+      "on_import_failure": "do not corrupt note state; do not partially create a usable attachment row unless the state explicitly represents failure"
+    },
+    "local_only": {
+      "rule": "a LOCAL_ONLY note may have LOCAL_ONLY attachments; they remain fully local with no account and no upload",
+      "forbidden": "silently adopting a LOCAL_ONLY attachment into an account",
+      "invariant": "if the parent note remains LOCAL_ONLY the attachment remains LOCAL_ONLY"
+    },
+    "account_scoped": {
+      "new_attachment": "a new valid attachment on an account-scoped note becomes UPLOAD_PENDING and is eligible for deferred upload",
+      "note_usability": "the note remains usable immediately",
+      "failure": "a network failure must not roll back note data; an upload failure must not mark the note unusable"
+    },
+    "transfer_pipeline": {
+      "name": "attachment_sync",
+      "rule": "binary transfer uses its own durable attachment transfer queue/state, separate from the existing `note_sync` pipeline, because large binary work has different retry/network behaviour",
+      "forbidden": "creating a parallel duplicate upload for the same attachment",
+      "persist": "resume offset / upload id as needed"
+    },
+    "network_policy": {
+      "background": "prefer UNMETERED for background binary upload when practical, but do not make correctness depend forever on Wi-Fi",
+      "manual": "a manual Retry/Upload action may request transfer under CONNECTED when the user explicitly asks",
+      "download": "user-triggered downloads may use CONNECTED",
+      "forbidden": [
+        "FCM",
+        "any push provider"
+      ]
+    },
+    "retry": {
+      "rule": "bounded retry principles consistent with M3; no new infinite retry loop",
+      "temporary": [
+        "network",
+        "429",
+        "5xx"
+      ],
+      "permanent": [
+        "bad MIME",
+        "oversize",
+        "quota exceeded",
+        "too many attachments"
+      ],
+      "permanent_rule": "permanent validation failures must not retry forever",
+      "auth_required": "retain the local file, retain the metadata and retain the pending transfer"
+    },
+    "orphan_handling": {
+      "scenarios": [
+        "upload session abandoned",
+        "binary completes but metadata finalize fails",
+        "attachment removed",
+        "deduplicated binary still referenced elsewhere"
+      ],
+      "posture": "conservative",
+      "deletable_only_when": [
+        "no attachment metadata references it",
+        "no active upload owns it",
+        "orphan grace has elapsed"
+      ],
+      "forbidden": "orphan cleanup must never corrupt a live note",
+      "service_boundary": "an explicit findOrphanCandidates() + cleanupEligibleOrphans() boundary is sufficient for M4; a full production scheduler is NOT required and scheduling may belong to deployment later"
+    },
+    "quota_concurrency": {
+      "rule": "quota enforcement must not be check-then-race-then-insert; the backend must reserve/check quota inside an atomic persistence boundary appropriate to the current store",
+      "concurrent_initiation": "must not exceed the 1 GiB logical account quota",
+      "per_note": "MAX_ATTACHMENTS_PER_NOTE = 20 is server enforced",
+      "testing": "provide deterministic concurrency/service tests as far as the current backend test architecture permits; no live PostgreSQL requirement"
+    },
+    "remove": {
+      "rule": "removing an attachment must not delete or corrupt the note",
+      "account_scoped_uploaded": "remove the metadata using authenticated backend semantics",
+      "unreferenced_object": "mark it ORPHAN_CANDIDATE; do not perform unsafe deletion inside the same metadata mutation unless transactional correctness is proven",
+      "local_only": "remove the metadata and the app-private local file safely"
+    }
+  },
+  "error_retry_classification": {
+    "reuse": "M4 reuses the M3 classification (AUTH_REQUIRED, CONFLICT, TEMPORARY_RETRYABLE, PERMANENT_VALIDATION_FAILURE, NOT_FOUND_NON_DESTRUCTIVE, SUCCESS). It must not invent a second divergent notion of retryability.",
+    "attachment_specific": {
+      "VALIDATION_ERROR": "PERMANENT — a MIME/header mismatch or a rejected payload; never uploaded, never retried forever",
+      "PAYLOAD_TOO_LARGE": "PERMANENT — over MAX_SINGLE_ATTACHMENT_BYTES",
+      "QUOTA_EXCEEDED": "PERMANENT for that upload",
+      "TOO_MANY_ATTACHMENTS": "PERMANENT for that note",
+      "AUTH_REQUIRED": "retain local file + metadata + pending transfer",
+      "TEMPORARY_RETRYABLE": "network, 429 and 5xx"
+    },
+    "shared_with_note_sync": "the attachment path must share the same bounded-retry boundary constants (RetryPolicy.AUTO_RETRY_MAX_ATTEMPTS) rather than introducing an unbounded loop"
+  },
+  "ui_scope": {
+    "policy": "MINIMAL_ADDITIVE_ONLY",
+    "must_support": [
+      "attach an existing file using the Android system document/file picker",
+      "show attachment display name",
+      "show attachment type",
+      "show attachment size",
+      "show transfer state",
+      "Retry when failed",
+      "Remove"
+    ],
+    "allowed_optional": "a simple image thumbnail ONLY if it requires no large unrelated UI or dependency work",
+    "forbidden": [
+      "camera capture",
+      "drawing capture",
+      "voice recording",
+      "video capture",
+      "redesigning the note editor",
+      "broad storage permissions (MANAGE_EXTERNAL_STORAGE or legacy storage permissions)"
+    ],
+    "picker": "prefer OpenDocument / SAF or another standard system picker, restricted to the D-13 MIME types; picker filtering alone is NOT security validation, so the content must still be validated after selection",
+    "integration_points": "editor/detail surfaces carry the attachment list; the existing settings sync-status surface may carry attachment retry/status; navigation only if genuinely needed"
+  },
+  "backend_scope": {
+    "surface": "KeepLab-Relay/backend/ (the whole directory)",
+    "must_add": [
+      "server-configurable attachment limits (KEEPLAB_ATTACHMENT_MAX_BYTES, KEEPLAB_ATTACHMENT_MAX_PER_NOTE, KEEPLAB_ATTACHMENT_ACCOUNT_QUOTA_BYTES, KEEPLAB_ATTACHMENT_ALLOWED_MIME_TYPES, KEEPLAB_ATTACHMENT_CHUNK_BYTES, KEEPLAB_ATTACHMENT_ORPHAN_GRACE_SECONDS)",
+      "backend/.env.example placeholders/default documentation for those keys",
+      "an authenticated attachment configuration endpoint",
+      "the portable ObjectStorage abstraction and the filesystem reference driver",
+      "the attachment persistence model (metadata, upload session/resume state, content objects, quota reservations, orphan state) with Flyway migrations after V3",
+      "the resumable upload session protocol, server-side byte/hash/MIME verification, quota reservation, authorization, download, removal and the orphan service boundary",
+      "deterministic backend tests"
+    ],
+    "must_not_add": [
+      "a real backend/.env",
+      "any committed secret or cloud credential",
+      "any Tencent COS credential or SDK dependency requirement",
+      "multipart/cloud-presigned upload architecture",
+      "a production orphan scheduler",
+      "audio/video/octet-stream/archive support",
+      "collaboration, multi-account or push code"
+    ],
+    "env_example_rule": "update backend/.env.example with placeholders/defaults only; never create backend/.env and never commit a secret"
+  },
+  "device_policy": {
+    "device": "NOT_USED",
+    "forbidden": [
+      "adb",
+      "Maestro",
+      "UiAutomator",
+      "APK installation",
+      "the physical device 87296ada"
+    ],
+    "exception": "only if compilation proves a truly unavoidable Android integration issue that cannot be validated otherwise — and even then only with an explicit STOP and a recorded reason; the default is DEVICE = NOT_USED",
+    "note": "real picker/device UX may be validated in a later product/device milestone"
+  },
+  "cloud_policy": {
+    "cloud_provisioning": "FORBIDDEN",
+    "tenant": "no Tencent COS, no Tencent CVM, no load balancer, no managed PostgreSQL, no cloud credential",
+    "implemented_instead": "the portable ObjectStorage abstraction plus the FilesystemObjectStorage development reference driver"
+  },
+  "live_postgres_policy": {
+    "available": false,
+    "reason": "no docker, no podman, no psql on this host",
+    "record": "LIVE_POSTGRES_INTEGRATION = SKIPPED_TOOL_UNAVAILABLE when applicable",
+    "rule": "absence is never a blocker; never install infrastructure inside M4; the transactional semantics must not be weakened because the runtime is unavailable"
+  },
+  "object_storage_policy": {
+    "port": "ObjectStorage",
+    "reference_driver": "FilesystemObjectStorage",
+    "production_target": "TENCENT_CLOUD + PORTABLE_DOCKER (D-08) — selected, NOT provisioned in M4",
+    "dependency_rule": "production business logic depends on ObjectStorage, never directly on a cloud SDK or filesystem APIs",
+    "configured_by": [
+      "KEEPLAB_OBJECT_STORAGE_DRIVER=filesystem",
+      "KEEPLAB_OBJECT_STORAGE_ROOT=<path>"
+    ],
+    "claim": "DEVELOPMENT_REFERENCE_DRIVER — explicitly NOT a claim that production Tencent COS has been implemented"
+  },
+  "allowed_paths": [
+    "KeepLab-Relay/backend/",
+    "KeepLab-Relay/app/build.gradle.kts",
+    "KeepLab-Relay/gradle/libs.versions.toml",
+    "KeepLab-Relay/app/src/main/AndroidManifest.xml",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/KeepLabApplication.kt",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/MainActivity.kt",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/model/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/attachment/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/settings/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/auth/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/navigation/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/trash/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/note/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/editor/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/home/",
+    "KeepLab-Relay/app/src/main/res/xml/",
+    "KeepLab-Relay/app/src/test/",
+    "Google-Android-Agent-Development-Stack/reports/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-m4-attachments/"
+  ],
+  "forbidden_paths": [
+    "KeepLab-Relay/app/src/main/res/drawable/",
+    "KeepLab-Relay/app/src/main/res/mipmap-anydpi/",
+    "KeepLab-Relay/app/src/main/res/mipmap-anydpi-v26/",
+    "KeepLab-Relay/app/src/main/res/values/",
+    "KeepLab-Relay/app/src/main/res/values-night/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/theme/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/common/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/conflict/",
+    "KeepLab-Relay/app/src/androidTest/",
+    "KeepLab-Relay/app/src/benchmark/",
+    "KeepLab-Relay/app/src/debug/",
+    "KeepLab-Relay/app/src/release/",
+    "KeepLab-Relay/app/schemas/",
+    "KeepLab-Relay/app/proguard-rules.pro",
+    "KeepLab-Relay/benchmark/",
+    "KeepLab-Relay/build.gradle.kts",
+    "KeepLab-Relay/settings.gradle.kts",
+    "KeepLab-Relay/gradle/wrapper/",
+    "KeepLab-Relay/gradle.properties",
+    "KeepLab-Relay/gradlew",
+    "KeepLab-Relay/gradlew.bat",
+    "KeepLab-Relay/local.properties",
+    "KeepLab-Relay/specs/",
+    "KeepLab-Relay/verification/",
+    "KeepLab-Relay/harness/",
+    "KeepLab-Relay/docs/",
+    "KeepLab-Relay/factory/",
+    "KeepLab-Relay/.factory/",
+    "KeepLab-Relay/.agents/",
+    "KeepLab-Relay/.commandcode/",
+    "KeepLab-Relay/MISSION.md",
+    "KeepLab-Relay/FACTORY.md",
+    "KeepLab-Relay/FACTORY_RULES.md",
+    "KeepLab-Relay/AGENTS.md",
+    "KeepLab-Relay/HANDOFF.md",
+    "KeepLab-Relay/PHASE-A-RESULT.md",
+    "KeepLab-Relay/PHASE-B-RESULT.md",
+    "KeepLab-Relay/ANDROID-STACK-GAPS.md",
+    "KeepLab-Relay/Dockerfile",
+    "KeepLab-Relay/docker-compose.yml",
+    "KeepLab-Relay/docker/",
+    "KeepLab-Relay/server/",
+    "KeepLab-Relay/infra/",
+    "KeepLab-Relay/cloud/",
+    "KeepLab-Relay/firebase/",
+    "KeepLab-Relay-evidence/",
+    "Testapp/",
+    "PowerAi/",
+    "Google-Android-Agent-Development-Stack/.hermes.md",
+    "Google-Android-Agent-Development-Stack/specification/",
+    "Google-Android-Agent-Development-Stack/verification/",
+    "Google-Android-Agent-Development-Stack/verification-benchmark/",
+    "Google-Android-Agent-Development-Stack/references/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/HERMES-LOCK.json",
+    "Google-Android-Agent-Development-Stack/evaluation/",
+    "Google-Android-Agent-Development-Stack/reports/contracts/",
+    "KeepLab-Relay/specs/p0b-close-benchmarkability/",
+    "KeepLab-Relay/specs/p0b-performance-reliability/",
+    "KeepLab-Relay/specs/phase-c-pin-notes-b1/"
+  ],
+  "boundary_notes": {
+    "source_root": "/mnt/AndroidDev/Projects",
+    "resolution": "allowed_paths / forbidden_paths are project-relative to the Contract Guard's project-context source_root, exactly as the frozen P0B-CLOSE contract and the A0/A1/A2/M2/M3 contracts are. Entries may be exact files or directory prefixes.",
+    "precedence": "The guard tests forbidden_paths first; a path matching both lists is BLOCKED. reports/ is allowed while reports/contracts/ (which contains this package and every earlier package) is forbidden, so an executor cannot write its own contract or any historical package.",
+    "unlisted_is_blocked": "Any path inside the project root that matches neither list is BLOCKED (UNCLASSIFIED_FAIL_CLOSED).",
+    "android_surface_is_enumerated_not_whole_app": "KeepLab-Relay/app/** is NOT authorized as a whole. Authorized: the data package (which already contains data/local, data/remote, data/sync, data/auth and may gain data/attachment), the DI package, the model package, the one NEW ui/attachment package, the named UI packages carrying attachment/sync-status integration points (settings, auth, navigation, trash, note, editor, home), the application and activity entry points, AndroidManifest.xml, app/src/main/res/xml/ only, app/build.gradle.kts, gradle/libs.versions.toml and app/src/test/**. Everything else under app/ — themes, shared UI widgets, the remaining resource directories, androidTest, benchmark, schemas, proguard rules — is BLOCKED.",
+    "android_surface_rationale": "Attachments genuinely need: a local attachment entity/DAO plus a schema bump (data/local), an import/storage component and a transfer component (data/, data/attachment), remote API calls and models for the upload session and download (data/remote), a durable attachment transfer pipeline (data/sync or data/attachment), DI wiring, one new ui/attachment package for the minimal attachment surface, and small integration points in the editor (attach/show/remove/state) and settings (retry/status). A whole-app authorization is therefore not required and is not granted.",
+    "new_ui_attachment_package": "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/attachment/ is newly authorized for M4: the minimal attachment surface. Creating it does not authorize any other new ui/ package.",
+    "android_res_xml_carve_out": "KeepLab-Relay/app/src/main/res/xml/ is authorized narrowly so that a specific FileProvider configuration could be added IF genuinely required (for example if an attachment must be handed to a system viewer). The existing res subdirectories (drawable, mipmap-anydpi, mipmap-anydpi-v26, values, values-night) are forbidden and must stay byte-identical, and any new resource directory is UNCLASSIFIED and therefore blocked. The expected outcome is that no resource change is needed at all: OpenDocument/SAF hands the app a readable content URI and importing the bytes into app-private storage needs no FileProvider and no manifest change.",
+    "ui_conflict_package_read_only": "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/conflict/ is M3's surface and is FORBIDDEN in M4: an attachment change must not edit the conflict-resolution surface.",
+    "root_gradle_blocked": "settings.gradle.kts, build.gradle.kts, gradle.properties, gradle/wrapper/** and gradlew are forbidden. Only app/build.gradle.kts and gradle/libs.versions.toml may change, and only if targeted discovery proves a dependency change is actually required, without removing or gratuitously bumping unrelated entries. ROOT_GRADLE_CHANGE: NO. A needed root Gradle change is a STOP with M4_ROOT_GRADLE_CHANGE_REQUIRED.",
+    "expected_gradle_change": "NO new dependency is expected: SHA-256 is java.security.MessageDigest, magic-byte MIME validation is a byte comparison, the system picker is androidx.activity (activity-compose 1.13.0, already pinned) and the server needs only ktor-server-core and java.security. The two Gradle files remain conditionally authorized so that a genuinely required addition is not a contract breach by itself; any addition must be recorded in the M4 report and must not change the root Gradle surface.",
+    "backend_surface_is_whole_directory": "The whole KeepLab-Relay/backend/ prefix is authorized, so ordinary compile fixes, added source files, backend-local Gradle files, resources, new Flyway migrations after V3 and backend tests never require another contract.",
+    "backend_env": "backend/.env.example is inside the backend prefix and may be updated with placeholders/defaults. A real backend/.env must never be created and no real credential may be written or committed anywhere.",
+    "reports_contracts_read_only": "reports/contracts/ is forbidden while reports/ is allowed, so this package is a READ_ONLY_INPUT for the execution session: it may be read and hashed, never written.",
+    "cloud_blocked": "No cloud, infra, server or firebase path is authorized; the existing backend Docker assets stay untouched in content and are never executed.",
+    "device_blocked": "No Android device access and no adb. androidTest and benchmark source are read-only and are never executed.",
+    "out_of_project": "Paths outside /mnt/AndroidDev/Projects remain OUT_OF_CONTRACT_SCOPE/ALLOW as the guard is written today; this contract does not change that guard property and must never be read as authorizing writes outside the project.",
+    "guard_scope_note": "The frozen guard classifies WRITE targets, not tool choice: it has no path rule that blocks an `adb` binary, `./gradlew`, `docker compose` or a container run, and it cannot classify Hermes config/core paths outside the project root. The device prohibition, the cloud prohibitions and the Hermes-core prohibition are enforced by this contract's declarations and the execution prompt's stop conditions, not by the path list. Violating one is a CONTRACT_DEVIATION. This limitation is stated rather than hidden.",
+    "hermes_config_core_limitation": "Hermes configuration and core live OUTSIDE the guard's source_root (/home/zhong/.hermes/...), so the guard's path lists cannot classify them. They are protected here by an explicit hard prohibition and stop condition, enforced by fail-closed operator discipline — not by the path list.",
+    "guard_write_intent_limitation": "The guard's terminal write-intent extractor reads a literal '>' anywhere in a shell command as a redirect (MB-A1-003 / MB-A2-008 / MB-M2-006 / MB-M3-006). Drive the guard by files and read-only commands; never inline heredocs or payload-bearing shell text. The guard source must not be changed."
+  },
+  "frozen_inputs": {
+    "algorithm": "sha256",
+    "captured_at": "2026-10-06",
+    "captured_by": "KEEPLAB-M4-ATTACHMENTS-CONTRACT (live filesystem read)",
+    "state": "FROZEN",
+    "verified_live": true,
+    "note": "These files are READ-ONLY inputs and PRE-WRITE BASELINES: the M3 implementation M4 extends, the architecture reports M4 obeys, the frozen governance, the guard itself, and the M3 baselines of the Android/backend files the execution session reads before it edits them. The M4 execution session must re-hash them BEFORE its first write and STOP with STALE_M4_INPUT on any drift. After the run, a listed baseline that lies inside allowed_paths may legitimately differ: the post-run proof classifies every changed file as inside allowed_paths (expected) or outside them (a deviation), rather than treating its own permitted edits as drift.",
+    "files": {
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/contract_guard.py": "e418fc28b08ac7afe4fdd42ec44d572ddaa2f23f6200de300ecac211404b3746",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-API-CONTRACT.md": "8fec6c43a8673792e5c08419c94aba59d14a8ab9db181d7df1675a2d7e080563",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-ARCHITECTURE-SPEC.md": "434280dbe7e04104bb912f8406d1cedbd21bd92c937c6fbb988b531c460dc489",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-DATA-MODEL.md": "ba618fa0e43cfa3186557c250749705f616ed28755bfc6cb397bdb6305ad24b1",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-IMPLEMENTATION-ROADMAP.md": "f2eed270b4f6744be01e162291f92b596023fa4aefdd46760c846c65e1057460",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-STATE-MODEL.md": "a75cfe84c38aa12482a7d251570fc54e90d36b70aa6eb7c7c49f7bbe4fd41970",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M3-OFFLINE-CONFLICT-EXECUTION.md": "215f5043486b7a8173277c36aad6845e38b50cf04a6add394d140d4f4c751b9d",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-MINOR-BACKLOG.md": "79faef54727d8ed45b276e4711521c761bdb1c7babc066a04df9ee97628de193",
+      "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-M3-OFFLINE-CONFLICT-001/implementation-contract.json": "8dbbb6b726473755c62d72cf0b4d147f1206a3d0be74159ac2b4496f753a0b37",
+      "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-M3-OFFLINE-CONFLICT-001/manifest.json": "d53af5367d86d205680ddae3de885adc62cb348cef7dc50d9f2e1d71b3bbafd0",
+      "KeepLab-Relay/FACTORY_RULES.md": "7e6c489751a9f4ebbeb2d91005e56aa5ee06eb80fab65b7b623218f49ea268d1",
+      "KeepLab-Relay/MISSION.md": "f857295dd502ee64736fac04bc5e076874bcdb06a468ca1edad1eb7152d128cd",
+      "KeepLab-Relay/app/build.gradle.kts": "ae428c4dadd0a29a440468293ae1d620d1b3f52f03dca5bdf1909be35c16eabf",
+      "KeepLab-Relay/app/src/main/AndroidManifest.xml": "b2bb7cd499f73c8837eec2bad5c133697b7bbc341e108ead10ae3b7fef109601",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/KeepLabApplication.kt": "48cb3974ba7be36e5709edb8028854b962ecd00e9fbd133e3aa735e33fea67a4",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/MainActivity.kt": "648bd90c0fe04813152607b3641f36137cd1f35b616bd4d26f769c44d84c0df7",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/NoteRepository.kt": "da1b2b585ee2c3e84886578e31e4301d813e304537b4d1f826d08e50a4d049ad",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/UserPreferences.kt": "fea40bc367c01fd07da6a2e66c3dca74a9a0d30cbd47d89538f40d8bf59a5b27",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/auth/AndroidKeystoreSecretCipher.kt": "6c37d111ed67441baa74451b068b147cd19a7967719768d36ae6119a6c70fed3",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/auth/AuthRepository.kt": "41529ff3d725f15f27db696d486168b1f23ac82e5b4f7d4fc583b7853bcfeee4",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/auth/DeviceLabelProvider.kt": "071dbabe945a8600a7b80e9d693048e3215c04791ef16973e4fcdb0668589a8f",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/auth/SecureSessionStore.kt": "68ccda40daddd2353557b890b4fcefb89159fb4650887cdacc62f265fb32b1c8",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/auth/SessionManager.kt": "b88da5c84776cd744d9d8be0cbf123605ff90f9348928c6e68427582875171a6",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/ConflictEntity.kt": "1b17201da98f38b5f3bd080e87b94c5b69ea08cd8ad7142daa0f7d73d0d273b1",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/KeepLabDatabase.kt": "5a29aabb5ab8bd1b6336032edbac14c0bdb9befa86f8602db00db870a817fb77",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/LabelEntity.kt": "8362ed0890298c2915aa3852be47ee0428bfb6ea03ba03ff4037b4af2ee48c6f",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/LocalStore.kt": "fec5de1d1ea658e3f2353d071a5ca082346f0d418a8e26d42696676555c8ccf9",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/Migrations.kt": "86acb6192262f14e5db58370a888ca5a86f6f24b756eda60c7ab6d5807200fca",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/NoteDao.kt": "f786ed05962e31bbf5e5a3abcf813a24a9937d06cc89fe344fbd44a08ffb8d7e",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/NoteEntity.kt": "a9df83a089b215d4d67dd858a5c20544846a11e9e932c3d65e04d3e334b9e648",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/SyncDao.kt": "6157b014b661e1a210a7739fc312f74245ba241d05da04f5042d2398c0019742",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/SyncEntities.kt": "b69a57acf30b792c613fba6639c888e2a51245bd864c1b8f179176eecf9fbab0",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/SyncState.kt": "d330440fe5c3c8359cd0fd85e8a1ed12464f35b071980fd05d2554c03f30aeed",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/remote/ApiModels.kt": "2e7bd45bb2dd86e0a422d9ecf1a4cd8672ed316d890449000269c27076e5d4dc",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/remote/ApiResult.kt": "da180cdca5851cf8c46314134426e5f2a8113cd134eaf1528658463307609de1",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/remote/AuthApi.kt": "f65918fae9f95ae6cacb5877f0b9ced8907035296a43767855f22de432f403bf",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/remote/HttpClientProvider.kt": "743ca49adb839707a7cccde6c28860a52c5ce26866f474c4d1f8bde765ddb557",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/remote/SyncApi.kt": "7884b2ee8dfa081b8a0627109d9e8ad0779f9b9304ffe9f39529cd2cb936eeb3",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/sync/ConflictResolver.kt": "8e56eb58453fee702e94ea26e20da12833da342baaaca9f78e283539f031ec61",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/sync/NoteSyncWork.kt": "8f799b67642ec9d1f009bbbc9a981f6a458a27114b9b6df1425e272df633cd12",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/sync/RetryPolicy.kt": "dd84e4971bdf6c79e6bd5ac0f222c11cf901c6193e2aafc3de577ec3746f04e5",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/sync/SyncEngine.kt": "b80abaf4e998a4eae3c924a891b676dfb13b1c388473f5bc9de338db92e5799d",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/sync/SyncErrorClass.kt": "a8a4b2a818927dda2439116b47b5389b32d71b44dd46638151ce7ce4f19d2ee8",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/sync/SyncPayloads.kt": "d7d1a88dd37a47db2f11d72db56964bbd78f25246d0fef251f588e87a3728f1d",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/sync/SyncTrigger.kt": "63b992a193e78ee954b08deb75519328c2a19ecae038fd8a13ff5530397c4a54",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/sync/TrashRetention.kt": "43822a985e61e529da85a5b8504afe2ba6527f765e161517588b62bd57bd56e8",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/AppModule.kt": "b056a0cb7d9a538344ac9b0f2f431da525cb03ef79f01af79157353dd4ff7d57",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/AuthModule.kt": "1846b0b30cfced18e13044795fc808bfe4eb1f34aea003f695cc2eec45108f10",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/CoroutineModule.kt": "5bfe5554b0aca1b325d83258be4ae1ead78c9c5b8d4d7bca96a58d94a58d2d34",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/SyncModule.kt": "a0889af070d9e81a780db383e96998574e8ce89f0f3f31b0a1aae21423fcc20f",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/model/Note.kt": "2999c9095df39bccce19af3b9ddb10fbef754a205e11952af78a3726c22e7e76",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/auth/AuthScreen.kt": "b162845ee18b010299e728f94a39209f9c1578ddecf825e709fafa081830d885",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/auth/AuthViewModel.kt": "cb4948f2af5bb56e37cfd517440efa0a19b9231a52b19f5ee19f0f919073ed8f",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/editor/EditorScreen.kt": "3434aa6dca48517757f81ccff05bf66bd3f6e8685820d3032f84233308d9e27c",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/editor/EditorViewModel.kt": "9549708b535cb40cddfa2b39a527dd4e167cfb9cad356b387f2decc1bd6eff61",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/home/HomeScreen.kt": "9d25116a1755c9119e5b97563c281421b06e8588f1a671261adc74d6fbd7c4f2",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/home/HomeViewModel.kt": "d47c9e21dac325e53ae2e48c46b2e818cb939ec0dcc337bd650e25e159ca1a82",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/navigation/KeepLabNavigation.kt": "f8827340b4512f3f7c0bab2d33286e5010f844726cd053b3afe688dce2f01661",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/navigation/NavigationKeys.kt": "47a8670e846216a9d8d6d489d2f88504818d44bdee39d5e8c9310db19902642a",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/note/NoteCard.kt": "65d98cba373639a0b78d7495746eb25b82d97f471dffbdcc6682927d3a99e598",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/note/NoteCollection.kt": "69e553abed5efc22c85a3df234ae1b25c76adec397c654c843b27eb5b8fa512a",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/note/NoteColors.kt": "12c556b32a74cd5d517769283d1f1f8228cf7900e3f855f64e49ca8f2475b643",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/settings/SettingsScreen.kt": "6113fa9bf0c9094b6d13590b8bce61ba8179f43791a76e1b999742d64b8aea36",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/settings/SettingsViewModel.kt": "46f8a96057ca1ac6bc09add65165e95d430b8e35052fd5c1f26b6e6abb8efd44",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/trash/TrashScreen.kt": "e7cc3483b7479e9ddd948b3dbd1d1aa36615fb1fce631b6598b6b32d7a8acc27",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/trash/TrashViewModel.kt": "aef6ab0c3339fc09a287703935700c1739df6f1a982dafbf69be47b66c7e2660",
+      "KeepLab-Relay/app/src/test/java/com/keeplab/app/Fakes.kt": "48ed012de0c8879dfb74222086173c3c67b42427b9b4223ccb8180aeb1b84a21",
+      "KeepLab-Relay/app/src/test/java/com/keeplab/app/M2Fakes.kt": "57c123f9e2439ef15d80659879e084f5fc298e59182442a434d4b361644ad5a2",
+      "KeepLab-Relay/app/src/test/java/com/keeplab/app/data/M2SyncEngineTest.kt": "588b5a3724c7fd1fb6a6e81747576c22c3ed99f8f823c980d42685115468f345",
+      "KeepLab-Relay/app/src/test/java/com/keeplab/app/data/M3ConflictResolutionTest.kt": "bf29fb39e7de13c02b78817ca734d2c737737cee17291c8cb8166c6eddc3c529",
+      "KeepLab-Relay/app/src/test/java/com/keeplab/app/data/M3Harness.kt": "e5cd10e790cb24246f546b2cd209125841eefc0ac1aa71cd8ad380b8f127287b",
+      "KeepLab-Relay/backend/.env.example": "1431e57b47c0b284d5749c84a54a8613102b0be649b0347c856caa38ec3ff28c",
+      "KeepLab-Relay/backend/build.gradle.kts": "ca3a63428b6870ff820390124e9c2d209cd0826788b6ed831e69d5c95f6c9a12",
+      "KeepLab-Relay/backend/settings.gradle.kts": "80e885f40fcca8730b8210033c9d8381a8696facb4d9cfd4fbc6348f02e52be0",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/Application.kt": "5b50f304ef7005532227366b3edd918b7edd8a19d1e6ec9135caad159f526ea3",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/BackendServices.kt": "552dc69614564b7088b6b05e8452b58a22eec7d64398b6141ea33f78841d7774",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/Outcome.kt": "67b277812f66dd166174ca825c250d00473d670e281b850114e850db8679bf20",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/auth/AuthModels.kt": "3b2dab104d1775e8667af69dc7fd9eb12f70661224dcd1d05bcf9adce019c80b",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/auth/AuthService.kt": "7665b7575aeff5f1375972734af76fb1d9f641c8014306c80414877cd522aca9",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/auth/AuthStore.kt": "7948d4960f08f66e06df0542ee503ee7095e2388dcc0b81ada21db0076cd0649",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/auth/Clock.kt": "4ef3aaaac797abb25700b9f821be38af91a9fe7a920a018312d78cef71f24f3d",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/auth/EmailSender.kt": "84e395b134f37d27a7dc01156f1325d7d38f00c9f69d2ec7b839b9d30449b825",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/auth/JdbcAuthStore.kt": "cdb5a140b42ce4290be9a22026489c8d996ace8ef9508e1b9bf9a69a1c3e7439",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/auth/JwtService.kt": "fdb6924336973ed26ac77d1a01be79e4428708014375f53c35b7da33ff46d177",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/auth/SecretMaterial.kt": "4f4aedbfc9981068090ce2e05611afc66acfecaae838489ffb94458d93696057",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/auth/crypto/PasswordHasher.kt": "364ed98a98e478c64893ab15be12a18c0885e34e6f9d00588973f08368242399",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/auth/crypto/PepperedHasher.kt": "dfce8869ea67e15be50879ff7fe41d033c6a545a3ff6238d42f9b45f56099f67",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/config/AppConfig.kt": "992d3b5fa9e3e68ddcc7ff8a1ffaee29d33a7b2d8937c6c5bebbdaaad389dc90",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/db/DatabaseReadiness.kt": "96c2916710a9327faa2b103e83d6fda512717a81d735c7f405e60b58d9066661",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/db/FlywayMigrations.kt": "2b17fed677def6c779d8c13e4dfce7f18a6566e6989b7cb9496b625b8fe93fcf",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/db/PostgresDatabase.kt": "1fc7f817ec62711e140bda2937b5d51dfdeb954a6aa5aa5a1de3d0560c8c5654",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/routes/ApiModels.kt": "d8bf5e2665d4a8dbcf8c8ee90f9fc459d5ee0423311119765d20220782bb6598",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/routes/AuthRoutes.kt": "c15be274a8aaf0fc22f316f291d2e147985069ecfc77c7fdf271769770c46109",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/routes/RouteSupport.kt": "0a1efc6e9d5e6fc5c904aa9b1cea1e4d85d5af4cf911dd6646822d417a376053",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/routes/Routes.kt": "8d08407c4cc31402761c47f5813047ea9d6aa36ff007c9babbf56d01d988dde8",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/routes/SyncRoutes.kt": "7ac7ce88f45858009b6bd04ea0f831e4b4c2dbedeba1c13db3727d73527aae1c",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/sync/JdbcSyncStore.kt": "b9fe851536ad2d2eee64f4c4ddefc98ef650398913976503dd0c7c9f67b9aa8c",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/sync/SyncModels.kt": "41cd6ff415ffb197e074a983cae030c1d586f64ceded23827ae61f1825dbe1ad",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/sync/SyncService.kt": "675d9dbad775b68d929fa9010f553a47b85209d3868135cdebbd0bbc8b5f0e68",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/sync/SyncStore.kt": "cf27ac1ed3f801ab01be1a64a7b29db0a1ab1dcb99deb12209748e5455e10c5d",
+      "KeepLab-Relay/backend/src/main/resources/application.conf": "16c7b809a42a508f6dac20e820915b684b501835e435141ba1ba912f52c85394",
+      "KeepLab-Relay/backend/src/main/resources/db/migration/V1__create_keeplab_foundation_schema.sql": "31ff54592d4bdccf10e67bb16389773fe90b246556c6a4522614679609ee3148",
+      "KeepLab-Relay/backend/src/main/resources/db/migration/V2__auth_schema.sql": "03ce3f61f4399f0f56a48a17c67d006995198afa926108bba59f84ab6fe8ba42",
+      "KeepLab-Relay/backend/src/main/resources/db/migration/V3__sync_schema.sql": "5b6ca6ea8b73f53babfebf6bb92e52848c800fc5139670ea1c99af2e2c1fa724",
+      "KeepLab-Relay/backend/src/test/kotlin/com/keeplab/backend/ApplicationStartupTest.kt": "cf1a2bbeb841360d3fd744ef0cc1d4a22c980a14292f1d407e0c85912906598b",
+      "KeepLab-Relay/backend/src/test/kotlin/com/keeplab/backend/AuthRoutesTest.kt": "609e0bd5366a81bf0bb3f01a289112bea2153d37f200180082674e2f17681160",
+      "KeepLab-Relay/backend/src/test/kotlin/com/keeplab/backend/AuthServiceTest.kt": "d14d3cffff591f208a9afaba52d74cc5e1c6c24c73d8d8392556274e55e7d338",
+      "KeepLab-Relay/backend/src/test/kotlin/com/keeplab/backend/ConfigurationTest.kt": "42b83ae6367732ee611436b61fb8716b6c61591ac19bf7126c4b1df62d10c763",
+      "KeepLab-Relay/backend/src/test/kotlin/com/keeplab/backend/HealthRouteTest.kt": "d2738115e0144a4c177d9e3d986878144cbc629e03ac326430dc05691b810ec4",
+      "KeepLab-Relay/backend/src/test/kotlin/com/keeplab/backend/M2TestSupport.kt": "690b572f15bfdc095dc2423fa946ce5c7713af7826bacfd62433ee53dddb1f80",
+      "KeepLab-Relay/backend/src/test/kotlin/com/keeplab/backend/M3SyncConflictTest.kt": "d9e615522cb0917e6cd3ab1502486712e63d0331fcdd0ac8393deecf648684fd",
+      "KeepLab-Relay/backend/src/test/kotlin/com/keeplab/backend/M3TrashTombstoneTest.kt": "5e3c68fddb1764829f304b0224935b57e1df4d9febdb99dde91eb7120c860198",
+      "KeepLab-Relay/backend/src/test/kotlin/com/keeplab/backend/ReadyRouteTest.kt": "0f0ed352005b46bfde373c4e204fd16193aa104b4d4946a87abed20dc789d78b",
+      "KeepLab-Relay/backend/src/test/kotlin/com/keeplab/backend/SyncRoutesTest.kt": "1f7d89d5a19add246358ee260231c2c0accae900ac5eb207ca4679aa42eb7e5a",
+      "KeepLab-Relay/backend/src/test/kotlin/com/keeplab/backend/SyncServiceTest.kt": "f92dd8dd3e18b40e1673fe06afe26875280bb5c16a399c1c5195f6788ed3ab8f",
+      "KeepLab-Relay/backend/src/test/kotlin/com/keeplab/backend/TestFixtures.kt": "381442bc1f271010489c87b09d67fe82f8b43a9933f76c04a93c744243d9df67",
+      "KeepLab-Relay/build.gradle.kts": "ba09d5f46d33a5feff2236f53f482d87f2608e7153950695bd7e1333d7c6fae8",
+      "KeepLab-Relay/gradle.properties": "0a3448fbcc780cc608e0adaa28c10cfe77cc7ba6592da689c15ab34b70c76680",
+      "KeepLab-Relay/gradle/libs.versions.toml": "4f4ede9c3f73fd00e26371d49584b33878afaa01155ac8d2dcff2ac5b62c6981",
+      "KeepLab-Relay/gradle/wrapper/gradle-wrapper.properties": "e0846bd420bf1543f500e0c9b35c01d84611b0f1afe01e24a82d0eca53c33ccb",
+      "KeepLab-Relay/gradlew": "ab5c0cad16305af2e619c159c1f58dd68d07fab9c11e36701e109c0277407f7a",
+      "KeepLab-Relay/settings.gradle.kts": "6513bf224002bb5691e72e7a933ee766d2dab58c47b3d075a9fc77cd913a0ae7"
+    },
+    "authored_by_this_phase_not_frozen_as_input": [
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M4-HUMAN-DECISIONS.md",
+      "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-M4-ATTACHMENTS-001/**"
+    ],
+    "hook_and_core": {
+      "note": "Outside the guard source_root; recorded for the execution session's stop conditions, not enforceable by the guard's path lists.",
+      "/home/zhong/.hermes/profiles/android-stack/config.yaml": "recorded, not hashed here; the execution session re-reads it and STOPs if the hook wiring changed",
+      "/home/zhong/.hermes/profiles/android-stack/shell-hooks-allowlist.json": "recorded, not hashed here; the execution session re-reads it and STOPs if the hook wiring changed"
+    }
+  },
+  "protected_snapshot": {
+    "note": "The pre-existing Android product outside the enumerated M4 surface, the historical contract packages and the frozen governance must be provably untouched.",
+    "method": "Because KeepLab-Relay has no commits (MB-A1-002 / MB-A2-002), non-touch is proven by a scope scan asserting every created/modified file lies inside allowed_paths and that no forbidden path changed, plus re-hashing the frozen_inputs files.",
+    "must_remain_byte_identical": [
+      "KeepLab-Relay/app/src/main/res/drawable/**, res/mipmap-anydpi/**, res/mipmap-anydpi-v26/**, res/values/**, res/values-night/**",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/theme/**",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/common/**",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/conflict/**",
+      "KeepLab-Relay/app/src/androidTest/**",
+      "KeepLab-Relay/app/src/benchmark/**",
+      "KeepLab-Relay/app/schemas/** (does not exist; exportSchema stays false)",
+      "KeepLab-Relay/settings.gradle.kts",
+      "KeepLab-Relay/build.gradle.kts",
+      "KeepLab-Relay/gradle.properties",
+      "KeepLab-Relay/gradle/wrapper/**",
+      "KeepLab-Relay/gradlew",
+      "KeepLab-Relay/MISSION.md",
+      "KeepLab-Relay/FACTORY_RULES.md",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-A0-*, KEEPLAB-A1-*, KEEPLAB-A2-*, KEEPLAB-M2-*, KEEPLAB-M3-* execution and contract reports",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-*.md architecture reports",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/**"
+    ],
+    "contract_packages": {
+      "note": "Every earlier package is READ_ONLY and must stay byte-identical; their own manifests are the integrity source. All of them sit inside the forbidden reports/contracts/ prefix. This package is READ_ONLY_INPUT for its own execution session for the same reason.",
+      "paths": [
+        "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-WRITE-001/",
+        "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-TEXT-CLEANUP-001/",
+        "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL-001/",
+        "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A2-BACKEND-FOUNDATION-001/",
+        "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-M2-AUTH-SINGLE-USER-SYNC-001/",
+        "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-M3-OFFLINE-CONFLICT-001/"
+      ]
+    },
+    "p0b_contracts": [
+      "KeepLab-Relay/specs/p0b-close-benchmarkability/",
+      "KeepLab-Relay/specs/p0b-performance-reliability/",
+      "KeepLab-Relay/specs/phase-c-pin-notes-b1/"
+    ]
+  },
+  "verification_proof_mechanism": {
+    "git_baseline": "UNAVAILABLE — KeepLab-Relay is a git repository with no commits",
+    "used_instead": [
+      "the backend build/test result and the Android build/unit-test result themselves (the mandatory gates)",
+      "sha256 before/after of every frozen_inputs file",
+      "a scope scan asserting every created/modified file lies inside allowed_paths and that no forbidden path changed",
+      "a secret scan over the created/modified trees asserting no real credential and no token plaintext was committed or written into evidence"
+    ]
+  },
+  "contract_package_self_protection": {
+    "package": "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-M4-ATTACHMENTS-001/",
+    "declaration": "CONTRACT_PACKAGE: READ_ONLY_INPUT",
+    "enforcement": "The package path is inside the forbidden reports/contracts/ prefix, so the same guard blocks any write into it while this contract is active.",
+    "execution_rules": [
+      "The M4 session verifies the package sha256 manifest BEFORE its first write.",
+      "The M4 session must not rewrite, re-hash or extend its own contract package.",
+      "The M4 session must not broaden its own allowed paths; a needed broadening is a STOP and a new human-approved contract.",
+      "The frozen D-13 decision, the quota semantics and PROJECT_DATA_STAGE are recorded in this package and may not be re-decided at execution time.",
+      "No metadata contract, no upload contract, no download contract, no storage contract, no Attachment/Storage/Upload Review and no post-PASS audit may be created."
+    ]
+  },
+  "executor_prompt": {
+    "path": "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-M4-ATTACHMENTS-001/KEEPLAB-M4-ATTACHMENTS-EXECUTE.md",
+    "pointer": "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-M4-ATTACHMENTS-001/EXECUTOR-PROMPT.md",
+    "executed_in_this_phase": false,
+    "loop": "PLAN ONCE -> IMPLEMENT ATTACHMENT FOUNDATION -> IMPLEMENT BACKEND BINARY PATH -> IMPLEMENT ANDROID OFFLINE/UPLOAD/DOWNLOAD PATH -> IMPLEMENT MINIMAL UX -> VERIFY M4 ONCE -> PASS = STOP",
+    "must_stop_after": "M4 (A7 attachments verified once)",
+    "must_not_start": [
+      "A8 multi-device",
+      "A9 multi-account",
+      "collaboration",
+      "cloud deployment",
+      "release hardening"
+    ],
+    "forbidden_behaviour": [
+      "no metadata contract",
+      "no upload contract",
+      "no download contract",
+      "no storage contract",
+      "no Attachment Review",
+      "no Storage Review",
+      "no Upload Review",
+      "no post-PASS audit",
+      "no post-PASS review",
+      "no second audit",
+      "no full repository scan",
+      "no re-run of a passing task",
+      "no re-run of the already-passed gate side",
+      "no re-opening A0, A1, A2, M2 or M3",
+      "no A8 work"
+    ]
+  },
+  "acceptance_ids": [
+    "AC-M4-001",
+    "AC-M4-002",
+    "AC-M4-003",
+    "AC-M4-004",
+    "AC-M4-005",
+    "AC-M4-006",
+    "AC-M4-007",
+    "AC-M4-008",
+    "AC-M4-009",
+    "AC-M4-010",
+    "AC-M4-011",
+    "AC-M4-012",
+    "AC-M4-013",
+    "AC-M4-014",
+    "AC-M4-015",
+    "AC-M4-016",
+    "AC-M4-017",
+    "AC-M4-018",
+    "AC-M4-019",
+    "AC-M4-020",
+    "AC-M4-021",
+    "AC-M4-022",
+    "AC-M4-023",
+    "AC-M4-024",
+    "AC-M4-025",
+    "AC-M4-026",
+    "AC-M4-027",
+    "AC-M4-028",
+    "AC-M4-029",
+    "AC-M4-030",
+    "AC-M4-031",
+    "AC-M4-032",
+    "AC-M4-033",
+    "AC-M4-034",
+    "AC-M4-035",
+    "AC-M4-036",
+    "AC-M4-037",
+    "AC-M4-038",
+    "AC-M4-039",
+    "AC-M4-040"
+  ],
+  "requirements": [
+    {
+      "id": "REQ-M4-001",
+      "statement": "D-13 = ATTACHMENT_LIMITS_V1 is honoured exactly (26214400 bytes per attachment, 20 attachments per note, 1073741824 logical bytes per account, allowed MIME exactly image/jpeg, image/png, image/webp, application/pdf) and every limit is SERVER_CONFIGURABLE with the backend authoritative.",
+      "acceptance_ids": ["AC-M4-001"],
+      "task_ids": ["TASK-M4-01"]
+    },
+    {
+      "id": "REQ-M4-002",
+      "statement": "The server rejects a single attachment larger than 25 MiB; the size limit is enforced from server configuration, not from a client claim.",
+      "acceptance_ids": ["AC-M4-002"],
+      "task_ids": ["TASK-M4-01"]
+    },
+    {
+      "id": "REQ-M4-003",
+      "statement": "The server rejects the 21st attachment on a note; MAX_ATTACHMENTS_PER_NOTE = 20 is enforced server-side.",
+      "acceptance_ids": ["AC-M4-003"],
+      "task_ids": ["TASK-M4-01"]
+    },
+    {
+      "id": "REQ-M4-004",
+      "statement": "The 1 GiB logical account quota is enforced including duplicate content: the same hash attached twice counts twice, and a pending upload reservation counts while active.",
+      "acceptance_ids": ["AC-M4-004"],
+      "task_ids": ["TASK-M4-01"]
+    },
+    {
+      "id": "REQ-M4-005",
+      "statement": "Allowed MIME is exactly JPEG/PNG/WebP/PDF; audio/*, video/*, application/octet-stream, arbitrary binary files, executables and archives are not supported.",
+      "acceptance_ids": ["AC-M4-005"],
+      "task_ids": ["TASK-M4-01"]
+    },
+    {
+      "id": "REQ-M4-006",
+      "statement": "Attachment limits are configurable through environment keys (KEEPLAB_ATTACHMENT_MAX_BYTES, MAX_PER_NOTE, ACCOUNT_QUOTA_BYTES, ALLOWED_MIME_TYPES, CHUNK_BYTES, ORPHAN_GRACE_SECONDS) with safe M4 defaults, documented in backend/.env.example; no real backend/.env and no secret is created or committed.",
+      "acceptance_ids": ["AC-M4-006"],
+      "task_ids": ["TASK-M4-01"]
+    },
+    {
+      "id": "REQ-M4-007",
+      "statement": "An authenticated attachment configuration endpoint (GET /v1/attachments/config) returns maxBytes, maxPerNote, accountQuotaBytes, allowedMimeTypes and preferredChunkBytes and exposes no internal storage path; the Android client may cache it while the server stays authoritative.",
+      "acceptance_ids": ["AC-M4-007"],
+      "task_ids": ["TASK-M4-01"]
+    },
+    {
+      "id": "REQ-M4-008",
+      "statement": "A portable ObjectStorage abstraction exists; production business logic depends on it and never directly on a cloud SDK or filesystem API; FilesystemObjectStorage is the development/test reference driver configured by KEEPLAB_OBJECT_STORAGE_DRIVER and KEEPLAB_OBJECT_STORAGE_ROOT.",
+      "acceptance_ids": ["AC-M4-008"],
+      "task_ids": ["TASK-M4-01"]
+    },
+    {
+      "id": "REQ-M4-009",
+      "statement": "No cloud resource is provisioned (no Tencent COS, no Tencent CVM, no load balancer, no managed PostgreSQL, no cloud credential) and none is required for M4 to pass.",
+      "acceptance_ids": ["AC-M4-009"],
+      "task_ids": ["TASK-M4-01"]
+    },
+    {
+      "id": "REQ-M4-010",
+      "statement": "Objects are content-addressed by SHA-256 with account scope plus verified hash as the identity; the server verifies the actual uploaded bytes and never trusts only the client hash, the filename or the Content-Type header; user metadata cannot influence a filesystem path (no '../', no path traversal, no absolute path).",
+      "acceptance_ids": ["AC-M4-010"],
+      "task_ids": ["TASK-M4-02"]
+    },
+    {
+      "id": "REQ-M4-011",
+      "statement": "A resumable upload-session protocol exists: initiate (POST /v1/attachments/uploads) returning uploadId/chunkBytes/acceptedOffset/deduplicated-or-uploadRequired, chunk append (PUT /v1/attachments/uploads/{uploadId} with offset + binary body), status (GET) and complete (POST .../complete).",
+      "acceptance_ids": ["AC-M4-011"],
+      "task_ids": ["TASK-M4-02"]
+    },
+    {
+      "id": "REQ-M4-012",
+      "statement": "Complete verifies total byte count, SHA-256, MIME, quota reservation and note/account authorization; a hash mismatch is rejected and never becomes an UPLOADED attachment.",
+      "acceptance_ids": ["AC-M4-012"],
+      "task_ids": ["TASK-M4-02"]
+    },
+    {
+      "id": "REQ-M4-013",
+      "statement": "Upload resumes: the accepted offset and uploadId are persisted, a resuming client is told the accepted offset, and a fully-uploaded or deduplicated object reports that no further bytes are required.",
+      "acceptance_ids": ["AC-M4-013"],
+      "task_ids": ["TASK-M4-02"]
+    },
+    {
+      "id": "REQ-M4-014",
+      "statement": "Within the same account, verified identical content may reuse the stored binary, but independent attachment metadata is still created and each logical attachment still counts against the account quota and the per-note limit; deduplication never bypasses quota, the 20-attachment limit or authorization.",
+      "acceptance_ids": ["AC-M4-014"],
+      "task_ids": ["TASK-M4-02"]
+    },
+    {
+      "id": "REQ-M4-015",
+      "statement": "The service never reveals whether another account already has an identical content hash.",
+      "acceptance_ids": ["AC-M4-015"],
+      "task_ids": ["TASK-M4-02"]
+    },
+    {
+      "id": "REQ-M4-016",
+      "statement": "Download (GET /v1/attachments/{attachmentId}/content) is authorized: the authenticated account must own or access the attachment's parent note, a cross-account download is rejected, and no public anonymous object URL exists.",
+      "acceptance_ids": ["AC-M4-016"],
+      "task_ids": ["TASK-M4-02"]
+    },
+    {
+      "id": "REQ-M4-017",
+      "statement": "Quota is reserved and checked inside one atomic persistence boundary (not check-then-race-then-insert); concurrent upload initiation cannot exceed the 1 GiB logical account quota, and a reservation is released on abort, expiry or a failed initiation before commitment.",
+      "acceptance_ids": ["AC-M4-017"],
+      "task_ids": ["TASK-M4-02"]
+    },
+    {
+      "id": "REQ-M4-018",
+      "statement": "Orphan handling is conservative and explicit: an abandoned upload becomes an orphan candidate; a binary is deletable only when no attachment metadata references it, no active upload owns it and the orphan grace has elapsed; findOrphanCandidates() and cleanupEligibleOrphans() form the service boundary and cleanup never corrupts a live note.",
+      "acceptance_ids": ["AC-M4-018"],
+      "task_ids": ["TASK-M4-02"]
+    },
+    {
+      "id": "REQ-M4-019",
+      "statement": "Removing an attachment never deletes or corrupts the note: an account-scoped uploaded attachment is removed through authenticated backend semantics and an object with no remaining references becomes ORPHAN_CANDIDATE rather than being unsafely deleted inside the same metadata mutation; a LOCAL_ONLY attachment removes its metadata and its app-private file safely.",
+      "acceptance_ids": ["AC-M4-019"],
+      "task_ids": ["TASK-M4-02"]
+    },
+    {
+      "id": "REQ-M4-020",
+      "statement": "Backend authorization derives the account from the authenticated JWT subject only; a client-supplied accountId is never authority; upload and download additionally require the authenticated account to own the parent note.",
+      "acceptance_ids": ["AC-M4-020"],
+      "task_ids": ["TASK-M4-02"]
+    },
+    {
+      "id": "REQ-M4-021",
+      "statement": "A pending, offline, failed or resuming attachment upload never blocks note use: the user can still open the note and edit title/body/checklist, label, archive, pin and Trash the note; attachment failure is attachment-local.",
+      "acceptance_ids": ["AC-M4-021"],
+      "task_ids": ["TASK-M4-06"]
+    },
+    {
+      "id": "REQ-M4-022",
+      "statement": "Android imports the selected bytes into durable app-private storage by streaming (never depending permanently on a transient external content URI), enforces the 25 MiB limit while streaming when the source size is unknown, computes SHA-256, verifies the basic MIME signature and stores safely; an import failure does not corrupt note state and never leaves a partially-created usable attachment row unless the state explicitly represents failure.",
+      "acceptance_ids": ["AC-M4-022"],
+      "task_ids": ["TASK-M4-04"]
+    },
+    {
+      "id": "REQ-M4-023",
+      "statement": "MIME validation is performed against the real bytes (JPEG FF D8 FF, the PNG signature, WebP RIFF....WEBP, PDF %PDF-) and a MIME/header mismatch is a VALIDATION_ERROR that is never uploaded; no executable-detection framework and no archive support are added.",
+      "acceptance_ids": ["AC-M4-023"],
+      "task_ids": ["TASK-M4-04"]
+    },
+    {
+      "id": "REQ-M4-024",
+      "statement": "A clean local attachment model exists with the minimum concepts (stable client attachmentId, parent noteId/noteClientUuid, nullable accountId, app-private localPath, SHA-256 contentHash, sizeBytes, mimeType, displayName, uploadState, nullable remoteObjectId, uploadedBytes resume state, nullable lastErrorCode, createdAt and a removed state if required); the user filename is never the storage identity.",
+      "acceptance_ids": ["AC-M4-024"],
+      "task_ids": ["TASK-M4-04"]
+    },
+    {
+      "id": "REQ-M4-025",
+      "statement": "A LOCAL_ONLY note may hold LOCAL_ONLY attachments that remain fully local with no account and no upload, and a LOCAL_ONLY attachment is never silently adopted into an account; while the parent note stays LOCAL_ONLY the attachment stays LOCAL_ONLY.",
+      "acceptance_ids": ["AC-M4-025"],
+      "task_ids": ["TASK-M4-04"]
+    },
+    {
+      "id": "REQ-M4-026",
+      "statement": "For an account-scoped note a new valid attachment becomes UPLOAD_PENDING and is eligible for deferred upload while the note remains immediately usable; a network failure does not roll back note data and an upload failure does not mark the note unusable.",
+      "acceptance_ids": ["AC-M4-026"],
+      "task_ids": ["TASK-M4-04"]
+    },
+    {
+      "id": "REQ-M4-027",
+      "statement": "Attachment states are a small explicit set (LOCAL_ONLY, UPLOAD_PENDING, UPLOADING, UPLOADED, DOWNLOAD_PENDING, DOWNLOADING, FAILED, REMOVED or equivalent project-style names), not dozens of states, and the state survives repository/worker reconstruction because it is persisted.",
+      "acceptance_ids": ["AC-M4-027"],
+      "task_ids": ["TASK-M4-04"]
+    },
+    {
+      "id": "REQ-M4-028",
+      "statement": "Binary transfer uses its own durable attachment transfer pipeline (`attachment_sync`), separate from the existing `note_sync` pipeline, persisting the resume offset/upload id, and never creating a parallel duplicate upload for the same attachment.",
+      "acceptance_ids": ["AC-M4-028"],
+      "task_ids": ["TASK-M4-05"]
+    },
+    {
+      "id": "REQ-M4-029",
+      "statement": "Background binary upload prefers UNMETERED where practical without making attachment correctness depend forever on Wi-Fi; a manual Retry/Upload action may transfer under CONNECTED and a user-triggered download may use CONNECTED; no FCM and no push provider is introduced.",
+      "acceptance_ids": ["AC-M4-029"],
+      "task_ids": ["TASK-M4-05"]
+    },
+    {
+      "id": "REQ-M4-030",
+      "statement": "Attachment retry is bounded on the same recorded constants as M3 with no new infinite loop: network, 429 and 5xx stay retryable, while bad MIME, oversize, quota exceeded and too many attachments are permanent and are not retried forever; AUTH_REQUIRED retains the local file, the metadata and the pending transfer.",
+      "acceptance_ids": ["AC-M4-030"],
+      "task_ids": ["TASK-M4-05"]
+    },
+    {
+      "id": "REQ-M4-031",
+      "statement": "The minimal attachment UX lets the user attach an EXISTING JPEG/PNG/WebP/PDF through the Android system document/file picker restricted to the D-13 types, shows display name, type, size and transfer state, offers Retry when failed and Remove; content is re-validated after selection because picker filtering is not security validation; camera, drawing, voice and video capture are not implemented and the note editor is not redesigned.",
+      "acceptance_ids": ["AC-M4-031"],
+      "task_ids": ["TASK-M4-06"]
+    },
+    {
+      "id": "REQ-M4-032",
+      "statement": "No broad storage permission is requested: no MANAGE_EXTERNAL_STORAGE and no legacy storage permission is added for attachments.",
+      "acceptance_ids": ["AC-M4-032"],
+      "task_ids": ["TASK-M4-06"]
+    },
+    {
+      "id": "REQ-M4-033",
+      "statement": "Android download streams to a temporary app-private file, verifies SHA-256 and only then atomically replaces/finalizes the local attachment file; a failed hash validation becomes FAILED and never replaces known-good local data.",
+      "acceptance_ids": ["AC-M4-033"],
+      "task_ids": ["TASK-M4-05"]
+    },
+    {
+      "id": "REQ-M4-034",
+      "statement": "Deterministic backend tests cover the M4 backend matrix: default D-13 config, configurable override, allowed MIME, blocked MIME, magic/signature mismatch, over-25-MiB rejection, the 21st-attachment rejection, the 1 GiB quota, a pending reservation participating in quota, safe reservation release, same-account dedupe, dedupe not bypassing quota, cross-account hash/object non-exposure, upload initiate, chunk upload, resume offset, complete verifying SHA-256, hash mismatch rejection, authorized download, cross-account download rejection, remove-without-corrupting-the-note, a shared content object retained while referenced, an abandoned upload becoming an orphan candidate, and orphan cleanup never removing a referenced binary.",
+      "acceptance_ids": ["AC-M4-034"],
+      "task_ids": ["TASK-M4-03"]
+    },
+    {
+      "id": "REQ-M4-035",
+      "statement": "Deterministic Android tests cover the M4 Android matrix: allowed import, disallowed MIME rejected, oversize streaming import rejected, the app-private copy surviving source abstraction loss, SHA-256 computed, a LOCAL_ONLY attachment not uploading, an account-scoped attachment becoming UPLOAD_PENDING, the note usable while an upload is pending, the upload state surviving repository reconstruction, resume using the persisted offset/uploadId, a temporary failure retaining the local file, AUTH_REQUIRED retaining the local attachment, retry resuming, a successful upload becoming UPLOADED, download hash verification, a bad downloaded hash not replacing local data, removal leaving the parent note intact and the server config overriding a client default.",
+      "acceptance_ids": ["AC-M4-035"],
+      "task_ids": ["TASK-M4-07"]
+    },
+    {
+      "id": "REQ-M4-036",
+      "statement": "M4 is device-free: no adb, no Maestro, no UiAutomator, no instrumentation run and no APK installation; DEVICE = NOT_USED.",
+      "acceptance_ids": ["AC-M4-036"],
+      "task_ids": ["TASK-M4-08"]
+    },
+    {
+      "id": "REQ-M4-037",
+      "statement": "Verification is ONE pass: each final gate runs once, a failure fixes the failed path only and re-runs only the failed task, the already-passed side is never re-run, and PASS means STOP with no post-PASS review or audit.",
+      "acceptance_ids": ["AC-M4-037"],
+      "task_ids": ["TASK-M4-08"]
+    },
+    {
+      "id": "REQ-M4-038",
+      "statement": "M4 does not start A8 multi-device, A9 multi-account, collaboration, cloud deployment, release hardening or Google Keep work, and never touches Testapp or PowerAi.",
+      "acceptance_ids": ["AC-M4-038"],
+      "task_ids": ["TASK-M4-08"]
+    },
+    {
+      "id": "REQ-M4-039",
+      "statement": "This contract package stays READ_ONLY_INPUT, the Contract Guard and the hook wiring are never modified, Hermes core is never patched, and A0/A1/A2/M2/M3 are not reopened without new explicit failure evidence.",
+      "acceptance_ids": ["AC-M4-039"],
+      "task_ids": ["TASK-M4-08"]
+    },
+    {
+      "id": "REQ-M4-040",
+      "statement": "No secret reaches source, evidence, logs or the APK: no cloud credential, no backend .env, no attachment bytes logged, and object-storage credentials (when production exists later) belong only to backend infrastructure.",
+      "acceptance_ids": ["AC-M4-040"],
+      "task_ids": ["TASK-M4-08"]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "TASK-M4-01",
+      "goal": "Attachment foundation: the frozen D-13 limit set with server-configurable keys, the attachment configuration endpoint and the portable ObjectStorage abstraction with the filesystem development reference driver.",
+      "boundary": "Only KeepLab-Relay/backend/**. No binary transfer route yet, no Android change. No cloud provisioning, no object-storage SDK dependency.",
+      "depends": [],
+      "allowed_paths": [
+        "KeepLab-Relay/backend/"
+      ],
+      "acceptance_ids": ["AC-M4-001", "AC-M4-002", "AC-M4-003", "AC-M4-004", "AC-M4-005", "AC-M4-006", "AC-M4-007", "AC-M4-008", "AC-M4-009"],
+      "verification": "Deterministic backend tests: the resolved configuration equals the D-13 defaults; every key is overridable and a malformed value fails loudly; the config endpoint returns exactly maxBytes/maxPerNote/accountQuotaBytes/allowedMimeTypes/preferredChunkBytes and no filesystem or storage path; the ObjectStorage port is exercised through a filesystem driver under a temporary root created by the test, and a traversal-shaped or absolute shaped key from user metadata cannot escape it; no cloud SDK class appears in the dependency graph.",
+      "done_when": "The D-13 defaults are the server defaults and are configurable; the config endpoint exists and leaks no internal path; the ObjectStorage abstraction is the only binary-storage dependency of the domain logic; the filesystem driver is env-configured; backend/.env.example documents every new key with placeholders and no real .env exists; no cloud resource is provisioned."
+    },
+    {
+      "id": "TASK-M4-02",
+      "goal": "Backend binary path: the attachment persistence model and migrations, the resumable upload session protocol with server-side byte/hash/MIME verification, quota reservation, authorization, content deduplication, download, removal and the orphan service boundary.",
+      "boundary": "Only KeepLab-Relay/backend/**. No multipart or cloud-presigned architecture, no production orphan scheduler, no audio/video/archive support.",
+      "depends": ["TASK-M4-01"],
+      "allowed_paths": [
+        "KeepLab-Relay/backend/"
+      ],
+      "acceptance_ids": ["AC-M4-010", "AC-M4-011", "AC-M4-012", "AC-M4-013", "AC-M4-014", "AC-M4-015", "AC-M4-016", "AC-M4-017", "AC-M4-018", "AC-M4-019", "AC-M4-020"],
+      "verification": "Deterministic backend tests over the in-memory store and the in-process Ktor host: initiate/chunk/status/complete; a resume reports the accepted offset and a deduplicated object reports that no bytes are required; complete rejects a wrong total, a wrong hash and a mismatched MIME; the server derives the account from the token and a body accountId changes nothing; a foreign account's upload and download are rejected; the same hash twice creates two metadata rows that both count against quota; a pending reservation blocks a concurrent over-quota initiation and is released on abort/expiry; removal leaves the note usable and marks an unreferenced object an orphan candidate; cleanupEligibleOrphans() never removes a still-referenced binary.",
+      "done_when": "The protocol, verification, quota reservation, authorization, dedupe, download, removal and orphan boundary exist and are deterministic-testable without a live PostgreSQL; migrations after V3 exist only as genuinely required; no cloud dependency and no secret exists."
+    },
+    {
+      "id": "TASK-M4-03",
+      "goal": "Backend deterministic test suite for the M4 matrix.",
+      "boundary": "Only KeepLab-Relay/backend/** (test sources). No live PostgreSQL, no Docker, no network.",
+      "depends": ["TASK-M4-02"],
+      "allowed_paths": [
+        "KeepLab-Relay/backend/"
+      ],
+      "acceptance_ids": ["AC-M4-034"],
+      "verification": "A JUnit 5 suite in backend/src/test/kotlin/com/keeplab/backend/ covering every case named in AC-M4-034, run by `./gradlew -p backend test build`.",
+      "done_when": "Every AC-M4-034 case has at least one deterministic test that would fail if the behaviour regressed, the suite needs no live PostgreSQL, and LIVE_POSTGRES_INTEGRATION is recorded as SKIPPED_TOOL_UNAVAILABLE where applicable."
+    },
+    {
+      "id": "TASK-M4-04",
+      "goal": "Android local attachment model: the Room entity/DAO with the direct experimental schema bump, the app-private import pipeline (streaming size enforcement, SHA-256, magic-byte MIME validation), the local attachment states and the LOCAL_ONLY versus account-scoped attachment rules.",
+      "boundary": "The enumerated Android data/DI/model surface only. No UI yet, no binary transfer yet, no storage permission, no editor redesign.",
+      "depends": ["TASK-M4-02"],
+      "allowed_paths": [
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/model/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/",
+        "KeepLab-Relay/app/src/test/"
+      ],
+      "acceptance_ids": ["AC-M4-022", "AC-M4-023", "AC-M4-024", "AC-M4-025", "AC-M4-026", "AC-M4-027"],
+      "verification": "Deterministic JVM tests over in-memory/fake stores and a temporary app-private directory: an allowed import is copied and its SHA-256 matches the source bytes; a disallowed MIME and an oversize stream are rejected; the copied file survives the loss of the source abstraction (the copied path is independent of the picker URI); a LOCAL_ONLY attachment never uploads; an account-scoped attachment becomes UPLOAD_PENDING while the parent note stays readable and editable; the persisted upload state survives repository reconstruction; an import failure leaves no usable attachment row and no corrupted note.",
+      "done_when": "The local model carries every minimum field, the schema bump is a direct experimental bump with no authored migration chain, no user filename is used as storage identity, no broad storage permission is introduced, and the note usability invariant holds in code."
+    },
+    {
+      "id": "TASK-M4-05",
+      "goal": "Android offline/upload/download path: the separate durable `attachment_sync` transfer pipeline with resume, bounded retry, AUTH_REQUIRED non-destructiveness, verified download with atomic replace and safe removal.",
+      "boundary": "The enumerated Android data/DI surface. No second note pipeline, no push provider, no unbounded retry.",
+      "depends": ["TASK-M4-04"],
+      "allowed_paths": [
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/model/",
+        "KeepLab-Relay/app/src/test/"
+      ],
+      "acceptance_ids": ["AC-M4-028", "AC-M4-029", "AC-M4-030", "AC-M4-033"],
+      "verification": "Deterministic JVM tests with a fake/Ktor MockEngine backend: the attachment pipeline is distinct from `note_sync` and never creates a duplicate upload for the same attachment; resume uses the persisted offset/uploadId; a temporary failure retains the local file and the pending transfer; AUTH_REQUIRED retains the local attachment; retry resumes and a successful upload reaches UPLOADED; a download whose hash does not match leaves the known-good local file untouched and the state FAILED; a verified download atomically finalizes the local file.",
+      "done_when": "The transfer pipeline exists with its own durable state, the bounded retry constants are shared with M3 rather than duplicated, the network policy is implemented without a push provider, and removal leaves the parent note intact."
+    },
+    {
+      "id": "TASK-M4-06",
+      "goal": "Android minimal attachment UX and the note-usability guarantee: attach an existing JPEG/PNG/WebP/PDF through the system picker, show name/type/size/state, Retry and Remove, with the note remaining fully usable throughout.",
+      "boundary": "The enumerated Android UI surface including the new ui/attachment package. Tiny integration points only; no editor redesign, no capture UX, no broad storage permission.",
+      "depends": ["TASK-M4-05"],
+      "allowed_paths": [
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/attachment/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/editor/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/note/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/home/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/settings/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/navigation/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/trash/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/auth/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/model/",
+        "KeepLab-Relay/app/src/main/AndroidManifest.xml",
+        "KeepLab-Relay/app/src/main/res/xml/",
+        "KeepLab-Relay/app/src/test/"
+      ],
+      "acceptance_ids": ["AC-M4-021", "AC-M4-031", "AC-M4-032"],
+      "verification": "Deterministic JVM tests over the attachment view-model/repository seam: an attach action restricted to the D-13 MIME types imports and lists the attachment with its display name, type, size and state; Retry is offered only for a failed attachment; Remove removes it and leaves the note intact; while an upload is pending every note mutation path (title/body/checklist/label/archive/pin/Trash) still succeeds; the manifest requests no storage permission.",
+      "done_when": "The minimal attachment surface exists inside the new ui/attachment package with tiny integration points into the editor, the picker is the standard system picker restricted to the D-13 types and the selected content is re-validated, no capture feature and no broad storage permission exists, and the note editor is not redesigned."
+    },
+    {
+      "id": "TASK-M4-07",
+      "goal": "Android deterministic test suite for the M4 matrix.",
+      "boundary": "Only KeepLab-Relay/app/src/test/**. JVM only; no androidTest, no benchmark, no device.",
+      "depends": ["TASK-M4-06"],
+      "allowed_paths": [
+        "KeepLab-Relay/app/src/test/"
+      ],
+      "acceptance_ids": ["AC-M4-035"],
+      "verification": "JVM tests under app/src/test/java/com/keeplab/app/ covering every case named in AC-M4-035, run by :app:testDebugUnitTest.",
+      "done_when": "Every AC-M4-035 case has at least one deterministic test, no giant test framework is introduced, and the existing suite still passes."
+    },
+    {
+      "id": "TASK-M4-08",
+      "goal": "D-13 record, the single Milestone verification pass, the scope/secret scans and the M4 report.",
+      "boundary": "Run both frozen gates once each, write the evidence and the report. No further review, no second audit, no post-PASS cleanup, no device, no A8.",
+      "depends": ["TASK-M4-03", "TASK-M4-07"],
+      "allowed_paths": [
+        "Google-Android-Agent-Development-Stack/reports/",
+        "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-m4-attachments/"
+      ],
+      "acceptance_ids": ["AC-M4-036", "AC-M4-037", "AC-M4-038", "AC-M4-039", "AC-M4-040"],
+      "verification": "Backend: cd /mnt/AndroidDev/Projects/KeepLab-Relay && ./gradlew -p backend test build (ONCE). Android: cd /mnt/AndroidDev/Projects/KeepLab-Relay && ./gradlew :app:testDebugUnitTest :app:assembleDebug (ONCE). On failure, read the failure once, fix the failed path only and rerun only the failed task.",
+      "done_when": "Both gates PASS, the frozen inputs re-hash byte-identical, the scope scan shows changes only inside allowed_paths, the secret scan is clean, no attachment bytes or token plaintext were written, the D-13 record and the M4 report are recorded, and PASS means STOP."
+    }
+  ],
+  "verification_intent": {
+    "feature_id": "M4-ATTACHMENTS",
+    "engine": "gradle_jvm_backend + gradle_android_jvm_unit",
+    "device_required": false,
+    "acceptance_ids": [
+      "AC-M4-001", "AC-M4-002", "AC-M4-003", "AC-M4-004", "AC-M4-005", "AC-M4-006", "AC-M4-007",
+      "AC-M4-008", "AC-M4-009", "AC-M4-010", "AC-M4-011", "AC-M4-012", "AC-M4-013", "AC-M4-014",
+      "AC-M4-015", "AC-M4-016", "AC-M4-017", "AC-M4-018", "AC-M4-019", "AC-M4-020", "AC-M4-021",
+      "AC-M4-022", "AC-M4-023", "AC-M4-024", "AC-M4-025", "AC-M4-026", "AC-M4-027", "AC-M4-028",
+      "AC-M4-029", "AC-M4-030", "AC-M4-031", "AC-M4-032", "AC-M4-033", "AC-M4-034", "AC-M4-035",
+      "AC-M4-036", "AC-M4-037", "AC-M4-038", "AC-M4-039", "AC-M4-040"
+    ],
+    "mandatory_gates": [
+      {
+        "name": "BACKEND",
+        "command": "cd /mnt/AndroidDev/Projects/KeepLab-Relay && ./gradlew -p backend test build",
+        "runs": "ONCE",
+        "note": "Run once, after the foundation and the backend binary path are complete. Do not re-run after PASS. Do not re-run the Android side because the backend side passed, or vice versa."
+      },
+      {
+        "name": "ANDROID",
+        "command": "cd /mnt/AndroidDev/Projects/KeepLab-Relay && ./gradlew :app:testDebugUnitTest :app:assembleDebug",
+        "runs": "ONCE",
+        "note": "Device-free. No connectedAndroidTest, no benchmark module, no APK install."
+      }
+    ],
+    "optional_checks": [
+      {
+        "check": "live PostgreSQL integration",
+        "runs": "at most ONCE, only if a container runtime or a local PostgreSQL is genuinely available and the check is cheap",
+        "unavailable_result": "LIVE_POSTGRES_INTEGRATION = SKIPPED_TOOL_UNAVAILABLE",
+        "note": "Absence never blocks M4 and must never be replaced by an infrastructure installation effort. The transactional quota and reservation semantics must not be weakened because the runtime is unavailable."
+      }
+    ],
+    "oracle_intent": "Assert on deterministic, machine-readable evidence only: the backend Gradle build/test result, the Android unit-test and assembleDebug result, HTTP status and body of the attachment routes under the in-process test host, the ObjectStorage filesystem driver's stored bytes under a test-created temporary root, the persisted Room attachment state, the sha256 identity of the frozen inputs, the scope scan and the secret scan. No visual judgement, no LLM judgement, no screenshot, no device.",
+    "required_selectors": [],
+    "fixture_intent": "Fakes and in-process doubles only: an in-memory attachment store for the backend, a temporary directory as the object-storage root, a Ktor MockEngine or fake upload API for the Android client, deterministic time, a deterministic id/clock seam, a fake picker/import source that can be dropped to prove the app-private copy survives, and an injectable enqueuer seam for the attachment pipeline. No live PostgreSQL, no cloud, no device, no network.",
+    "required_checks": [
+      "backend build PASS",
+      "backend tests PASS",
+      "Android unit tests PASS",
+      "Android assembleDebug PASS",
+      "D-13 limits are the server defaults",
+      "every attachment limit is server-configurable",
+      "a malformed limit value fails loudly instead of silently defaulting",
+      "exactly JPEG/PNG/WebP/PDF are allowed",
+      "audio, video, octet-stream, arbitrary binary, executable and archive content is rejected",
+      "an over-25-MiB attachment is rejected",
+      "the 21st attachment on a note is rejected",
+      "the 1 GiB logical account quota is enforced",
+      "a duplicate hash still counts against quota",
+      "a pending upload reservation participates in quota",
+      "a reservation is released on abort/expiry/failed initiation",
+      "quota and count are checked inside one atomic boundary",
+      "server verifies the uploaded SHA-256 and rejects a mismatch",
+      "the server verifies the real MIME signature and rejects a mismatch",
+      "the object key derives from account scope + verified hash, never from the filename",
+      "user metadata cannot traverse the filesystem",
+      "the config endpoint exposes no internal storage path",
+      "upload initiate works",
+      "chunk upload works",
+      "resume uses the accepted offset",
+      "complete verifies byte count, hash, MIME and quota",
+      "authorized download works",
+      "a cross-account download is rejected",
+      "a cross-account hash existence is not revealed",
+      "same-account dedupe reuses the binary but creates independent metadata",
+      "dedupe never bypasses quota or the per-note limit",
+      "remove leaves the parent note intact",
+      "an unreferenced object becomes an orphan candidate",
+      "a referenced binary is never cleaned up",
+      "orphan cleanup never corrupts a live note",
+      "the ObjectStorage abstraction is the only binary-storage dependency",
+      "the filesystem reference driver is used in development/test",
+      "no cloud resource is provisioned",
+      "no Tencent or other cloud credential exists in the APK, source or evidence",
+      "no real backend/.env exists",
+      "an allowed attachment import copies the bytes into app-private storage",
+      "the app-private copy survives the loss of the source URI",
+      "SHA-256 is computed on import",
+      "a MIME/header mismatch is a VALIDATION_ERROR and is not uploaded",
+      "an oversize streaming import is rejected",
+      "a LOCAL_ONLY attachment does not upload",
+      "an account-scoped attachment becomes UPLOAD_PENDING",
+      "a LOCAL_ONLY attachment is never silently adopted into an account",
+      "a pending upload does not block opening or editing the note",
+      "the note stays editable/labellable/archivable/pinnable/trashable while an attachment is pending or failed",
+      "the attachment state survives repository reconstruction",
+      "resume uses the persisted offset/uploadId",
+      "a temporary failure retains the local file",
+      "a permanent validation failure is not retried forever",
+      "AUTH_REQUIRED retains the local attachment",
+      "retry resumes and a successful upload reaches UPLOADED",
+      "download verifies the hash",
+      "a bad downloaded hash does not replace known-good local data",
+      "removal leaves the parent note intact",
+      "the attachment pipeline is separate from note_sync and never duplicates an upload",
+      "no FCM, no push provider, no permanent background socket",
+      "the picker is restricted to the D-13 types and the content is re-validated",
+      "no MANAGE_EXTERNAL_STORAGE and no legacy storage permission is requested",
+      "no capture feature (camera/drawing/voice/video) exists",
+      "the either-side gate rule is respected (no re-run of a passing side)",
+      "no device work",
+      "no A8/A9/cloud/collaboration work",
+      "no attachment bytes or secrets in reports, evidence or logs"
+    ],
+    "not_verified_here": [
+      "any production deployment",
+      "any live PostgreSQL behaviour beyond the optional single check",
+      "any real Tencent COS behaviour",
+      "push notifications",
+      "multi-device convergence",
+      "multi-account isolation",
+      "collaboration and sharing",
+      "camera/drawing/voice/video capture",
+      "real picker/device UX (a later product/device milestone)",
+      "production email delivery"
+    ]
+  },
+  "stop_conditions": [
+    "Any required write falls outside allowed_paths or targets a forbidden path: STOP and emit CONTRACT_DEVIATION.",
+    "Any frozen_inputs file has drifted: STOP and emit STALE_M4_INPUT.",
+    "The independent backend project cannot work without changing a repository-root Gradle file, or the Android side needs a change to settings.gradle.kts / build.gradle.kts / gradle.properties / the wrapper: STOP and emit M4_ROOT_GRADLE_CHANGE_REQUIRED with the exact file and change; do not make the change.",
+    "A needed Android change falls outside the enumerated surface (for example a theme, a shared UI widget, an existing resource directory, androidTest, benchmark, the ui/conflict package or a Room schema export): STOP and emit M4_SURFACE_BROADENING_REQUIRED with the exact file and reason; do not broaden silently.",
+    "A metadata contract, an upload contract, a download contract, a storage contract, an Attachment/Storage/Upload Review or a post-PASS audit is being created: STOP — ONE milestone contract, ONE session, ONE verification pass.",
+    "The milestone is being split by media type or by phase (metadata, upload, download): STOP.",
+    "Any cloud resource would have to be provisioned, any cloud credential used, or any Tencent COS adapter implemented: STOP — M4 implements the portable abstraction and the filesystem reference driver only.",
+    "An object-storage SDK would have to be added as a production dependency of the domain logic: STOP — depend on ObjectStorage instead.",
+    "The Android device would have to be touched, or adb, Maestro, UiAutomator, an instrumentation run or an APK install used: STOP; M4 is device-free. A genuinely unavoidable device requirement is an explicit STOP with a recorded reason, not a silent default.",
+    "Docker, podman or PostgreSQL would have to be installed to proceed: STOP — record LIVE_POSTGRES_INTEGRATION = SKIPPED_TOOL_UNAVAILABLE and use deterministic tests.",
+    "A real secret would have to be written, committed or echoed into evidence, or a token/password/OTP/refresh secret or an attachment byte range logged: STOP.",
+    "A real backend/.env would have to be created: STOP.",
+    "A quota check would have to be implemented as check-then-race-then-insert outside an atomic boundary: STOP — a racing concurrent upload must not be able to exceed the 1 GiB account quota.",
+    "The server would have to trust a client-provided hash, filename or Content-Type instead of the verified bytes: STOP.",
+    "User metadata would have to influence a filesystem path, or '../' / an absolute path / a traversal would have to be accepted: STOP.",
+    "A cross-account download or a cross-account hash-disclosure would have to be possible: STOP.",
+    "An attachment failure would have to block or roll back note data, or a pending upload would have to block note use: STOP — INVARIANT ATT-1.",
+    "A LOCAL_ONLY attachment would have to be silently adopted into an account: STOP.",
+    "Orphan cleanup would have to delete a binary that is still referenced, or a live note would have to be corrupted by it: STOP.",
+    "An unbounded attachment retry loop, or retrying a permanent validation failure forever, would have to be introduced: STOP.",
+    "Attachment bytes would have to be logged, or an object URL served anonymously: STOP.",
+    "A storage permission (MANAGE_EXTERNAL_STORAGE or a legacy storage permission) would have to be requested: STOP.",
+    "Camera, drawing, voice or video capture would have to be implemented: STOP — out of scope.",
+    "Archive, executable, audio, video or arbitrary binary support would have to be added: STOP — D-13 excludes them.",
+    "A D-13 limit would have to be changed, or a fifth MIME type added: STOP — D-13 is frozen; only a new human decision may change it.",
+    "Hermes configuration, the hook allowlist, Hermes core, contract_guard.py, the frozen P0B-CLOSE contract, an A0/A1/A2/M2/M3 package or this package would have to be modified: STOP.",
+    "The contract package manifest does not verify: STOP.",
+    "The M4 session would have to broaden its own allowed paths: STOP; a new human-approved contract is required.",
+    "A0, A1, A2, M2 or M3 would have to be reopened: STOP without new explicit failure evidence.",
+    "A gate fails and the fix would reach outside allowed_paths: STOP.",
+    "The same failure survives two genuine fixes: STOP and perform ONE root-cause analysis; do not restart M4 from zero.",
+    "More than roughly 30 tool calls have occurred before meaningful product writes without a real blocker: STOP overhead work and execute (PROCESS_OVERHEAD_TOO_HIGH).",
+    "A minor wording, naming or warning issue is being turned into a new contract: STOP — append it compactly to reports/KEEPLAB-MINOR-BACKLOG.md instead.",
+    "A8, A9, collaboration, cloud deployment or release hardening is being started: STOP."
+  ],
+  "failure_rule": {
+    "rule": "Read the failure once, fix the failed path only, rerun only the failed task. Do not restart M4 and do not re-run tasks that already passed.",
+    "repeated_failure": "If the same failure survives two genuine fixes: emit REPEATED_FAILURE and perform one root-cause analysis.",
+    "allowed_patch_surface": "Only files inside allowed_paths may be edited to fix a failure. A fix that would need a root Gradle change, a forbidden Android file, an existing resource directory or a new dependency outside the backend/Android dependency surface is a STOP, not a workaround.",
+    "gate_rule": "Do not re-run the already-passed gate side. A backend failure never justifies re-running the Android gate, and an Android failure never justifies re-running the backend gate."
+  },
+  "overhead_rule": {
+    "statement": "M4 is a large milestone and implementation may naturally take time, but process overhead must not dominate.",
+    "forbidden": [
+      "long periods rewriting governance docs",
+      "reviewing M3 again",
+      "re-running M3 gates",
+      "re-validating PASS work",
+      "creating evidence before product work",
+      "re-reading the same architecture files",
+      "performing a full repository scan",
+      "creating attachment sub-contracts"
+    ],
+    "rule": "After contract activation, the stale-input check and one targeted discovery pass, begin implementation immediately. If process-only work dominates implementation: PROCESS_OVERHEAD_TOO_HIGH — simplify and execute."
+  },
+  "non_goals": [
+    "A8 multi-device hardening",
+    "A9 multi-account",
+    "collaboration and sharing",
+    "cloud deployment and release hardening",
+    "Tencent COS provisioning or any cloud resource",
+    "a Tencent COS SDK dependency in the domain logic",
+    "multipart or cloud-presigned upload architecture",
+    "a production orphan scheduler",
+    "camera capture",
+    "drawing capture",
+    "voice recording",
+    "video capture",
+    "audio, video, application/octet-stream, executable and archive support",
+    "image thumbnails that require a large unrelated UI or dependency change",
+    "a note-editor redesign",
+    "broad storage permissions",
+    "push provider, FCM and background push architecture",
+    "a permanent background socket",
+    "account deletion",
+    "production email provider",
+    "Google login, Google Identity, Firebase Auth, Google private API",
+    "full Room database encryption or any encryption claim",
+    "changing the root Android Gradle surface",
+    "tombstone GC or any tombstone retention duration",
+    "Google Keep work of any kind",
+    "Testapp and PowerAi",
+    "editing the frozen P0B-CLOSE contract, an A0/A1/A2/M2/M3 package or this package",
+    "editing contract_guard.py, the hook configuration or Hermes core",
+    "A0/A1/A2/M2/M3 re-opened",
+    "a separate D-13 governance task"
+  ],
+  "decisions": [
+    {
+      "id": "M4-001",
+      "statement": "M4 is executed as ONE milestone with ONE contract, ONE execution session and ONE final verification pass: attachment foundation -> backend binary path -> Android offline/upload/download path -> minimal UX -> verify once. Attachment metadata, upload and download are NOT split into separate contracts and no Attachment/Storage/Upload Review is created.",
+      "rationale": "The human directive explicitly forbids splitting metadata/upload/download into separate contracts and forbids the reviews; they add overhead without adding a verifiable outcome."
+    },
+    {
+      "id": "M4-002",
+      "statement": "D-13 = ATTACHMENT_LIMITS_V1 is frozen from HUMAN_PROJECT_OWNER_APPROVAL, 2026-10-06 and recorded in reports/KEEPLAB-M4-HUMAN-DECISIONS.md: MAX_SINGLE_ATTACHMENT_BYTES = 26214400, MAX_ATTACHMENTS_PER_NOTE = 20, ACCOUNT_ATTACHMENT_QUOTA_BYTES = 1073741824, ALLOWED_MIME_TYPES = image/jpeg, image/png, image/webp, application/pdf, LIMIT_AUTHORITY = SERVER_CONFIGURABLE.",
+      "rationale": "The human directive freezes these exact values and forbids reinterpretation; audio, video, octet-stream, arbitrary binary, executables and archives stay out of scope."
+    },
+    {
+      "id": "M4-003",
+      "statement": "Quota is logical: ACCOUNT_ATTACHMENT_QUOTA_BYTES counts the logical attachment bytes owned by the account, duplicate files do not bypass it, the same content hash may deduplicate the stored binary while both logical attachments still count, and a pending upload reservation counts while active so concurrent uploads cannot race past the quota; a reservation is released on abort, expiry or a failed initiation before commitment.",
+      "rationale": "The human directive states this quota semantics explicitly; the reservation rule is what makes the atomic boundary meaningful."
+    },
+    {
+      "id": "M4-004",
+      "statement": "M4 implements a portable ObjectStorage abstraction with FilesystemObjectStorage as the development/test reference driver, configured by KEEPLAB_OBJECT_STORAGE_DRIVER and KEEPLAB_OBJECT_STORAGE_ROOT. Production business logic depends on ObjectStorage, never directly on a Tencent COS SDK, an AWS SDK or filesystem APIs. No cloud resource is provisioned and no cloud credential exists. The filesystem driver is explicitly a DEVELOPMENT_REFERENCE_DRIVER, not a claim that production Tencent COS exists; a Tencent adapter may be added later at deployment/infrastructure time without changing attachment domain logic.",
+      "rationale": "D-08 selected Tencent Cloud and portable Docker as the production target, and the human directive forbids provisioning it in M4 while requiring the abstraction that keeps the domain logic vendor-free."
+    },
+    {
+      "id": "M4-005",
+      "statement": "The backend is the limit authority. Every limit is server-configurable through KEEPLAB_ATTACHMENT_* keys with the D-13 values as the safe defaults, and the Android client may only pre-validate for UX using cached server limits or the D-13 defaults. The server enforces regardless of what a client believed.",
+      "rationale": "The human directive requires SERVER_CONFIGURABLE limits with the backend authoritative, and allows client-side pre-validation for UX only."
+    },
+    {
+      "id": "M4-006",
+      "statement": "Content addressing uses SHA-256 and the server verifies the ACTUAL uploaded bytes; it never trusts only the client hash, filename or Content-Type header. Object identity is account scope + verified hash (recommended key shape accounts/<accountId>/sha256/<hash>); the user filename is never the object key; user metadata can never influence a filesystem path (no '../', no traversal, no absolute path).",
+      "rationale": "The human directive states each of these as mandatory, and they are the security boundary of the binary path."
+    },
+    {
+      "id": "M4-007",
+      "statement": "The upload protocol is a small resumable upload session: initiate, chunk append with an offset, status/resume, and complete. Route naming may follow the existing Ktor style. Multipart and cloud-presigned architecture must not be overbuilt, and a cloud-presigned design is explicitly not adopted.",
+      "rationale": "The human directive requires resume support and forbids overbuilding multipart/presigned architecture; a session with an accepted offset is the smallest correct design."
+    },
+    {
+      "id": "M4-008",
+      "statement": "Within the same account, verified identical content may reuse the stored binary, but independent attachment metadata is still created and each logical attachment still counts against account quota and the per-note limit. Deduplication never bypasses the maximum attachment count, the quota or authorization, and the service never reveals whether another account already has an identical hash.",
+      "rationale": "The human directive states both the dedupe permission and every bypass it must not enable, plus the cross-account non-disclosure requirement."
+    },
+    {
+      "id": "M4-009",
+      "statement": "Download is authenticated: the authenticated account must own or access the attachment's parent note, and no public anonymous object URL exists. On Android a download streams to a temporary app-private file, verifies SHA-256 and only then atomically replaces/finalizes the local file; a hash mismatch is FAILED and must not replace known-good local data.",
+      "rationale": "The human directive states the authorization rule and the Android verification/atomic-replace rule."
+    },
+    {
+      "id": "M4-010",
+      "statement": "Quota enforcement is not check-then-race-then-insert: the backend reserves/checks quota inside one atomic persistence boundary appropriate to the current store, so concurrent upload initiation cannot exceed the 1 GiB logical account quota, and MAX_ATTACHMENTS_PER_NOTE = 20 is likewise server enforced.",
+      "rationale": "The human directive names the race explicitly and requires an atomic boundary; the in-memory store and the JDBC store must both honour it."
+    },
+    {
+      "id": "M4-011",
+      "statement": "Removal is safe: removing an attachment never deletes or corrupts the note. An account-scoped uploaded attachment is removed through authenticated backend semantics; an object with no remaining references becomes an ORPHAN_CANDIDATE and is not unsafely deleted inside the same metadata mutation unless transactional correctness is proven. A LOCAL_ONLY attachment removes its metadata and its app-private local file safely.",
+      "rationale": "The human directive states the removal rule and explicitly warns against unsafe in-mutation deletion."
+    },
+    {
+      "id": "M4-012",
+      "statement": "Orphan handling is conservative: an abandoned upload, a binary whose metadata finalize failed, a removed attachment and a deduplicated binary still referenced elsewhere are all handled; a binary is deletable only when no attachment metadata references it, no active upload owns it and the orphan grace has elapsed; cleanup never corrupts a live note. findOrphanCandidates() and cleanupEligibleOrphans() are the service boundary; a full production scheduler is NOT built in M4.",
+      "rationale": "The human directive names the scenarios, the conservative rule and the sufficiency of an explicit service boundary."
+    },
+    {
+      "id": "M4-013",
+      "statement": "The local attachment model is clean and content-addressed: stable client attachmentId, parent note identity, nullable accountId for LOCAL_ONLY, app-private localPath, SHA-256 contentHash, sizeBytes, mimeType, displayName, uploadState, nullable remoteObjectId, uploadedBytes resume state, nullable lastErrorCode and createdAt. The user filename is neither the storage identity nor a path component.",
+      "rationale": "The human directive specifies the minimum concepts and forbids using the filename as identity."
+    },
+    {
+      "id": "M4-014",
+      "statement": "Import is durable and streaming: the selected bytes are copied into KeepLab app-private storage, streaming the data and enforcing the 25 MiB limit (including when the source size is unknown), computing SHA-256 and verifying the basic MIME signature. The app never depends permanently on a transient external content URI. An import failure does not corrupt note state and never leaves a partially-created usable attachment row unless the state explicitly represents failure.",
+      "rationale": "The human directive requires durability independent of the picker URI, streaming enforcement and a non-corrupting failure path."
+    },
+    {
+      "id": "M4-015",
+      "statement": "MIME validation is signature-based on the real bytes (JPEG FF D8 FF, the PNG signature, WebP RIFF....WEBP, PDF %PDF-); the extension alone is never trusted; a mismatch is a VALIDATION_ERROR that is not uploaded. No executable-detection framework and no archive support are added.",
+      "rationale": "The human directive specifies exactly these signatures and explicitly bounds the effort."
+    },
+    {
+      "id": "M4-016",
+      "statement": "A LOCAL_ONLY note may hold LOCAL_ONLY attachments that stay fully local; a LOCAL_ONLY attachment is never silently adopted into an account and stays LOCAL_ONLY while its parent note does. The existing no-silent-adoption policy is preserved.",
+      "rationale": "The human directive states this and it matches MISSION invariant 1 as already implemented by the note repository."
+    },
+    {
+      "id": "M4-017",
+      "statement": "On an account-scoped note a new valid attachment becomes UPLOAD_PENDING and is eligible for deferred upload while the note remains immediately usable; a network failure must not roll back note data and an upload failure must not mark the note unusable. The attachment states are a small explicit set (LOCAL_ONLY, UPLOAD_PENDING, UPLOADING, UPLOADED, DOWNLOAD_PENDING, DOWNLOADING, FAILED, REMOVED or project-style equivalents).",
+      "rationale": "INVARIANT ATT-1 and the human directive's state list; a small explicit model prevents state sprawl."
+    },
+    {
+      "id": "M4-018",
+      "statement": "Binary transfer uses its own durable attachment transfer pipeline named `attachment_sync`, separate from the existing `note_sync` pipeline, because large binary work has different retry and network behaviour. The resume offset and upload id are persisted and no parallel duplicate upload for the same attachment may exist.",
+      "rationale": "The human directive requires a separate attachment transfer queue and forbids duplicating an upload; keeping note mutation semantics untouched is the point of the separation."
+    },
+    {
+      "id": "M4-019",
+      "statement": "Network policy: background binary upload prefers UNMETERED where practical without making correctness depend forever on Wi-Fi; a manual Retry/Upload action may transfer under CONNECTED when the user explicitly asks; a user-triggered download may use CONNECTED. No FCM and no push provider is introduced.",
+      "rationale": "The human directive states this policy and forbids a push provider."
+    },
+    {
+      "id": "M4-020",
+      "statement": "Attachment retry is bounded on the same principles and recorded constants as M3 (AUTO_RETRY_MAX_ATTEMPTS = 5, EXPONENTIAL backoff) and introduces no new infinite loop. Network, 429 and 5xx stay retryable; bad MIME, oversize, quota exceeded and too many attachments are permanent and are not retried forever. AUTH_REQUIRED retains the local file, the metadata and the pending transfer.",
+      "rationale": "The human directive requires bounded retry consistent with M3, forbids an infinite loop, and requires AUTH_REQUIRED to be non-destructive."
+    },
+    {
+      "id": "M4-021",
+      "statement": "The attachment UX is the smallest useful one: attach an EXISTING JPEG/PNG/WebP/PDF through the Android system document/file picker restricted to the D-13 types, show display name, type, size and transfer state, offer Retry when failed and Remove. Content is re-validated after selection because picker filtering is not security validation. No camera/drawing/voice/video capture, no editor redesign, and an image thumbnail only if it needs no large unrelated UI or dependency work.",
+      "rationale": "The human directive enumerates exactly this surface and these exclusions."
+    },
+    {
+      "id": "M4-022",
+      "statement": "No broad storage permission is requested: no MANAGE_EXTERNAL_STORAGE and no legacy storage permission for attachments.",
+      "rationale": "The human directive forbids both; OpenDocument/SAF needs neither."
+    },
+    {
+      "id": "M4-023",
+      "statement": "Backend authorization derives the account from the authenticated JWT subject only — a client-supplied accountId is never authority — and upload/download additionally require the authenticated account to own the parent note.",
+      "rationale": "INVARIANT AUTHZ-1 and the human directive's requirement that the parent note be owned/accessible."
+    },
+    {
+      "id": "M4-024",
+      "statement": "The Android write surface is enumerated, not the whole app: data/ (including new data/attachment), model/, di/, one new ui/attachment package, the named UI integration packages, the application/activity entry points, AndroidManifest.xml, app/src/main/res/xml/ only, app/src/test/**, plus conditionally app/build.gradle.kts and gradle/libs.versions.toml.",
+      "rationale": "Attachments genuinely need exactly those surfaces; themes, shared widgets, the other resource directories, the M3 ui/conflict package, androidTest, benchmark and schemas are provably unrelated and stay blocked."
+    },
+    {
+      "id": "M4-025",
+      "statement": "The root Android Gradle surface is unchanged; only app/build.gradle.kts and gradle/libs.versions.toml may change, and only if targeted discovery proves a dependency change is actually required. The expected outcome is NO dependency change (SHA-256 is java.security.MessageDigest, magic-byte validation is a byte comparison, the picker is androidx.activity already pinned, and the server needs only ktor-server-core + java.security utility APIs). ROOT_GRADLE_CHANGE: NO.",
+      "rationale": "The human directive authorizes Gradle files only if targeted discovery proves a dependency change is required, and forbids broadly authorizing app/** without evidence."
+    },
+    {
+      "id": "M4-026",
+      "statement": "Room moves directly to the next clean schema version by an experimental bump with DEV_DATABASE_RESET_REQUIRED = YES for the new local attachment structures; no migration chain is authored and exportSchema stays false. The backend gains new Flyway migrations after V3 only as M4 requires, with no production compatibility chain.",
+      "rationale": "Project data is disposable experimental data (CLEAN_TARGET_ARCHITECTURE > PRESERVE_TEST_DATA) and the human directive forbids building production migration complexity."
+    },
+    {
+      "id": "M4-027",
+      "statement": "M4 is device-free and cloud-free: no adb, no Maestro, no UiAutomator, no APK install, no cloud provisioning, no infrastructure installation; a live-PostgreSQL check is optional and its absence is recorded as SKIPPED_TOOL_UNAVAILABLE without weakening the transactional semantics. Real picker/device UX may be validated in a later product/device milestone.",
+      "rationale": "The human directive makes M4 deterministic-test-first with DEVICE = NOT_USED and forbids installing infrastructure."
+    },
+    {
+      "id": "M4-028",
+      "statement": "Verification is ONE pass with both gates run once each; a failure fixes the failed path and re-runs only the failed task; a repeated failure triggers ONE root-cause analysis; PASS means STOP with no post-PASS audit. Minor non-blocking findings are appended compactly to reports/KEEPLAB-MINOR-BACKLOG.md instead of becoming contracts.",
+      "rationale": "Milestone execution: no review of review, no post-PASS audit, no re-run of a passing side, no backlog-by-count cleanup."
+    }
+  ],
+  "read_first": [
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-M4-ATTACHMENTS-001/KEEPLAB-M4-ATTACHMENTS-EXECUTE.md",
+      "why": "the execution prompt for this milestone contract"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M4-HUMAN-DECISIONS.md",
+      "why": "D-13 exactly as frozen, the logical quota semantics, the filesystem reference-driver decision and the pending-but-not-blocking decisions"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M3-OFFLINE-CONFLICT-EXECUTION.md",
+      "why": "exactly what M3 established (bounded retry, the durable outbox, one serialized note_sync pipeline, the persisted conflict record, the error mapping) so M4 extends it instead of re-deriving it"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-ARCHITECTURE-SPEC.md",
+      "why": "§22 attachments (content-addressed, append-only, deferred resumable upload, per-account authorized download, orphan candidate, INVARIANT ATT-1), §23 the service/object-storage boundary, §23.1 the chosen stack, §24/§25 the conceptual attachment endpoints"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-API-CONTRACT.md",
+      "why": "§2.4 the attachment endpoint semantics and §4 the error taxonomy with ATTACHMENT_FAILED, AUTH_REQUIRED and INVARIANT AUTHZ-1"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-DATA-MODEL.md",
+      "why": "§2.6 the attachment fields, §5 the attachment data flow (metadata commits locally, deferred ATTACHMENT_ADD binary upload), §4.1 the server consistency boundary M4's quota reservation must respect"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-IMPLEMENTATION-ROADMAP.md",
+      "why": "Phase A7 scope, acceptance gate and its explicit must-NOT-bundle list (no capture UX)"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-MINOR-BACKLOG.md",
+      "why": "the carried-forward non-blocking findings M4 must not turn into work (MB-A1-002/no git baseline, MB-M2-006/guard '>' false positive, MB-M3-009/dead MIGRATION_1_2, MB-M3-010/unbounded worker catch-all)"
+    },
+    {
+      "path": "KeepLab-Relay/MISSION.md",
+      "why": "hard invariant 1 (local-first mandatory, account/network optional and phase-gated, Room is the local SSOT, no local note may be silently assigned/uploaded/deleted/merged into an account, network or auth failure must never delete local data)"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/NoteRepository.kt",
+      "why": "the single creation/update boundary and the outbox transaction discipline the attachment creation/removal path must respect; requireAccountForNonLocalState is the account-scope invariant"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/NoteEntity.kt",
+      "why": "the parent entity the attachment row references: local id PK + stable clientUuid + nullable accountId + syncState"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/LocalStore.kt",
+      "why": "the one local write boundary every attachment metadata mutation must go through"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/sync/NoteSyncWork.kt",
+      "why": "the ONE unique `note_sync` pipeline and its WorkManager seam the attachment_sync pipeline must sit beside without duplicating or parallelizing note work"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/sync/RetryPolicy.kt",
+      "why": "the durable bounded-retry constants and eligibleForAutoRetry the attachment retry must reuse rather than re-invent"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/remote/SyncApi.kt",
+      "why": "the existing Ktor API shape (bearer token, ApiResult, no accountId in the body) the attachment API client must follow"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/sync/SyncStore.kt",
+      "why": "the atomic dedupe/apply/revision/change-log consistency boundary the attachment quota reservation must match in kind, plus the InMemorySyncStore/deterministic-test pattern M4's in-memory attachment store follows"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/config/AppConfig.kt",
+      "why": "the configuration pattern (ConfigKeys + fromEnvironment(env) with an injectable env reader) the KEEPLAB_ATTACHMENT_* keys and the object-storage configuration must follow"
+    }
+  ],
+  "unresolved_questions": [],
+  "does_not_resolve": {
+    "D-05": "HUMAN_DECISION_PENDING — account deletion is not implemented, therefore not blocking M4",
+    "D-11": "HUMAN_DECISION_PENDING — no push provider in M4",
+    "D-12": "HUMAN_DECISION_PENDING — collaboration out of scope",
+    "D-14": "HUMAN_DECISION_PENDING — formal spec package location, does not block M4",
+    "SYNC_TOMBSTONE_RETENTION_OR_COMPACTION": "IMPLEMENTATION_DECISION_PENDING — separate from D-06; no permanent tombstone retention duration is chosen and TOMBSTONE_GC stays DISABLED in M4",
+    "TENCENT_COS_PRODUCTION_ADAPTER": "NOT_IMPLEMENTED — M4 ships the portable abstraction and the filesystem development reference driver; the Tencent adapter belongs to deployment/infrastructure time",
+    "PRODUCTION_ORPHAN_SCHEDULER": "NOT_IMPLEMENTED — M4 provides findOrphanCandidates()/cleanupEligibleOrphans() only; scheduling belongs to deployment later",
+    "A8": "NOT_STARTED — multi-device hardening",
+    "A9": "NOT_STARTED — multi-account / collaboration"
+  },
+  "readiness": {
+    "status": "READY",
+    "gates": {
+      "acceptance": "PASS",
+      "boundaries": "PASS",
+      "hashes": "PASS",
+      "backend_path": "PASS (present, independent Gradle project, extended by M4)",
+      "android_surface": "PASS (enumerated, not whole-app)",
+      "traceability": "PASS",
+      "d13_frozen": "PASS (ATTACHMENT_LIMITS_V1; server-configurable; quota semantics recorded)",
+      "object_storage": "PASS (portable abstraction; filesystem development reference driver; no cloud provisioning)",
+      "milestone_model": "PASS (one contract, one session, one verification pass; metadata/upload/download not split)"
+    }
+  }
+}

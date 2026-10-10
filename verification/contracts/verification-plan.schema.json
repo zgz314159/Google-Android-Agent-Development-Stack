@@ -1,0 +1,146 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://android-agent-stack/verification/contracts/verification-plan.schema.json",
+  "title": "Verification Plan",
+  "description": "Machine-readable input to runner/run_verification.sh. Declares what to verify and which project-supplied instrumentation implements the journey/fixture/oracle. The Verification Layer owns everything else (preflight, install, lifecycle, IME, evidence, provenance, timeouts, cleanup).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["verification_id", "project", "android", "engine", "journey"],
+  "properties": {
+    "verification_id": {"type": "string", "minLength": 1},
+    "project": {"type": "string", "minLength": 1},
+    "description": {"type": "string"},
+    "android": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["package_name", "apk"],
+      "properties": {
+        "package_name": {"type": "string", "minLength": 1},
+        "apk": {"type": "string", "minLength": 1},
+        "test_apk": {"type": "string"},
+        "expected_app_sha256": {"$ref": "#/definitions/sha256"},
+        "expected_test_sha256": {"$ref": "#/definitions/sha256"},
+        "runner": {
+          "type": "string",
+          "default": "androidx.test.runner.AndroidJUnitRunner"
+        }
+      }
+    },
+    "device": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "serial": {"type": "string", "minLength": 1},
+        "expected_model": {"type": "string"},
+        "expected_api": {"type": "string"}
+      }
+    },
+    "engine": {
+      "description": "uiautomator is the production default. maestro is a challenger/reference engine only.",
+      "enum": ["uiautomator", "maestro"]
+    },
+    "journey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "test_class"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "test_class": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Fully-qualified instrumentation class that drives the UI and (for uiautomator) writes events + verify-part.json."
+        },
+        "flow": {
+          "type": "string",
+          "description": "Maestro flow path, required when engine=maestro."
+        },
+        "args": {
+          "type": "object",
+          "description": "Extra -e key value instrumentation arguments.",
+          "additionalProperties": {"type": "string"}
+        }
+      }
+    },
+    "fixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class", "method"],
+      "properties": {
+        "class": {"type": "string", "minLength": 1},
+        "method": {"type": "string", "minLength": 1}
+      }
+    },
+    "oracle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class"],
+      "properties": {
+        "class": {"type": "string", "minLength": 1},
+        "expected_outcome": {"enum": ["PASS", "FAIL"], "default": "PASS"}
+      }
+    },
+    "require_verify_part": {
+      "type": "boolean",
+      "description": "Fail-closed evidence gate. Defaults to true for engine=uiautomator or when an oracle is declared: PASS is impossible unless bench/verify-part.json exists, is schema-valid, has database.checked=true and database.outcome=PASS (v1.0.1). Set false only for a journey with no DB/domain ground truth."
+    },
+    "input_smoke": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {"type": "boolean", "default": true},
+        "class": {"type": "string", "description": "uiautomator input smoke class."},
+        "flow": {"type": "string", "description": "maestro input smoke flow."}
+      }
+    },
+    "selectors": {
+      "type": "object",
+      "description": "Optional documentation/validation aid mirroring docs/VERIFICATION-SELECTOR-CONTRACT.md."
+    },
+    "preconditions": {
+      "type": "object",
+      "description": "Optional declared preconditions (recorded in the result, never guessed)."
+    },
+    "timeouts": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Per-stage hard timeouts in seconds. Every stage is bounded.",
+      "properties": {
+        "preflight": {"type": "integer", "minimum": 1, "default": 30},
+        "install": {"type": "integer", "minimum": 1, "default": 300},
+        "instrumentation": {"type": "integer", "minimum": 1, "default": 600},
+        "oracle": {"type": "integer", "minimum": 1, "default": 120},
+        "evidence": {"type": "integer", "minimum": 1, "default": 120},
+        "cleanup": {"type": "integer", "minimum": 1, "default": 60},
+        "shell": {"type": "integer", "minimum": 1, "default": 30}
+      }
+    },
+    "evidence_policy": {
+      "enum": ["failure-only", "always"],
+      "default": "failure-only",
+      "description": "failure-only keeps the PASS path compact; always additionally captures the failure-bundle shape."
+    },
+    "measurement_class": {
+      "enum": ["measured", "control", "warmup", "diagnostic", "failed-pre-fix"]
+    },
+    "excluded_from_baseline": {"type": "boolean", "default": false},
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "verification_layer_version": {"type": "string"},
+        "commit": {"type": "string"}
+      }
+    },
+    "evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "output_root": {"type": "string"},
+        "project": {"type": "string"}
+      }
+    }
+  },
+  "definitions": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

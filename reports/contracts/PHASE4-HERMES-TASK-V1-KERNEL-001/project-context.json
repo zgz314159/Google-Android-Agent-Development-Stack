@@ -1,0 +1,108 @@
+{
+  "project": "Google-Android-Agent-Development-Stack",
+  "project_type": "brownfield",
+  "source_root": "/mnt/AndroidDev/Projects",
+  "phase": "PHASE4",
+  "contract_id": "PHASE4-HERMES-TASK-V1-KERNEL-001",
+  "purpose": "Authorize exactly the write surface needed to install the already-implemented, already-tested Phase-4 GPT<->Hermes control kernel from its evidence staging tree into orchestration/hermes/bridge/. This package authorizes the install; it does not perform it.",
+  "current_blocker": {
+    "active_guard_package": "KeepLab-Relay/specs/p0b-close-benchmarkability (contract KEEPLAB-P0B-CLOSE-001)",
+    "symptom": "orchestration/hermes/bridge/ is inside the project root and listed in no active allowed_paths, so the Contract Guard returns UNCLASSIFIED_FAIL_CLOSED for every write to it.",
+    "resolution": "This package lists orchestration/hermes/bridge/ in allowed_paths. The install session activates it by exporting HERMES_CONTRACT_PACKAGE=<this package directory>; config.yaml and the guard source are unchanged."
+  },
+  "staged_implementation": {
+    "status": "FROZEN_AND_TESTED",
+    "staging_path": "orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/bridge/",
+    "test_result": "34/34 bridge tests passed during the Phase-4 run",
+    "modules": [
+      "protocol.py",
+      "bridge_state.py",
+      "contract_executor.py",
+      "bridge_cli.py",
+      "chatgpt_adapter.py"
+    ],
+    "note": "Do not redesign or rewrite. The install is a verbatim copy plus a test run plus a parity proof."
+  },
+  "install_target": {
+    "bridge_dir": "orchestration/hermes/bridge/",
+    "existing_content": "chatgpt_adapter.py (Phase 3) only",
+    "overwrite": "the Phase-3 adapter is superseded by the staged Phase-4 adapter"
+  },
+  "read_first": [
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/STAGING.md",
+      "why": "state why the kernel is staged and what the install command and precondition are"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/bridge/protocol.py",
+      "why": "the HERMES_TASK_V1 / HERMES_RESULT_V1 envelope being installed"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/bridge/bridge_state.py",
+      "why": "persistent state, replay journal and single-worker lock"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/bridge/contract_executor.py",
+      "why": "contract-package gate and guarded execution path"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/bridge/bridge_cli.py",
+      "why": "the one-round entry point being installed"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/bridge/chatgpt_adapter.py",
+      "why": "the Phase-4 adapter carrying the send-semantics fix that supersedes the Phase-3 copy"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/bridge/tests/test_bridge_kernel.py",
+      "why": "the deterministic suite that must pass against the installed tree"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/chatgpt_adapter.py",
+      "why": "the only pre-existing file at the install target, confirming the tracked overwrite"
+    }
+  ],
+  "allowed_paths": [
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/"
+  ],
+  "forbidden_paths": [
+    "Google-Android-Agent-Development-Stack/specification/",
+    "Google-Android-Agent-Development-Stack/verification/",
+    "Google-Android-Agent-Development-Stack/verification-benchmark/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/tools/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/HERMES-LOCK.json",
+    "Google-Android-Agent-Development-Stack/reports/contracts/",
+    "Google-Android-Agent-Development-Stack/.hermes.md",
+    "KeepLab-Relay/",
+    "KeepLab-Relay-evidence/",
+    "Testapp/",
+    "PowerAi/"
+  ],
+  "boundary_notes": {
+    "source_root": "/mnt/AndroidDev/Projects",
+    "resolution": "allowed_paths and forbidden_paths are project-relative to the Contract Guard source_root, as in the P0B-CLOSE and earlier contracts; an entry is a directory prefix or an exact file.",
+    "no_overlap": "No allowed path is equal to, inside, or a parent of any forbidden path; the compiler reports zero E_PATH_CONFLICT.",
+    "unlisted_is_blocked": "Any path inside the project root matching neither list stays BLOCKED (UNCLASSIFIED_FAIL_CLOSED), which protects KeepLab code, the compiler, the guard and every historical artifact.",
+    "not_guard_enforceable": "The Hermes profile config.yaml and the pinned Hermes source sit outside the guard source_root; they are declared read-only by this contract and are proven unchanged by pre/post sha256 equality.",
+    "no_broad_access": "No path above the two authorized directories is allow-listed; /mnt/AndroidDev/Projects itself is never an allowed path."
+  },
+  "protected_snapshot": {
+    "device": "87296ada",
+    "device_used": false,
+    "device_operation": "FORBIDDEN",
+    "android_verification_behaviour": "UNCHANGED",
+    "no_visual_llm_judgment": true
+  },
+  "contract_notes": {
+    "package_role": "EXECUTION_AUTHORIZATION_CONTRACT",
+    "package_access": "READ_ONLY_INPUT",
+    "generated_by": "specification/compiler (hash_manifest.py -> build_contract.py -> validate_package.py)",
+    "execution_sessions": 1,
+    "verification_passes": 1,
+    "keep_lab_product": "UNTOUCHED",
+    "phase4_implementation": "FROZEN_NOT reopened",
+    "install_performed_by_this_phase": false
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "verification_id": "KEEPLAB-REFERENCE-J1",
+  "project": "KeepLab",
+  "engine": "uiautomator",
+  "journey": "J1",
+  "outcome": "PASS",
+  "started_at": "2026-10-03T16:00:00Z",
+  "finished_at": "2026-10-03T16:00:25Z",
+  "app_apk_sha256": "a8858bd1f57b328a5042a120023508ced8e1cbbf68446bab3ce0e5e80f6fdf06",
+  "test_apk_sha256": "c13b8def9d34dae7753106aeebc9da0c7959f51e3781b1b5880dac6f49e2f821",
+  "verification_layer_version": "1.0.0",
+  "runner_version": "androidx.test.runner.AndroidJUnitRunner",
+  "device": {"serial": "87296ada", "model": "Redmi Note 7 Pro", "api": "36"},
+  "measurements": {
+    "class": "diagnostic",
+    "excluded_from_baseline": true,
+    "setup_wall_ms": 13607,
+    "total_wall_ms": 21237,
+    "t7a_ms": 1833.887,
+    "t7b_ms": 17101.274,
+    "t7c_ms": 58.63
+  },
+  "checks": {
+    "ui": {"evidence": "uiautomator", "reachable": true},
+    "database": {"checked": true, "outcome": "PASS", "checks": []},
+    "process": {"crashed": false, "executor_ok": true, "evidence": "no-crash"},
+    "visual": {"mode": "failure-only", "screenshots": 0}
+  },
+  "evidence": {"policy": "failure-only", "bundle": null, "complete": null}
+}

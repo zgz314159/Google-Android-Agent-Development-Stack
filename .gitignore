@@ -1,0 +1,59 @@
+# Filesystem boundary: this repository holds reproducible, reviewable project material only.
+# Generated state, outputs, caches, logs, screenshots, APKs, browser profiles and credentials
+# live OUTSIDE the project (see specification/docs/FILESYSTEM-LAYOUT.md and scripts/lib/stack_paths.py).
+# Authored source, tests, fixtures, locks, manifests, schemas and durable documents are NOT ignored.
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.egg-info/
+.venv/
+venv/
+env/
+
+# ---- Java / Gradle / Android ----
+build/
+*/build/
+.gradle/
+local.properties
+*.apk
+*.ap_
+*.aab
+captures/
+.externalNativeBuild/
+.cxx/
+
+# ---- Node ----
+node_modules/
+*.log
+npm-debug.log*
+
+# ---- Live runtime state (must live under STACK_STATE_ROOT) ----
+orchestration/hermes/runtime/
+verification/.state/
+verification/.runs/
+verification/reference-replay/.state/
+verification/reference-replay/.runs/
+verification-benchmark/harness/.state/
+
+# ---- Generated evidence / results / reports (must live under STACK_DATA_ROOT/artifacts) ----
+orchestration/hermes/evidence/stack-simplification-s2-wave1a/observed/
+orchestration/hermes/evidence/stack-simplification-s2-wave1b/*.jsonl
+verification-benchmark/results/
+verification-benchmark/reports/hardening/
+reports/migration-recovery/
+reports/evidence/
+
+# ---- Misc generated ----
+*.tmp
+.DS_Store
+
+# ---- Agent/tooling state (not project body) ----
+.commandcode/

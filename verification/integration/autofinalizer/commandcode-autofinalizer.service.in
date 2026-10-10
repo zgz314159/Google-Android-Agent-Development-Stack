@@ -1,0 +1,9 @@
+[Unit]
+Description=Command Code Evaluation Auto-Finalizer (oneshot scan)
+Documentation=file://__STACK__/verification/integration/autofinalizer/README.md
+
+[Service]
+Type=oneshot
+ExecStart=__PYTHON__ __STACK__/evaluation/commandcode/auto_finalize.py scan --projects-root __HOME__/.commandcode/projects --output-root __OUTPUT_ROOT__ --stable-seconds 60
+Nice=10
+IOSchedulingClass=idle

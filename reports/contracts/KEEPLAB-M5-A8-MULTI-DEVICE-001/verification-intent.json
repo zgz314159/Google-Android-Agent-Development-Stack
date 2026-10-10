@@ -1,0 +1,57 @@
+{
+  "feature_id": "KEEPLAB-M5-A8-MULTI-DEVICE",
+  "journey_id": "M5-A8-TWO-DEVICE-JOURNEY",
+  "engine": "maestro",
+  "acceptance_ids": [
+    "AC-M5-001",
+    "AC-M5-002",
+    "AC-M5-003",
+    "AC-M5-004",
+    "AC-M5-005",
+    "AC-M5-006",
+    "AC-M5-007",
+    "AC-M5-008",
+    "AC-M5-009",
+    "AC-M5-010",
+    "AC-M5-011",
+    "AC-M5-012",
+    "AC-M5-018",
+    "AC-M5-019",
+    "AC-M5-022",
+    "AC-M5-023",
+    "AC-M5-024",
+    "AC-M5-026"
+  ],
+  "required_selectors": [
+    "m5_session_list",
+    "m5_session_row_current",
+    "m5_session_revoke_action",
+    "m5_auth_required_banner",
+    "m5_note_list",
+    "m5_note_editor_title",
+    "m5_conflict_banner",
+    "m5_account_delete_request",
+    "m5_account_delete_pending",
+    "m5_account_delete_cancel",
+    "m5_sync_status"
+  ],
+  "persistence_checks": [
+    "after a remote revoke or disable the Device B Room note set is unchanged",
+    "after a remote revoke or disable the Device B durable outbox is unchanged",
+    "LOCAL_ONLY notes remain local and account-scoped cached notes remain account-scoped and are never reassigned",
+    "an account in DELETION_PENDING leaves the Android local notes intact",
+    "a purge removes only the server account data and never touches Android local Room data"
+  ],
+  "rotation_checks": [
+    "a revoked refresh token never rotates into a new valid refresh chain",
+    "a retried rotation with the same refresh_request_id still recovers the same result",
+    "after in-grace cancellation the account is ACTIVE again and a fresh login or refresh succeeds"
+  ],
+  "search_checks": [
+    "exactly one session in the session list is flagged as the current installation",
+    "the two device instances hold distinct session ids and distinct installation identities on the same account",
+    "a concurrent write from the same base revision is answered with the authoritative 409 body and no silent overwrite"
+  ],
+  "fixture_intent": "Two independent Android device/app instances on ONE KeepLab account (two ADB-visible emulators, one physical device plus one emulator, or two physical devices), each with its own app process, local Room database, secure/session store, KeepLab-generated installation identity and authenticated session. The backend fixture is the existing development backend/test environment with two independent authenticated clients (distinct sessions and installation identities, same account); no cloud infrastructure is provisioned. The D-05 boundary fixture is an injected/fake server clock, never a 30-real-day wait.",
+  "oracle_intent": "Deterministic only. Primary oracle: the deterministic backend tests, the deterministic two-client backend integration, the deterministic Android JVM tests, and explicit assertions on the two-device journey (persisted Room/outbox state, server-accepted revision, refused status codes, the fake-clock purge_after arithmetic, and the exact A8 gate values). Screenshots are never the primary oracle; on a device failure the evidence may include a screenshot plus the layout hierarchy, logcat and the failed assertion, read once. PUSH_PROVIDER = NONE and PUSH_REQUIRED_FOR_CORRECTNESS = NO are asserted, not assumed. The engine field records the stack's selector-driven device replay family; the real oracle is the deterministic assertions above. Verification runs once; PASS = STOP, and an unavailable real device pair yields A8_DEVICE_PAIR_UNAVAILABLE rather than a mock PASS."
+}

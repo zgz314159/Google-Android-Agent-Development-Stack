@@ -1,0 +1,20 @@
+{
+  "project": "KeepLab",
+  "note": "Selector identities for the reference journey. The Verification Layer consumes these; it never invents selectors. See docs/VERIFICATION-SELECTOR-CONTRACT.md.",
+  "priority": [
+    "stable testTag / resource id",
+    "contentDescription",
+    "immutable semantic text",
+    "structured accessibility relation",
+    "coordinates (last resort)"
+  ],
+  "identities": {
+    "editor-title": {"kind": "testTag", "value": "editor-title", "node": "Editor title field"},
+    "editor-body": {"kind": "testTag", "value": "editor-body", "node": "Editor body field"},
+    "search-field": {"kind": "testTag", "value": "search-field", "node": "Search field"},
+    "back": {"kind": "contentDescription", "value": "Back", "node": "Back"},
+    "search": {"kind": "contentDescription", "value": "Search", "node": "Search"},
+    "new-note": {"kind": "contentDescription", "value": "New text note", "node": "New text note FAB"},
+    "home-title": {"kind": "text", "value": "KeepLab", "node": "Home title (immutable)"}
+  }
+}

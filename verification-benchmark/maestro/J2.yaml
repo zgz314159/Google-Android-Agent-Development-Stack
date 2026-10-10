@@ -1,0 +1,33 @@
+appId: com.keeplab.app
+name: J2-complex-state
+tags:
+  - benchmark
+---
+- launchApp:
+    clearState: false
+- tapOn: "More"
+- tapOn: "Labels"
+- tapOn: "Work"
+- assertVisible: "VC-J2-A"
+- assertVisible: "VC-J2-B"
+- tapOn: "Search label"
+- tapOn:
+    id: "search-field"
+- inputText: "VC-J2"
+- tapOn: "Close search"
+- tapOn: "Back"
+- tapOn: "Back"
+- longPressOn: "VC-J2-A"
+- tapOn: "VC-J2-B"
+- tapOn: "Archive selected"
+- tapOn: "More"
+- tapOn: "Archive"
+- assertVisible: "VC-J2-A"
+- assertVisible: "VC-J2-B"
+- tapOn: "VC-J2-A"
+- tapOn: "Move to trash"
+- tapOn: "Back"
+- tapOn: "Back"
+- tapOn: "More"
+- tapOn: "Trash"
+- tapOn: "Restore"

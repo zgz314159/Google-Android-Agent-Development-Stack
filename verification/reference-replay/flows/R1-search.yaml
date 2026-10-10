@@ -1,0 +1,36 @@
+appId: com.google.android.keep
+name: R1-HOME-SEARCH
+tags:
+  - reference-replay
+  - non-destructive
+---
+# Flow R1 - HOME -> SEARCH START (non-destructive: read-only navigation).
+# Selectors are locale-independent resource IDs (device UI locale: zh-Hans-CN).
+# Return uses the on-screen search back button (system `back` is consumed by the
+# focused search field / IME and does not reliably dismiss the search surface).
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible:
+      id: com.google.android.keep:id/open_search_bar_text_view_container
+    timeout: 20000
+- assertVisible:
+    id: com.google.android.keep:id/open_search_bar_text_view_container
+- takeScreenshot: R1-home
+- tapOn:
+    id: com.google.android.keep:id/open_search_bar_text_view_container
+- extendedWaitUntil:
+    visible:
+      id: com.google.android.keep:id/search_actionbar_query_text
+    timeout: 10000
+- assertVisible:
+    id: com.google.android.keep:id/search_actionbar_query_text
+- takeScreenshot: R1-search
+- tapOn:
+    id: com.google.android.keep:id/search_actionbar_back_button
+- extendedWaitUntil:
+    visible:
+      id: com.google.android.keep:id/open_search_bar_text_view_container
+    timeout: 10000
+- assertVisible:
+    id: com.google.android.keep:id/open_search_bar_text_view_container

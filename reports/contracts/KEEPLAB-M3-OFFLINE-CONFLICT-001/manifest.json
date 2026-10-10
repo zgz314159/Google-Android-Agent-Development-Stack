@@ -1,0 +1,114 @@
+{
+  "package": "KEEPLAB-M3-OFFLINE-CONFLICT-001",
+  "generated_by": "M3 milestone contract authoring (specification/compiler manifest schema)",
+  "algorithm": "sha256",
+  "contract_id": "KEEPLAB-M3-OFFLINE-CONFLICT-001",
+  "metadata": {
+    "phase": "M3_OFFLINE_HARDENING_AND_CONFLICT",
+    "milestone": "M3 = A5 (offline hardening) + A6 (conflict handling)",
+    "contracts_in_milestone": 1,
+    "execution_sessions": 1,
+    "verification_passes": 1,
+    "human_authorization": true,
+    "human_decisions": [
+      "D-06 TRASH_RETENTION_7_DAYS"
+    ],
+    "human_decision_source": "HUMAN_PROJECT_OWNER_APPROVAL",
+    "human_decision_date": "2026-10-06",
+    "human_decision_record": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M3-HUMAN-DECISIONS.md",
+    "package_role": "TEMPORARY_EXECUTION_CONTRACT",
+    "package_access": "READ_ONLY_INPUT",
+    "project_data_stage": "EXPERIMENTAL",
+    "android_data_stage": "DISPOSABLE_TEST_DATA",
+    "backend_data_stage": "DISPOSABLE_TEST_DATA",
+    "test_data_disposable": true,
+    "old_test_db_compatibility": "NOT_REQUIRED",
+    "dev_database_reset_required": "YES",
+    "backend_path": "/mnt/AndroidDev/Projects/KeepLab-Relay/backend/",
+    "backend_path_state": "PRESENT (created by A2, extended by M2)",
+    "backend_build_model": "INDEPENDENT_GRADLE_PROJECT",
+    "root_android_gradle_change_required": false,
+    "root_android_gradle_modified": "NO",
+    "android_surface_policy": "ENUMERATED_NOT_WHOLE_APP",
+    "implementation_authorization": "GRANTED_TO_M3_EXECUTION_TASK_ONLY",
+    "implementation_authorization_model": "PHASE_GATED_MILESTONE",
+    "execution_model": "PLAN ONCE -> A5 EXECUTE -> A5 LIGHT CHECKPOINT -> A6 EXECUTE -> VERIFY M3 ONCE -> PASS = STOP",
+    "trash_retention": "7_DAYS",
+    "sync_tombstone_retention": "SEPARATE_CONCERN / NOT_7_DAYS / NOT_CHOSEN",
+    "tombstone_gc": "DISABLED",
+    "device_operation": "FORBIDDEN",
+    "cloud_provisioning": "FORBIDDEN",
+    "google_or_firebase_identity": "FORBIDDEN",
+    "account_deletion": "NOT_IMPLEMENTED",
+    "attachments": "FORBIDDEN",
+    "collaboration": "FORBIDDEN",
+    "multi_account": "FORBIDDEN",
+    "multi_device_hardening": "FORBIDDEN",
+    "push_provider": "FORBIDDEN",
+    "crdt": "FORBIDDEN",
+    "automatic_three_way_text_merge": "FORBIDDEN",
+    "room_encryption_claim": "FORBIDDEN",
+    "execution_status": "NOT_EXECUTED",
+    "guard_modified": false,
+    "hook_config_modified": false,
+    "stops_after": "M3 (A5 + A6 verified once)",
+    "must_not_start": [
+      "A7",
+      "A8",
+      "A9"
+    ],
+    "does_not_resolve": [
+      "D-05",
+      "D-11",
+      "D-12",
+      "D-13",
+      "D-14",
+      "SYNC_TOMBSTONE_RETENTION_OR_COMPACTION",
+      "A7",
+      "A8",
+      "A9"
+    ]
+  },
+  "entries": [
+    {
+      "path": "implementation-contract.json",
+      "sha256": "8dbbb6b726473755c62d72cf0b4d147f1206a3d0be74159ac2b4496f753a0b37",
+      "size": 102807,
+      "role": "contract",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "project-context.json",
+      "sha256": "c48e776e08061bc1493e94229ad70725db1955e411acf718957b2e06d6f86964",
+      "size": 13490,
+      "role": "project_context",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "acceptance.md",
+      "sha256": "571285bfe21199e79547924ac89c1afe58e99de65f6c589e843e2051f93f21e1",
+      "size": 20485,
+      "role": "acceptance",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "EXECUTOR-PROMPT.md",
+      "sha256": "5c81a74a30ebaf348005716fd9d240737cbbb1e8189b1e1704afcec41f63f546",
+      "size": 5375,
+      "role": "executor_prompt",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "KEEPLAB-M3-OFFLINE-CONFLICT-EXECUTE.md",
+      "sha256": "35d7b3a718f54dace3e1c9310d64c205df3996ab2f9129d2319ab087e2189c97",
+      "size": 21242,
+      "role": "execution_prompt",
+      "required": true,
+      "source": "authored"
+    }
+  ]
+}

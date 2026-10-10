@@ -1,0 +1,225 @@
+{
+  "project": "KeepLab-Google-Keep-Parity",
+  "project_type": "brownfield",
+  "source_root": "/mnt/AndroidDev/Projects",
+  "phase": "M2_AUTH_SINGLE_USER_SYNC",
+  "contract_id": "KEEPLAB-M2-AUTH-SINGLE-USER-SYNC-001",
+  "architecture": {
+    "product_repo": "KeepLab-Relay (backend/** plus the enumerated Android auth/sync surface are writable in this milestone; everything else under app/ is read-only)",
+    "product_stack": "Kotlin 2.3.21, Jetpack Compose + Material 3, Navigation 3, Hilt, Room 2.8.4 (KSP), AGP 9.2.1 — extended by M2 with an HTTP client, WorkManager, a Keystore-backed session store and (optionally) Credential Manager for password UX",
+    "android_under_construction": {
+      "new_packages": [
+        "data/auth/** (session repository, token store, auth client)",
+        "data/remote/** (HTTP client + API models)",
+        "data/sync/** (outbox drain, delta apply, sync worker)",
+        "ui/auth/**, ui/settings/** (account surface)"
+      ],
+      "extended_packages": [
+        "data/local/** (schema bump, outbox entity, checkpoint entity, client UUIDs for checklist items and labels, DAOs)",
+        "data/NoteRepository.kt (account-scoped creation/update boundary + outbox enqueue)",
+        "di/** (wiring)",
+        "model/** (as required)",
+        "ui/navigation/**, ui/home/**, ui/editor/**, ui/archive/**, ui/labels/**, ui/trash/**, ui/note/**"
+      ],
+      "entry_points": [
+        "KeepLabApplication.kt",
+        "MainActivity.kt",
+        "AndroidManifest.xml (INTERNET permission)"
+      ],
+      "gradle": [
+        "app/build.gradle.kts (dependencies)",
+        "gradle/libs.versions.toml (versions/libraries/plugins)"
+      ],
+      "tests": "app/src/test/** (JVM only; no androidTest, no benchmark)",
+      "explicitly_absent_from_m2": "attachments, collaboration, multi-account, push/FCM, conflict-resolution UI, account deletion, automatic Trash retention, CRDT, Google/Firebase identity, passkeys, database encryption"
+    },
+    "backend_under_construction": {
+      "location": "KeepLab-Relay/backend/ (created by A2; PRESENT)",
+      "build_model": "INDEPENDENT_GRADLE_PROJECT with its own backend/settings.gradle.kts and backend/build.gradle.kts",
+      "invocation": "cd /mnt/AndroidDev/Projects/KeepLab-Relay && ./gradlew -p backend <tasks>",
+      "wrapper": "the existing repository wrapper, reused as-is (Gradle 9.5.1)",
+      "stack": "Kotlin 2.4.20 + Ktor 3.6.0 (Netty) · PostgreSQL via HikariCP + JDBC · Flyway migrations · portable Docker assets (untouched, not executed)",
+      "m2_additions": "A3 auth/session module + auth data schema + token services; A4 sync module + sync data schema + change log/cursor + mutation-id dedupe; new Flyway migrations after V1; new KEEPLAB_* secret variables with placeholders only in backend/.env.example"
+    },
+    "stack_repo": "Google-Android-Agent-Development-Stack (Specification Compiler, Verification Layer, Evaluation Core / Auto-Finalizer, Hermes orchestration kernel)",
+    "hermes": "pinned vgit.af90026 (2026.9.24) at /home/zhong/.hermes/hermes-agent; never upgraded, reinstalled or core-patched",
+    "guard": "the same unmodified orchestration/hermes/evaluation_adapter/contract_guard.py, invoked by the same fail-closed pre_tool_call hook",
+    "note": "M2 is a host-side backend + Android build/unit-test milestone. It provisions no cloud resource, uses no device and executes no Docker asset."
+  },
+  "path_classes": {
+    "BACKEND_CONSTRUCTION_TARGET": [
+      "KeepLab-Relay/backend/"
+    ],
+    "ANDROID_M2_SURFACE": [
+      "KeepLab-Relay/app/build.gradle.kts",
+      "KeepLab-Relay/gradle/libs.versions.toml",
+      "KeepLab-Relay/app/src/main/AndroidManifest.xml",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/KeepLabApplication.kt",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/MainActivity.kt",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/model/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/auth/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/settings/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/navigation/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/home/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/editor/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/archive/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/labels/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/trash/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/note/",
+      "KeepLab-Relay/app/src/test/"
+    ],
+    "TEST_SOURCE": [
+      "KeepLab-Relay/app/src/test/"
+    ],
+    "EVIDENCE_OUTPUT": [
+      "Google-Android-Agent-Development-Stack/reports/",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-m2-auth-single-user-sync/"
+    ],
+    "PRODUCTION_IMMUTABLE": [
+      "KeepLab-Relay/app/src/main/res/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/theme/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/common/",
+      "KeepLab-Relay/app/src/androidTest/",
+      "KeepLab-Relay/app/src/benchmark/",
+      "KeepLab-Relay/app/src/debug/",
+      "KeepLab-Relay/app/src/release/",
+      "KeepLab-Relay/app/schemas/",
+      "KeepLab-Relay/app/proguard-rules.pro",
+      "KeepLab-Relay/benchmark/",
+      "KeepLab-Relay/build.gradle.kts",
+      "KeepLab-Relay/settings.gradle.kts",
+      "KeepLab-Relay/gradle/wrapper/",
+      "KeepLab-Relay/gradle.properties",
+      "KeepLab-Relay/gradlew",
+      "KeepLab-Relay/gradlew.bat",
+      "KeepLab-Relay/local.properties",
+      "KeepLab-Relay/specs/",
+      "KeepLab-Relay/verification/",
+      "KeepLab-Relay/harness/",
+      "KeepLab-Relay/docs/",
+      "KeepLab-Relay/factory/",
+      "KeepLab-Relay/.factory/",
+      "KeepLab-Relay/.agents/",
+      "KeepLab-Relay/.commandcode/",
+      "KeepLab-Relay/MISSION.md",
+      "KeepLab-Relay/FACTORY.md",
+      "KeepLab-Relay/FACTORY_RULES.md",
+      "KeepLab-Relay/AGENTS.md",
+      "KeepLab-Relay/HANDOFF.md",
+      "KeepLab-Relay/PHASE-A-RESULT.md",
+      "KeepLab-Relay/PHASE-B-RESULT.md",
+      "KeepLab-Relay/ANDROID-STACK-GAPS.md",
+      "KeepLab-Relay/Dockerfile",
+      "KeepLab-Relay/docker-compose.yml",
+      "KeepLab-Relay/docker/",
+      "KeepLab-Relay/server/",
+      "KeepLab-Relay/infra/",
+      "KeepLab-Relay/cloud/",
+      "KeepLab-Relay/firebase/",
+      "Google-Android-Agent-Development-Stack/.hermes.md",
+      "Google-Android-Agent-Development-Stack/specification/",
+      "Google-Android-Agent-Development-Stack/verification/",
+      "Google-Android-Agent-Development-Stack/verification-benchmark/",
+      "Google-Android-Agent-Development-Stack/references/",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/HERMES-LOCK.json",
+      "Google-Android-Agent-Development-Stack/evaluation/",
+      "Google-Android-Agent-Development-Stack/reports/contracts/"
+    ],
+    "FORBIDDEN": [
+      "Testapp/",
+      "PowerAi/",
+      "KeepLab-Relay-evidence/"
+    ]
+  },
+  "m2_facts": {
+    "milestone": "M2 = A3 (auth/session) + A4 (single-user sync)",
+    "contracts_created": 1,
+    "sessions": 1,
+    "verification_passes": 1,
+    "a3_checkpoint": "LIGHT — records only, never stops the session",
+    "android_surface_policy": "ENUMERATED_NOT_WHOLE_APP",
+    "root_gradle_change_required": false,
+    "root_android_gradle_modified": "NO (required outcome of this contract)",
+    "room_schema": "current 3 -> next clean version by direct experimental bump; DEV_DATABASE_RESET_REQUIRED = YES; no migration chain authored",
+    "primary_key_strategy": "KEEP_LONG_LOCAL_PK_ADD_UNIQUE_CLIENT_UUID (extended to checklist items and labels)",
+    "identity_authority": "KeepLab backend (EMAIL_PASSWORD_VERIFIED, D-01)",
+    "token_model": "JWT access (short-lived, ~15 min default) + opaque high-entropy rotating refresh (~30 days default) with retry-safe refresh_request_id (D-10)",
+    "sign_out_policy": "PRESERVE_LOCAL_CACHE (D-04) — non-destructive",
+    "trash_vs_tombstone": "distinct; M2 never auto-purges either",
+    "server_revision": "the only conflict authority; stale baseRevision -> 409 REVISION_CONFLICT",
+    "client_checkpoint": "advances only after a clean transactional delta apply",
+    "mutation_dedupe": "dedupe claim + apply + revision increment + change-log append in ONE transaction",
+    "not_found_rule": "404 never deletes a live local row",
+    "account_id_invariant": "ISO-1b enforced at creation/update boundaries and by tests",
+    "workmanager": "one unique note_sync pipeline; ExistingWorkPolicy = A4_IMPLEMENTATION_DECISION",
+    "no_push": "no push provider, no FCM, no background push architecture",
+    "no_cloud": "no provisioning, no deployment, no cloud credential",
+    "no_device": "no adb, no Maestro, no UiAutomator, no instrumentation, no APK install",
+    "gates": [
+      "cd /mnt/AndroidDev/Projects/KeepLab-Relay && ./gradlew -p backend test build",
+      "cd /mnt/AndroidDev/Projects/KeepLab-Relay && ./gradlew :app:testDebugUnitTest :app:assembleDebug"
+    ],
+    "gate_runs": "each ONCE",
+    "live_postgres": "optional at most once; absence -> LIVE_POSTGRES_INTEGRATION = SKIPPED_TOOL_UNAVAILABLE and LIVE_POSTGRES_CRASH_INJECTION = SKIPPED_TOOL_UNAVAILABLE; never a blocker"
+  },
+  "guard": {
+    "source": "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/contract_guard.py",
+    "guard_version": "p0b-close-1",
+    "guard_sha256": "e418fc28b08ac7afe4fdd42ec44d572ddaa2f23f6200de300ecac211404b3746",
+    "hook_event": "pre_tool_call",
+    "matcher": "write_file|patch|terminal",
+    "fail_closed": true,
+    "package_switch": "HERMES_CONTRACT_PACKAGE",
+    "package_switch_semantics": "The guard resolves its package dir as os.environ['HERMES_CONTRACT_PACKAGE'] or the built-in default. The hook subprocess inherits the Hermes process environment. Setting the variable for the Hermes process points the SAME unmodified guard at this package; no guard, hook or config change is involved.",
+    "modified_by_this_phase": false,
+    "known_limitation": "Hermes configuration, Hermes core and the hook allowlist live OUTSIDE the guard's source_root (/home/zhong/.hermes/...), so the guard's path lists cannot classify them. They are protected by an explicit hard prohibition and stop condition in this contract and in the M2 execution prompt, enforced by fail-closed operator discipline — not by the path list. Stated rather than hidden.",
+    "write_intent_note": "The guard's terminal write-intent extractor reads a literal '>' anywhere in a shell command as a redirect (MB-A1-003 / MB-A2-008). Drive the guard by files and read-only commands; never inline heredocs or payload-bearing shell text."
+  },
+  "contract_notes": {
+    "temporary_execution_contract": true,
+    "project_data_stage": "EXPERIMENTAL (android DISPOSABLE_TEST_DATA + backend DISPOSABLE_TEST_DATA)",
+    "test_data_disposable": true,
+    "old_test_db_compatibility_required": false,
+    "dev_database_reset_required": "YES",
+    "implementation_authorization_model": "PHASE_GATED_MILESTONE",
+    "implementation_authorization": "NOT_GRANTED_IN_THIS_TASK",
+    "human_decisions_frozen": [
+      "D-01 EMAIL_PASSWORD_VERIFIED",
+      "D-04 PRESERVE_LOCAL_CACHE",
+      "D-10 JWT_ACCESS_OPAQUE_ROTATING_REFRESH"
+    ],
+    "human_decisions_pending_not_blocking": [
+      "D-05",
+      "D-06",
+      "D-11",
+      "D-12",
+      "D-13",
+      "D-14"
+    ],
+    "device_operation_allowed": false,
+    "cloud_provisioning_allowed": false,
+    "google_or_firebase_identity_allowed": false,
+    "account_deletion_allowed": false,
+    "automatic_trash_retention_allowed": false,
+    "attachments_allowed": false,
+    "collaboration_allowed": false,
+    "multi_account_allowed": false,
+    "push_allowed": false,
+    "room_encryption_claim_allowed": false,
+    "historical_evidence_mutation_allowed": false,
+    "supersedes": "nothing; the frozen P0B-CLOSE contract and the A0/A1/A2 contract packages remain active and unedited",
+    "does_not_resolve": [
+      "D-05 (HUMAN_DECISION_PENDING)",
+      "D-06 (HUMAN_DECISION_PENDING)",
+      "D-11",
+      "D-12",
+      "D-13",
+      "D-14",
+      "A5 (NOT_STARTED)",
+      "A6 (NOT_STARTED)"
+    ]
+  }
+}

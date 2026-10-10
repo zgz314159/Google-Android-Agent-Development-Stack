@@ -1,0 +1,931 @@
+{
+  "contract_id": "KEEPLAB-A2-BACKEND-FOUNDATION-001",
+  "contract_version": "0.1.0",
+  "experiment_id": "KEEPLAB-A2-BACKEND-FOUNDATION",
+  "experiment_type": "HUMAN_AUTHORIZED_BACKEND_FOUNDATION_CREATION",
+  "mode": "brownfield",
+  "project": "KeepLab-Google-Keep-Parity",
+  "feature": {
+    "feature_id": "A2-BACKEND-FOUNDATION",
+    "title": "Create the minimal, cloud-portable foundation of KeepLab's own backend",
+    "summary": "Stand up an independent Kotlin/Ktor backend project under KeepLab-Relay/backend/ that builds, starts structurally, reads its configuration from environment variables, carries a PostgreSQL connectivity component (HikariCP) and a Flyway migration foundation, exposes GET /health and GET /ready, and ships a portable Docker development setup. No authentication, no sync, no notes API, no cloud provisioning, no Android change."
+  },
+  "purpose": "This package is a TEMPORARY EXECUTION CONTRACT. It exists so that a later fresh session can create the A2 backend foundation through the SAME unmodified Contract Guard, under an explicit and bounded write surface (KeepLab-Relay/backend/** plus two reporting/evidence locations). This contract-creation task performs targeted discovery and authors the package; it does not implement A2.",
+  "human_authorization_source": {
+    "authorizing_task": "KEEPLAB-A2-BACKEND-FOUNDATION-CONTRACT",
+    "date": "2026-10-06",
+    "timezone": "CST (UTC+08:00)",
+    "approval_kind": "HUMAN_PROJECT_OWNER_DECISIONS_ALREADY_RECORDED",
+    "primary_decisions": {
+      "D-07": "KOTLIN_KTOR",
+      "D-08": "TENCENT_CLOUD + PORTABLE_DOCKER",
+      "D-09": "POSTGRESQL",
+      "D-15": "YES_BOUNDED_ACCOUNT_NETWORK_UNLOCK"
+    },
+    "decision_effect": "The backend technology stack is human-approved: Kotlin + Ktor, PostgreSQL, deployable as a portable Docker container with Tencent Cloud as the initial future target. D-15 makes account/network architecture phases allowed only inside explicit human-approved, phase-gated contracts, while local-first stays mandatory, account and network stay optional for local use, Room stays the local SSOT, and Google/Firebase identity stays forbidden. A2 is the BACKEND FOUNDATION step of that gated sequence and introduces no authentication, no session handling and no sync.",
+    "phase_state_at_authoring": {
+      "A0": "READY",
+      "A1": "PASS",
+      "A2": "READY_FOR_SEPARATE_CONTRACT",
+      "A3": "BLOCKED_BY_HUMAN_DECISIONS",
+      "A3_blockers": [
+        "D-01 (final auth method)",
+        "D-04 (sign-out local-data policy)",
+        "D-10 (token format)"
+      ],
+      "D_14": "HUMAN_DECISION_PENDING",
+      "OBS_1": "NON_BLOCKING MINOR_BACKLOG (A0 is not reopened for it)"
+    },
+    "decisions_deliberately_not_resolved_here": [
+      "D-01 — final auth method",
+      "D-04 — sign-out local-data policy",
+      "D-10 — token format"
+    ],
+    "reinterpreted": false,
+    "reasked": false,
+    "substituted_with_model_preference": false
+  },
+  "authorization_semantics": {
+    "phase": "A2_BACKEND_FOUNDATION",
+    "human_authorization": true,
+    "human_decisions": [
+      "D-07 KOTLIN_KTOR",
+      "D-08 TENCENT_CLOUD + PORTABLE_DOCKER",
+      "D-09 POSTGRESQL",
+      "D-15 YES_BOUNDED_ACCOUNT_NETWORK_UNLOCK"
+    ],
+    "human_decision_date": "2026-10-06",
+    "mutation_scope": "KeepLab backend foundation only (KeepLab-Relay/backend/** newly created project) plus the reporting and evidence locations named in allowed_paths",
+    "implementation_authorization_model": "PHASE_GATED",
+    "implementation_authorization": "GRANTED_TO_A2_EXECUTION_TASK_ONLY",
+    "android_product_source_change": "FORBIDDEN",
+    "android_gradle_change": "FORBIDDEN",
+    "auth_change": "FORBIDDEN",
+    "sync_change": "FORBIDDEN",
+    "cloud_provisioning": "FORBIDDEN",
+    "device_operation": "FORBIDDEN",
+    "historical_evidence_mutation": "FORBIDDEN",
+    "guard_mutation": "FORBIDDEN",
+    "contract_mutation": "FORBIDDEN",
+    "requires_human_approval": true
+  },
+  "project_data_stage": {
+    "stage": "EXPERIMENTAL",
+    "scope": "local Android data AND backend data",
+    "test_data_disposable": true,
+    "old_test_db_compatibility": "NOT_REQUIRED",
+    "production_users": false,
+    "production_backend_data": false,
+    "policy": "CLEAN_FOUNDATION > BACKWARD_COMPATIBILITY",
+    "backend_db_recreatable": true,
+    "forbidden_consequences": [
+      "no production migration/rollback complexity is authored",
+      "no old-backend-database upgrade path is built",
+      "no compatibility column or shim is kept for experimental backend rows",
+      "no data-preservation work is spent on disposable backend data"
+    ]
+  },
+  "target_architecture": {
+    "diagram": "Android --(HTTPS, later, not in A2)--> KeepLab Backend --(JDBC)--> PostgreSQL",
+    "android_side": "unchanged in A2; Room remains the local SSOT; local-first mandatory; account and network optional for local use",
+    "backend_side": "created in A2 as the foundation only; no client-facing product API beyond /health and /ready"
+  },
+  "frozen_technology": {
+    "language": "KOTLIN",
+    "language_source": "D-07 HUMAN_APPROVED 2026-10-06",
+    "server": "KTOR",
+    "server_source": "D-07 HUMAN_APPROVED 2026-10-06",
+    "server_engine": "Netty (or a normal equivalent Ktor engine)",
+    "database": "POSTGRESQL",
+    "database_source": "D-09 HUMAN_APPROVED 2026-10-06",
+    "deployment_form": "PORTABLE_DOCKER",
+    "deployment_source": "D-08 HUMAN_APPROVED 2026-10-06",
+    "future_primary_cloud": "TENCENT_CLOUD",
+    "cloud_provisioning_in_a2": "FORBIDDEN",
+    "proprietary_coupling": "FORBIDDEN — the foundation must stay container-portable and free of Tencent-proprietary APIs, SDKs and managed-service assumptions",
+    "versions": "NOT frozen by this contract. The executor resolves current stable, mutually-compatible versions from public repositories and records them in the A2 report. The Android app's frozen gradle/libs.versions.toml is NOT a version source for the backend and must not be read as one."
+  },
+  "discovered_state": {
+    "backend_path": "/mnt/AndroidDev/Projects/KeepLab-Relay/backend/",
+    "backend_path_state": "ABSENT",
+    "backend_path_evidence": "`ls -d KeepLab-Relay/backend` reports 'No such file or directory' at authoring time; the directory has never existed. There is no unrelated implementation to collide with, so no A2_BACKEND_PATH_CONFLICT is raised.",
+    "sibling_paths_absent": [
+      "KeepLab-Relay/server/",
+      "KeepLab-Relay/infra/"
+    ],
+    "repository_root_entries_examined": [
+      "settings.gradle.kts",
+      "build.gradle.kts",
+      "gradle/libs.versions.toml",
+      "gradle/wrapper/gradle-wrapper.properties",
+      "gradle.properties",
+      "gradlew",
+      ".gitignore"
+    ],
+    "settings_gradle_kts": "rootProject.name = \"KeepLab\"; include(\":app\"); include(\":benchmark\") — an Android-only build with a version-catalog pluginManagement block and FAIL_ON_PROJECT_REPOS dependency resolution. A backend subproject declared here would inherit Android repositories mode and AGP plugin resolution, which is exactly the coupling A2 must avoid.",
+    "root_build_gradle_kts": "comment-only file",
+    "gradle_wrapper_version": "9.5.1 (distributionUrl gradle-9.5.1-bin.zip)",
+    "kotlin_in_android_catalog": "2.3.21 (Android-scoped; NOT a backend version source)",
+    "jdk_available": "OpenJDK 21.0.12.1 (JVM-capable toolchain present on the host)",
+    "docker_available": false,
+    "docker_evidence": "`which docker` returns not found; `docker compose version` is unavailable",
+    "psql_available": false,
+    "git_baseline": "UNAVAILABLE — KeepLab-Relay is a git repository with no commits",
+    "architecture_reports_present": [
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-ARCHITECTURE-SPEC.md",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-IMPLEMENTATION-ROADMAP.md",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-DATA-MODEL.md"
+    ],
+    "discovery_scope_note": "Only the KeepLab-Relay repository root, the named Gradle files, the wrapper, .gitignore, the (absent) backend directory and the three named architecture reports were inspected. No Android UI, no feature source, no Testapp, no PowerAi and no Google Keep reference material was scanned."
+  },
+  "backend_project": {
+    "path": "/mnt/AndroidDev/Projects/KeepLab-Relay/backend/",
+    "project_relative_path": "KeepLab-Relay/backend/",
+    "build_model": "INDEPENDENT_GRADLE_PROJECT",
+    "build_model_reason": "The contract must not alter the Android Gradle project. An independent project with its own backend/settings.gradle.kts and backend/build.gradle.kts is fully isolated: `./gradlew -p backend ...` makes Gradle treat backend/ as the build root, so the root settings.gradle.kts pluginManagement, the FAIL_ON_PROJECT_REPOS mode and the Android version catalog are never consulted.",
+    "wrapper": "REUSE_EXISTING_REPOSITORY_WRAPPER",
+    "wrapper_invocation": "cd /mnt/AndroidDev/Projects/KeepLab-Relay && ./gradlew -p backend <tasks>",
+    "wrapper_note": "The existing repository wrapper is used as-is. A second wrapper (backend/gradlew, backend/gradle/wrapper/**) must NOT be created unless execution proves the existing wrapper genuinely cannot run the backend build; that proof is a STOP with A2_BACKEND_WRAPPER_REQUIRED.",
+    "gradle_properties_note": "With `-p backend` Gradle reads gradle.properties from backend/ (and GRADLE_USER_HOME), NOT from the repository root. Any needed JVM/daemon property therefore belongs in backend/gradle.properties, which is inside the allowed surface.",
+    "expected_structure": {
+      "note": "Exact file names may follow Ktor conventions; no unnecessary layers.",
+      "sketch": [
+        "backend/settings.gradle.kts",
+        "backend/build.gradle.kts",
+        "backend/(optional) gradle.properties",
+        "backend/src/main/kotlin/.../Application.kt",
+        "backend/src/main/kotlin/.../config/",
+        "backend/src/main/kotlin/.../db/",
+        "backend/src/main/kotlin/.../routes/",
+        "backend/src/main/resources/application.conf",
+        "backend/src/main/resources/db/migration/",
+        "backend/src/test/kotlin/.../",
+        "backend/Dockerfile",
+        "backend/docker-compose.yml",
+        "backend/.env.example",
+        "backend/.dockerignore"
+      ]
+    }
+  },
+  "required_server_foundation": {
+    "server_engine": "Netty or an equivalent normal Ktor engine (embeddedServer)",
+    "entry_point": "a Ktor application entry point (Application.kt with main() and/or the application module function used by testApplication)",
+    "serialization": "JSON serialization wired through Ktor content negotiation (kotlinx.serialization or Jackson — implementation-level choice)",
+    "configuration": "structured configuration read from environment variables through the server configuration layer (application.conf HOCON with environment substitution, or the equivalent)",
+    "error_handling": "basic centralized exception/error handling (StatusPages or equivalent) returning a stable machine-readable error body; raw exceptions must not leak",
+    "logging": "a minimal logging setup through the engine's standard logger; no credential may be logged",
+    "endpoints": [
+      {
+        "route": "GET /health",
+        "authentication": "NONE — must not require authentication",
+        "semantics": "process-alive check; returns a success status and a minimal server-alive result (e.g. status field and application version/name); must not touch the database",
+        "must_not": "must not perform a database query and must not depend on external state"
+      },
+      {
+        "route": "GET /ready",
+        "authentication": "NONE",
+        "semantics": "readiness check that includes backend readiness and specifically database reachability, reached through a small injectable abstraction so it is testable with a fake probe",
+        "success": "success status when the readiness probe reports reachable",
+        "failure": "a non-success status (service-unavailable class) when the readiness probe reports unreachable; the failure must be deterministic and must not crash the process"
+      }
+    ],
+    "explicitly_absent": [
+      "no user, account, credential, password, session or token logic",
+      "no authentication or authorization middleware",
+      "no notes API, no sync API, no outbox, no delta cursor, no conflict resolution, no attachments, no collaboration endpoints"
+    ]
+  },
+  "configuration_requirements": {
+    "source": "environment variables or non-secret defaults only",
+    "expected_variables": [
+      "KEEPLAB_HTTP_PORT",
+      "KEEPLAB_DB_URL",
+      "KEEPLAB_DB_USER",
+      "KEEPLAB_DB_PASSWORD"
+    ],
+    "naming": "The four names above are the primary names. An implementation may add names only if it keeps these four working; additional variables must follow the same KEEPLAB_ prefix convention.",
+    "defaults": "non-secret development defaults are allowed (e.g. a default port and a development-only database URL/user/password that is plainly marked as local-development-only). A default password may exist ONLY as an obviously local placeholder; no production or real credential may appear anywhere.",
+    "env_example": "backend/.env.example MUST be created with placeholders only (e.g. changeme / local-dev values), never a real secret.",
+    "env_file": "backend/.env MUST NOT be created by this phase and MUST NOT be committed. The repository .gitignore already carries `.env` and `.env.*` with a `!.env.example` negation, which is compatible with this rule.",
+    "secret_rule": "No real password, token, API key, certificate or private key may be written, committed, echoed into evidence, or emitted in logs."
+  },
+  "postgresql_foundation": {
+    "approach": "HikariCP connection pool + the official PostgreSQL JDBC driver",
+    "orm": "NONE — no ORM layer and no domain repositories in A2",
+    "component": "one explicit DB component (e.g. Database.kt / DatabaseFactory) that can: initialize the connection pool from configuration, execute a `SELECT 1` readiness probe, and close the pool cleanly on application shutdown",
+    "abstraction": "the readiness probe must sit behind a small interface/functional abstraction (e.g. DatabaseReadiness) so /ready can be tested against a fake that reports reachable/unreachable deterministically, with no live PostgreSQL required",
+    "pool_configuration": [
+      "pool size, connection timeout and validation settings come from configuration with non-secret defaults",
+      "the pool must not be initialized lazily in a way that makes /health depend on the database",
+      "a failure to reach PostgreSQL must degrade /ready, not abort /health"
+    ],
+    "live_database_testing": "OPTIONAL in A2 — a live PostgreSQL smoke check is allowed only if a container runtime is genuinely available and the check is cheap (see verification_intent.docker_runtime_smoke)"
+  },
+  "migration_foundation": {
+    "mechanism": "Flyway",
+    "location": "backend/src/main/resources/db/migration/",
+    "initial_migration": {
+      "version": "V1",
+      "allowed_content": "foundation-only database namespace, e.g. `CREATE SCHEMA IF NOT EXISTS keeplab;`",
+      "must_not_create": [
+        "users",
+        "credentials",
+        "sessions",
+        "refresh tokens",
+        "notes",
+        "sync operations",
+        "outbox",
+        "change log / cursors",
+        "attachments",
+        "collaboration tables"
+      ],
+      "reason": "Fake business tables must not be created merely to prove that migrations run. A3/A4 add the domain tables when the domain and the pending human decisions exist."
+    },
+    "execution": "Flyway runs at application startup (migrate-on-start) or through an explicit migration entry point; either is acceptable, and the choice must be recorded in the A2 report",
+    "policy": "CLEAN_FOUNDATION — no rollback scripts, no multi-version chains, no compatibility migrations for experimental backend data"
+  },
+  "docker_foundation": {
+    "files": [
+      "backend/Dockerfile",
+      "backend/docker-compose.yml",
+      "backend/.dockerignore"
+    ],
+    "dockerfile": "multi-stage build producing a runnable image of the backend (build stage + slim JRE runtime stage); must not embed credentials; must expose the configured HTTP port",
+    "docker_compose_services": [
+      {
+        "service": "postgres",
+        "image": "a public official PostgreSQL image",
+        "credentials": "development-only, obvious local placeholder defaults; no production secret",
+        "volume": "a NAMED volume for the local PostgreSQL data directory"
+      },
+      {
+        "service": "backend",
+        "build": "from backend/Dockerfile",
+        "configuration": "environment variables matching the KEEPLAB_* names; dependency on the database service",
+        "port": "the configured KEEPLAB_HTTP_PORT mapped to the host"
+      }
+    ],
+    "portability": "the compose file must remain portable to other normal container hosts: no Tencent-proprietary image, no cloud-specific volume driver, no managed-service binding, no cloud credentials",
+    "cloud": "NOTHING is deployed or provisioned. No Tencent Cloud resource, account, bucket, instance or network may be created, referenced by credential or touched."
+  },
+  "gradle_scope": {
+    "decision": "BACKEND_LOCAL_GRADLE_ONLY",
+    "allowed": [
+      "KeepLab-Relay/backend/** including backend/settings.gradle.kts, backend/build.gradle.kts, backend/gradle.properties"
+    ],
+    "root_android_gradle_modified": "NO",
+    "forbidden": [
+      "KeepLab-Relay/app/build.gradle.kts",
+      "KeepLab-Relay/build.gradle.kts",
+      "KeepLab-Relay/settings.gradle.kts",
+      "KeepLab-Relay/gradle/libs.versions.toml",
+      "KeepLab-Relay/gradle/**",
+      "KeepLab-Relay/gradle.properties",
+      "KeepLab-Relay/gradlew",
+      "KeepLab-Relay/gradlew.bat"
+    ],
+    "on_genuine_need": "If targeted discovery or an execution failure proves that the independent backend project cannot work without a repository-root Gradle change, STOP with A2_ROOT_GRADLE_CHANGE_REQUIRED, record the exact file and the exact change, and do not make it. A root Gradle change is a new human-approved contract, never a silent broadening.",
+    "preferred_outcome": "ROOT_ANDROID_GRADLE_MODIFIED = NO"
+  },
+  "android_product_policy": {
+    "decision": "BLOCK",
+    "statement": "KeepLab-Relay/app/** is entirely read-only in A2. The Android product builds and behaves exactly as before.",
+    "forbidden_examples": [
+      "KeepLab-Relay/app/src/main/** (source, resources, AndroidManifest.xml)",
+      "KeepLab-Relay/app/src/androidTest/**",
+      "KeepLab-Relay/app/src/test/**",
+      "KeepLab-Relay/app/src/benchmark/**",
+      "KeepLab-Relay/app/src/debug/**",
+      "KeepLab-Relay/app/src/release/**",
+      "KeepLab-Relay/app/schemas/**",
+      "KeepLab-Relay/app/build.gradle.kts",
+      "KeepLab-Relay/app/proguard-rules.pro",
+      "KeepLab-Relay/benchmark/**",
+      "Android Room entity, DAO, database, migration and repository code of any kind"
+    ],
+    "note": "A2 writes nothing into the Android app and does not need to. No Android UI, no Room/entity/DAO work and no device work is in scope."
+  },
+  "auth_sync_boundary": {
+    "decision": "BLOCKED_FOR_A2",
+    "not_decided_here": [
+      "D-01 final auth method",
+      "D-04 sign-out local-data policy",
+      "D-10 token format"
+    ],
+    "must_not_implement": [
+      "User table",
+      "Credential table",
+      "Password storage or hashing",
+      "Session table",
+      "Refresh token table",
+      "JWT logic or any token issuance/validation",
+      "OAuth or OIDC flows",
+      "Android Credential Manager",
+      "Google Auth, Google login, Firebase Auth or any Google private API",
+      "registration, login, password reset, passkeys",
+      "Note API",
+      "Sync API",
+      "outbox",
+      "delta cursor or change stream",
+      "conflict resolution",
+      "revision protocol",
+      "attachments",
+      "collaboration"
+    ],
+    "note": "These belong to later phases (A3 and beyond) and several are blocked on unresolved human decisions. A2 creates no placeholder table, no stub endpoint and no disabled code path for them."
+  },
+  "device_policy": {
+    "decision": "NO_DEVICE_ACCESS",
+    "forbidden": [
+      "adb commands of any kind",
+      "device lock acquisition (verification/core/device_lock.sh)",
+      "connectedAndroidTest / instrumentation run",
+      "Maestro or UiAutomator run",
+      "installing or launching any APK on device 87296ada",
+      "screenshot -> LLM -> tap loops of any kind"
+    ],
+    "reason": "A2 is a host-side backend build. The physical device 87296ada is an exclusive capacity-1 resource and is not used at all in this phase."
+  },
+  "device_access": false,
+  "device_serial": null,
+  "allowed_paths": [
+    "KeepLab-Relay/backend/",
+    "Google-Android-Agent-Development-Stack/reports/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-a2-backend-foundation/"
+  ],
+  "forbidden_paths": [
+    "KeepLab-Relay/app/",
+    "KeepLab-Relay/benchmark/",
+    "KeepLab-Relay/build.gradle.kts",
+    "KeepLab-Relay/settings.gradle.kts",
+    "KeepLab-Relay/gradle/",
+    "KeepLab-Relay/gradle.properties",
+    "KeepLab-Relay/gradlew",
+    "KeepLab-Relay/gradlew.bat",
+    "KeepLab-Relay/local.properties",
+    "KeepLab-Relay/specs/",
+    "KeepLab-Relay/verification/",
+    "KeepLab-Relay/harness/",
+    "KeepLab-Relay/docs/",
+    "KeepLab-Relay/factory/",
+    "KeepLab-Relay/.factory/",
+    "KeepLab-Relay/.agents/",
+    "KeepLab-Relay/.commandcode/",
+    "KeepLab-Relay/MISSION.md",
+    "KeepLab-Relay/FACTORY.md",
+    "KeepLab-Relay/FACTORY_RULES.md",
+    "KeepLab-Relay/AGENTS.md",
+    "KeepLab-Relay/HANDOFF.md",
+    "KeepLab-Relay/PHASE-A-RESULT.md",
+    "KeepLab-Relay/PHASE-B-RESULT.md",
+    "KeepLab-Relay/ANDROID-STACK-GAPS.md",
+    "KeepLab-Relay/Dockerfile",
+    "KeepLab-Relay/docker-compose.yml",
+    "KeepLab-Relay/docker/",
+    "KeepLab-Relay/server/",
+    "KeepLab-Relay/infra/",
+    "KeepLab-Relay/cloud/",
+    "KeepLab-Relay/firebase/",
+    "Testapp/",
+    "PowerAi/",
+    "KeepLab-Relay-evidence/",
+    "Google-Android-Agent-Development-Stack/.hermes.md",
+    "Google-Android-Agent-Development-Stack/specification/",
+    "Google-Android-Agent-Development-Stack/verification/",
+    "Google-Android-Agent-Development-Stack/verification-benchmark/",
+    "Google-Android-Agent-Development-Stack/references/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/HERMES-LOCK.json",
+    "Google-Android-Agent-Development-Stack/evaluation/",
+    "Google-Android-Agent-Development-Stack/reports/contracts/",
+    "KeepLab-Relay/specs/p0b-close-benchmarkability/",
+    "KeepLab-Relay/specs/p0b-performance-reliability/",
+    "KeepLab-Relay/specs/phase-c-pin-notes-b1/"
+  ],
+  "boundary_notes": {
+    "source_root": "/mnt/AndroidDev/Projects",
+    "resolution": "allowed_paths / forbidden_paths are project-relative to the Contract Guard's project-context source_root, exactly as the frozen P0B-CLOSE contract and the A0/A1 contracts are. Entries may be exact files or directory prefixes.",
+    "precedence": "The guard tests forbidden_paths first; a path matching both lists is BLOCKED. reports/ is allowed while reports/contracts/ (which contains this package and every earlier package) is forbidden, so an executor cannot write its own contract or any historical package.",
+    "unlisted_is_blocked": "Any path inside the project root that matches neither list is BLOCKED (UNCLASSIFIED_FAIL_CLOSED). KeepLab-Relay/backend/**, the reports directory and the one A2 evidence directory are the ONLY writes this contract authorizes.",
+    "backend_surface_is_whole_directory": "The whole KeepLab-Relay/backend/ prefix is authorized, so ordinary compile fixes, added source files, backend-local Gradle files, the Docker files, resources and migrations never require another contract. This is a new directory created by this phase, so no pre-existing product file can be overwritten by it.",
+    "android_gradle_blocked": "Every Android Gradle input, the wrapper and gradle.properties are forbidden; backend-local Gradle files are allowed because they live under the authorized backend prefix. A needed root Gradle change is a STOP with A2_ROOT_GRADLE_CHANGE_REQUIRED.",
+    "auth_sync_blocked": "No auth or sync path is authorized; the paths that do not exist yet are named so they cannot be created under this contract.",
+    "cloud_blocked": "No cloud, infra, server, docker-at-root or firebase path is authorized; Docker assets live exclusively under KeepLab-Relay/backend/.",
+    "device_blocked": "No Android device access and no adb. androidTest and benchmark source are read-only and are never executed.",
+    "out_of_project": "Paths outside /mnt/AndroidDev/Projects remain OUT_OF_CONTRACT_SCOPE/ALLOW as the guard is written today; this contract does not change that guard property and must never be read as authorizing writes outside the project.",
+    "guard_scope_note": "The frozen guard classifies WRITE targets, not tool choice: it has no path rule that blocks an `adb` binary, `./gradlew`, `docker compose`, or a container run, and it cannot classify Hermes config/core paths outside the project root. The device prohibition, the cloud-provisioning prohibition, the 'no root Gradle change' rule and the Hermes-core prohibition are enforced by this contract's declarations and the execution prompt's stop conditions, not by the path list. Violating one is a CONTRACT_DEVIATION. This limitation is stated rather than hidden.",
+    "hermes_config_core_limitation": "Hermes configuration and core live OUTSIDE the guard's source_root (/home/zhong/.hermes/...), so the guard's path lists cannot classify them. They are protected here by an explicit hard prohibition and stop condition, enforced by fail-closed operator discipline — not by the path list."
+  },
+  "frozen_inputs": {
+    "algorithm": "sha256",
+    "captured_at": "2026-10-06",
+    "captured_by": "KEEPLAB-A2-BACKEND-FOUNDATION-CONTRACT (live filesystem read)",
+    "state": "FROZEN",
+    "verified_live": true,
+    "note": "These files are READ-ONLY inputs. The A2 execution session must re-hash them BEFORE creating the backend project and STOP with STALE_BACKEND_FOUNDATION_INPUT on any drift.",
+    "files": {
+      "KeepLab-Relay/settings.gradle.kts": "6513bf224002bb5691e72e7a933ee766d2dab58c47b3d075a9fc77cd913a0ae7",
+      "KeepLab-Relay/build.gradle.kts": "ba09d5f46d33a5feff2236f53f482d87f2608e7153950695bd7e1333d7c6fae8",
+      "KeepLab-Relay/gradle/libs.versions.toml": "5555dcff52e661a0ed9481aa349822b5972f9e305eadf941479c4b111a1b8b43",
+      "KeepLab-Relay/gradle/wrapper/gradle-wrapper.properties": "e0846bd420bf1543f500e0c9b35c01d84611b0f1afe01e24a82d0eca53c33ccb",
+      "KeepLab-Relay/gradle.properties": "0a3448fbcc780cc608e0adaa28c10cfe77cc7ba6592da689c15ab34b70c76680",
+      "KeepLab-Relay/gradlew": "ab5c0cad16305af2e619c159c1f58dd68d07fab9c11e36701e109c0277407f7a",
+      "KeepLab-Relay/app/build.gradle.kts": "20dd51e5d8bb8cababcac06fecad3e9d8b5771418eb88b0ba132409c5014e298",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/contract_guard.py": "e418fc28b08ac7afe4fdd42ec44d572ddaa2f23f6200de300ecac211404b3746",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-ARCHITECTURE-SPEC.md": "434280dbe7e04104bb912f8406d1cedbd21bd92c937c6fbb988b531c460dc489",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-IMPLEMENTATION-ROADMAP.md": "f2eed270b4f6744be01e162291f92b596023fa4aefdd46760c846c65e1057460",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-DATA-MODEL.md": "ba618fa0e43cfa3186557c250749705f616ed28755bfc6cb397bdb6305ad24b1"
+    },
+    "not_yet_existing": [
+      "KeepLab-Relay/backend/ (the whole directory is created by this phase)"
+    ],
+    "hook_and_core": {
+      "note": "Outside the guard source_root; recorded for the execution session's stop conditions, not enforceable by the guard's path lists.",
+      "/home/zhong/.hermes/profiles/android-stack/config.yaml": "7ac5c4cbce7bad53147e45e35bd03d5d14accaced7929ab8a3adc5c669b74a5a",
+      "/home/zhong/.hermes/profiles/android-stack/shell-hooks-allowlist.json": "343cf57656af93f070a4361bdf07665af9b034cd4f01ab46fa4e68c5f387d248"
+    }
+  },
+  "protected_snapshot": {
+    "note": "The Android product must be provably untouched. The A2 execution session re-hashes these after its work and asserts byte-identity.",
+    "android_app_tree": "KeepLab-Relay/app/** was not hashed file-by-file at authoring time (it is a large tree and A2 writes nothing into it). The execution session proves non-touch by a scope scan: every file it created or modified must lie under KeepLab-Relay/backend/**, and no mtime/content change may exist under KeepLab-Relay/app/**.",
+    "anchor_files": {
+      "KeepLab-Relay/app/build.gradle.kts": "20dd51e5d8bb8cababcac06fecad3e9d8b5771418eb88b0ba132409c5014e298"
+    },
+    "contract_packages": {
+      "note": "Every earlier package is READ_ONLY and must stay byte-identical; their own manifests are the integrity source. All of them sit inside the forbidden reports/contracts/ prefix.",
+      "paths": [
+        "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-WRITE-001/",
+        "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-TEXT-CLEANUP-001/",
+        "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL-001/"
+      ]
+    },
+    "p0b_contracts": [
+      "KeepLab-Relay/specs/p0b-close-benchmarkability/",
+      "KeepLab-Relay/specs/p0b-performance-reliability/",
+      "KeepLab-Relay/specs/phase-c-pin-notes-b1/"
+    ]
+  },
+  "verification_proof_mechanism": {
+    "git_baseline": "UNAVAILABLE — KeepLab-Relay is a git repository with no commits, so `git diff` cannot prove the change set",
+    "used_instead": [
+      "the backend build and test result itself (the mandatory gate)",
+      "sha256 before/after of every frozen_inputs file",
+      "a scope scan asserting every created/modified file lies under KeepLab-Relay/backend/** and that no KeepLab-Relay/app/** file changed",
+      "a secret scan over the created backend tree asserting no real credential is committed (.env.example placeholders only, no .env)"
+    ]
+  },
+  "staleness_policy": {
+    "rule": "The A2 execution session MUST re-read and re-hash the frozen_inputs.files BEFORE creating the backend project and fail closed if any hash differs.",
+    "on_mismatch": "STOP with STALE_BACKEND_FOUNDATION_INPUT.",
+    "forbidden_behaviour": "Never silently patch a newer or different file; never re-baseline an expected hash to match the filesystem. A stale input is a STOP, never an auto-repair."
+  },
+  "contract_package_self_protection": {
+    "package": "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A2-BACKEND-FOUNDATION-001/",
+    "declaration": "CONTRACT_PACKAGE: READ_ONLY_INPUT",
+    "enforcement": "The package path is inside the forbidden reports/contracts/ prefix, so the same guard blocks any write into it while this contract is active.",
+    "execution_rules": [
+      "The A2 session verifies the package sha256 manifest BEFORE creating any backend file.",
+      "The A2 session must not rewrite, re-hash or extend its own contract package.",
+      "The A2 session must not broaden its own allowed paths; a needed broadening is a STOP and a new human-approved contract (except the declared STOP codes).",
+      "FROZEN_TECHNOLOGY and PROJECT_DATA_STAGE are recorded in this package and may not be re-decided at execution time."
+    ]
+  },
+  "executor_prompt": {
+    "path": "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A2-BACKEND-FOUNDATION-001/KEEPLAB-A2-BACKEND-FOUNDATION-EXECUTE.md",
+    "pointer": "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A2-BACKEND-FOUNDATION-001/EXECUTOR-PROMPT.md",
+    "executed_in_this_phase": false,
+    "loop": "PLAN ONCE -> EXECUTE -> VERIFY ONCE -> PASS = STOP -> FAIL = fix the failed path only",
+    "must_stop_after": "A2_BACKEND_FOUNDATION",
+    "must_not_start": [
+      "A3",
+      "A4"
+    ],
+    "forbidden_behaviour": [
+      "no post-PASS review",
+      "no second audit",
+      "no full repository scan",
+      "no re-run of a passing task",
+      "no re-opening A0 or A1"
+    ]
+  },
+  "acceptance_ids": [
+    "AC-A2BF-001",
+    "AC-A2BF-002",
+    "AC-A2BF-003",
+    "AC-A2BF-004",
+    "AC-A2BF-005",
+    "AC-A2BF-006",
+    "AC-A2BF-007",
+    "AC-A2BF-008",
+    "AC-A2BF-009",
+    "AC-A2BF-010"
+  ],
+  "requirements": [
+    {
+      "id": "REQ-A2BF-001",
+      "statement": "An independent Kotlin/Ktor backend Gradle project exists under KeepLab-Relay/backend/ and builds with the existing repository wrapper.",
+      "acceptance_ids": [
+        "AC-A2BF-001"
+      ],
+      "task_ids": [
+        "TASK-01"
+      ]
+    },
+    {
+      "id": "REQ-A2BF-002",
+      "statement": "The server starts structurally as a Ktor application on a normal engine, with JSON serialization, structured configuration and centralized error handling.",
+      "acceptance_ids": [
+        "AC-A2BF-002"
+      ],
+      "task_ids": [
+        "TASK-01"
+      ]
+    },
+    {
+      "id": "REQ-A2BF-003",
+      "statement": "GET /health returns a server-alive success result without authentication and without touching the database.",
+      "acceptance_ids": [
+        "AC-A2BF-003"
+      ],
+      "task_ids": [
+        "TASK-01"
+      ]
+    },
+    {
+      "id": "REQ-A2BF-004",
+      "statement": "GET /ready reports readiness through a small injectable database-readiness abstraction, succeeding when the probe reports reachable and returning a non-success status when it reports unreachable.",
+      "acceptance_ids": [
+        "AC-A2BF-004"
+      ],
+      "task_ids": [
+        "TASK-01"
+      ]
+    },
+    {
+      "id": "REQ-A2BF-005",
+      "statement": "All environment-specific values come from environment variables or non-secret defaults, and backend/.env.example carries placeholders only while no .env with real credentials exists.",
+      "acceptance_ids": [
+        "AC-A2BF-005"
+      ],
+      "task_ids": [
+        "TASK-01",
+        "TASK-04"
+      ]
+    },
+    {
+      "id": "REQ-A2BF-006",
+      "statement": "A PostgreSQL connectivity component (HikariCP + PostgreSQL JDBC driver) can initialize its pool from configuration, execute a SELECT 1 readiness probe and close cleanly.",
+      "acceptance_ids": [
+        "AC-A2BF-006"
+      ],
+      "task_ids": [
+        "TASK-02"
+      ]
+    },
+    {
+      "id": "REQ-A2BF-007",
+      "statement": "A Flyway migration foundation exists whose initial migration creates only a foundation database namespace and no business table.",
+      "acceptance_ids": [
+        "AC-A2BF-007"
+      ],
+      "task_ids": [
+        "TASK-02"
+      ]
+    },
+    {
+      "id": "REQ-A2BF-008",
+      "statement": "A portable Docker development setup exists (Dockerfile + docker-compose.yml with PostgreSQL and backend services and a named data volume) with no production secret and no cloud provisioning.",
+      "acceptance_ids": [
+        "AC-A2BF-008"
+      ],
+      "task_ids": [
+        "TASK-03"
+      ]
+    },
+    {
+      "id": "REQ-A2BF-009",
+      "statement": "No authentication, session, token, notes API or sync functionality is implemented anywhere in the backend.",
+      "acceptance_ids": [
+        "AC-A2BF-009"
+      ],
+      "task_ids": [
+        "TASK-01",
+        "TASK-02",
+        "TASK-03"
+      ]
+    },
+    {
+      "id": "REQ-A2BF-010",
+      "statement": "The phase is verified in exactly one pass with the frozen backend gate, a failure is fixed on the failed path only, and the Android product source is byte-identical afterwards.",
+      "acceptance_ids": [
+        "AC-A2BF-010"
+      ],
+      "task_ids": [
+        "TASK-05"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "TASK-01",
+      "goal": "Create the independent backend project and the Ktor server foundation.",
+      "boundary": "Only KeepLab-Relay/backend/**. No Android file, no root Gradle file, no auth, no sync.",
+      "depends": [],
+      "allowed_paths": [
+        "KeepLab-Relay/backend/"
+      ],
+      "acceptance_ids": [
+        "AC-A2BF-001",
+        "AC-A2BF-002",
+        "AC-A2BF-003",
+        "AC-A2BF-004",
+        "AC-A2BF-005"
+      ],
+      "verification": "`./gradlew -p backend build` compiles the project; the Ktor application module starts under testApplication; GET /health returns success and GET /ready reflects the injected readiness probe.",
+      "done_when": "backend/settings.gradle.kts and backend/build.gradle.kts exist as an independent build, Application.kt starts a Ktor/Netty server, configuration is read from the KEEPLAB_* environment variables with non-secret defaults, JSON serialization and centralized error handling are wired, and /health and /ready behave as specified."
+    },
+    {
+      "id": "TASK-02",
+      "goal": "Add the PostgreSQL connectivity foundation and the Flyway migration foundation.",
+      "boundary": "Only KeepLab-Relay/backend/** (db component, resources/application.conf, resources/db/migration/). No ORM, no domain repository, no business table.",
+      "depends": [
+        "TASK-01"
+      ],
+      "allowed_paths": [
+        "KeepLab-Relay/backend/"
+      ],
+      "acceptance_ids": [
+        "AC-A2BF-006",
+        "AC-A2BF-007"
+      ],
+      "verification": "The db component compiles against HikariCP and the PostgreSQL JDBC driver, exposes pool initialization, a SELECT 1 probe behind the readiness abstraction and a clean close; Flyway is configured against db/migration and the initial migration contains only the foundation namespace.",
+      "done_when": "The pool initializes from configuration, the probe is injectable, shutdown closes the pool, Flyway is wired, and exactly one foundation-only migration exists."
+    },
+    {
+      "id": "TASK-03",
+      "goal": "Add the portable Docker development setup.",
+      "boundary": "Only KeepLab-Relay/backend/Dockerfile, backend/docker-compose.yml, backend/.dockerignore, backend/.env.example. No cloud provisioning, no root-level Docker file.",
+      "depends": [
+        "TASK-01",
+        "TASK-02"
+      ],
+      "allowed_paths": [
+        "KeepLab-Relay/backend/"
+      ],
+      "acceptance_ids": [
+        "AC-A2BF-008",
+        "AC-A2BF-009"
+      ],
+      "verification": "`docker compose -f backend/docker-compose.yml config` parses successfully when a container runtime is available; otherwise the file is inspected statically and DOCKER_RUNTIME_SMOKE = SKIPPED_TOOL_UNAVAILABLE is recorded.",
+      "done_when": "A multi-stage Dockerfile builds the backend image without embedded credentials, the compose file defines a PostgreSQL service with a named data volume and a backend service wired by environment variables, and .env.example holds placeholders only."
+    },
+    {
+      "id": "TASK-04",
+      "goal": "Prove the foundation with a small backend test suite.",
+      "boundary": "Only KeepLab-Relay/backend/src/test/**. No live-database requirement, no device, no long pipeline.",
+      "depends": [
+        "TASK-01",
+        "TASK-02"
+      ],
+      "allowed_paths": [
+        "KeepLab-Relay/backend/"
+      ],
+      "acceptance_ids": [
+        "AC-A2BF-003",
+        "AC-A2BF-004",
+        "AC-A2BF-005"
+      ],
+      "verification": "Deterministic JVM tests run through the backend Gradle test task: /health success, configuration parsing, /ready success and failure through a fake probe, and application startup under testApplication.",
+      "done_when": "Every required test exists and passes without a live PostgreSQL instance, with no huge testing framework introduced."
+    },
+    {
+      "id": "TASK-05",
+      "goal": "Run the single verification pass and write the evidence.",
+      "boundary": "Running the frozen backend gate once, the optional single Docker check, the scope/secret scans and the report. No further review, no second audit, no Android build, no device, no A3.",
+      "depends": [
+        "TASK-01",
+        "TASK-02",
+        "TASK-03",
+        "TASK-04"
+      ],
+      "allowed_paths": [
+        "KeepLab-Relay/backend/",
+        "Google-Android-Agent-Development-Stack/reports/",
+        "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-a2-backend-foundation/"
+      ],
+      "acceptance_ids": [
+        "AC-A2BF-010",
+        "AC-A2BF-009"
+      ],
+      "verification": "`cd /mnt/AndroidDev/Projects/KeepLab-Relay && ./gradlew -p backend test build` run once; on failure fix the failed path and rerun only the failed task.",
+      "done_when": "The gate passes, the frozen inputs are re-hashed byte-identical, the scope scan shows changes only under KeepLab-Relay/backend/**, the secret scan is clean, and the A2 report records the result."
+    }
+  ],
+  "verification_intent": {
+    "feature_id": "A2-BACKEND-FOUNDATION",
+    "engine": "gradle_jvm_backend",
+    "device_required": false,
+    "acceptance_ids": [
+      "AC-A2BF-001",
+      "AC-A2BF-002",
+      "AC-A2BF-003",
+      "AC-A2BF-004",
+      "AC-A2BF-005",
+      "AC-A2BF-006",
+      "AC-A2BF-007",
+      "AC-A2BF-008",
+      "AC-A2BF-009",
+      "AC-A2BF-010"
+    ],
+    "mandatory_gate": {
+      "command": "cd /mnt/AndroidDev/Projects/KeepLab-Relay && ./gradlew -p backend test build",
+      "runs": "ONCE",
+      "note": "This is the mandatory A2 gate. The backend Gradle build and tests remain the gate even when no container runtime exists."
+    },
+    "optional_checks": [
+      {
+        "check": "docker compose config",
+        "command": "docker compose -f backend/docker-compose.yml config",
+        "runs": "ONCE, only if docker compose is available",
+        "unavailable_result": "DOCKER_RUNTIME_SMOKE = SKIPPED_TOOL_UNAVAILABLE"
+      },
+      {
+        "check": "single live PostgreSQL smoke",
+        "runs": "at most ONCE, only if a container runtime is available AND the check is cheap",
+        "note": "Optional in A2. Its absence must never block A2 and must never be replaced by a long deployment pipeline."
+      }
+    ],
+    "oracle_intent": "Assert on deterministic, machine-readable evidence only: the backend Gradle build/test result, HTTP status and body of /health and /ready under testApplication, the presence and content of the PostgreSQL/Flyway/Docker artefacts, the sha256 identity of the frozen inputs and a scope/secret scan. No visual judgement, no LLM judgement, no screenshot, no device.",
+    "required_selectors": [],
+    "fixture_intent": "A fake/injected database-readiness probe for the /ready success and failure cases; no live PostgreSQL required. Tests must be deterministic and must not depend on an external service.",
+    "required_checks": [
+      "backend build PASS",
+      "backend tests PASS",
+      "/health test PASS",
+      "/ready success and failure tests PASS",
+      "no hard-coded real secret",
+      "PostgreSQL JDBC driver and HikariCP configured",
+      "Flyway configured with a foundation-only initial migration",
+      "Dockerfile exists",
+      "docker-compose.yml exists",
+      "Android app untouched",
+      "auth not implemented",
+      "sync not implemented",
+      "cloud not provisioned"
+    ],
+    "not_verified_here": [
+      "any production deployment",
+      "production data-migration compatibility",
+      "authentication, registration, token issuance",
+      "notes API or sync API behaviour",
+      "Android device behaviour of any kind"
+    ]
+  },
+  "stop_conditions": [
+    "Any required write falls outside allowed_paths or targets a forbidden path: STOP and emit CONTRACT_DEVIATION.",
+    "Any frozen_inputs file has drifted: STOP and emit STALE_BACKEND_FOUNDATION_INPUT.",
+    "KeepLab-Relay/backend/ already contains unrelated implementation: STOP and emit A2_BACKEND_PATH_CONFLICT; do not overwrite it.",
+    "The independent backend project cannot work without changing a repository-root Gradle file: STOP and emit A2_ROOT_GRADLE_CHANGE_REQUIRED with the exact file and change; do not make the change.",
+    "The existing repository wrapper genuinely cannot run the backend build: STOP and emit A2_BACKEND_WRAPPER_REQUIRED with the proof; do not silently add a second wrapper.",
+    "An Android product file (KeepLab-Relay/app/**), the Android Gradle files, Room/entity/DAO code or Android UI would have to change: STOP — Android is untouched in A2.",
+    "Any authentication, registration, password, passkey, token, session, user table, credential table or Google/Firebase integration would be needed: STOP — those are A3 and are blocked on D-01/D-04/D-10.",
+    "Any notes API, sync API, outbox, delta cursor, conflict resolution, revision protocol, attachment or collaboration feature would be needed: STOP — those are later phases.",
+    "Any Tencent Cloud resource would have to be provisioned, any cloud credential used, or any cloud-specific binding introduced into the foundation: STOP — cloud provisioning is forbidden and the setup must stay container-portable.",
+    "A real secret would have to be written, committed or echoed into evidence: STOP.",
+    "A business table (users, sessions, notes, sync_operations, attachments, …) would have to be created merely to prove migrations work: STOP — the initial migration is foundation-only.",
+    "The Android device would have to be touched, or adb or an instrumentation run used: STOP; A2 is device-free.",
+    "The guard source, the hook configuration, Hermes core, the frozen P0B-CLOSE contract, an A0/A1 package or this package would have to be modified: STOP.",
+    "The contract package manifest does not verify: STOP.",
+    "The A2 session would have to broaden its own allowed paths: STOP; a new human-approved contract is required.",
+    "The verification gate fails and the fix would reach outside allowed_paths: STOP.",
+    "The same failure survives two genuine fixes: STOP and perform ONE root-cause analysis; do not restart A2 from zero.",
+    "A second review, a second audit, a post-PASS cleanup or a re-run of a passing task is being considered after PASS: STOP — PASS means stop.",
+    "A minor wording, naming or warning issue is being turned into a new contract: STOP — append it compactly to reports/KEEPLAB-MINOR-BACKLOG.md instead."
+  ],
+  "failure_rule": {
+    "rule": "Read the failure once, fix the failed path only, rerun only the failed task. Do not restart A2 and do not re-run tasks that already passed.",
+    "repeated_failure": "If the same failure survives two genuine fixes: emit REPEATED_FAILURE and perform one root-cause analysis.",
+    "allowed_patch_surface": "Only files under KeepLab-Relay/backend/** may be edited to fix a failure. A fix that would need a root Gradle change, an Android change or a new dependency outside the backend project is a STOP, not a workaround."
+  },
+  "non_goals": [
+    "implementing authentication, registration, passwords, passkeys, tokens, sessions or refresh rotation",
+    "implementing the notes API, the sync API, an outbox, a delta cursor, conflict resolution, revisions, attachments or collaboration",
+    "deciding or pre-empting D-01 (auth method), D-04 (sign-out data policy) or D-10 (token format)",
+    "provisioning or touching any Tencent Cloud resource",
+    "deploying the backend anywhere",
+    "creating production migration or rollback complexity for experimental backend data",
+    "creating business tables, an ORM layer or domain repositories",
+    "changing any Android product source, Android Gradle file, Room entity/DAO, UI or user-visible behaviour",
+    "building the Android app as an A2 acceptance step",
+    "any device operation, adb command, instrumentation run, Maestro or UiAutomator run",
+    "editing the frozen P0B-CLOSE contract, an A0/A1 package or this package",
+    "editing contract_guard.py, the hook configuration or Hermes core",
+    "starting A3 or A4, or re-opening A0 or A1",
+    "creating a second Gradle wrapper",
+    "building a long deployment test pipeline",
+    "creating separate contracts for minor wording/naming/warning issues",
+    "Testapp and PowerAi"
+  ],
+  "decisions": [
+    {
+      "id": "A2-BF-001",
+      "statement": "The backend is an INDEPENDENT Gradle project under KeepLab-Relay/backend/ with its own settings.gradle.kts and build.gradle.kts.",
+      "rationale": "Declaring a :backend subproject in the root settings.gradle.kts would pull the Android build's pluginManagement, version catalog and repositoriesMode onto backend code and would modify the Android build. An independent project makes ROOT_ANDROID_GRADLE_MODIFIED = NO achievable, which is the preferred outcome stated in the authorizing instruction."
+    },
+    {
+      "id": "A2-BF-002",
+      "statement": "The existing repository Gradle wrapper is reused via `./gradlew -p backend`, and no second wrapper is created.",
+      "rationale": "Resource discovery proved a wrapper already exists (Gradle 9.5.1) and that `-p <dir>` makes Gradle treat backend/ as the build root. Adding a second wrapper would duplicate a working tool without a proven need."
+    },
+    {
+      "id": "A2-BF-003",
+      "statement": "The frozen Kotlin+Ktor / PostgreSQL / portable-Docker stack is used with no proprietary cloud coupling.",
+      "rationale": "D-07/D-08/D-09 are human-approved. Tencent Cloud is the initial future deployment target, so the foundation is packaged as an ordinary portable container that avoids Tencent-proprietary APIs."
+    },
+    {
+      "id": "A2-BF-004",
+      "statement": "No ORM is introduced; PostgreSQL access is a small explicit HikariCP component with a SELECT 1 readiness probe behind an injectable abstraction.",
+      "rationale": "A2 has no domain model and no repositories. An ORM would be unused coupling, and the injectable probe is what makes /ready deterministically testable without a live database."
+    },
+    {
+      "id": "A2-BF-005",
+      "statement": "The migration foundation is Flyway with exactly one foundation-only initial migration; no business table is created to demonstrate that migrations work.",
+      "rationale": "The project data stage is EXPERIMENTAL and clean foundation outranks backward compatibility. Fake domain tables would pre-empt A3/A4 design decisions, including the ones still blocked on human decisions."
+    },
+    {
+      "id": "A2-BF-006",
+      "statement": "Authentication, sessions, tokens, the notes API and the sync API are absent from A2 by construction.",
+      "rationale": "D-01, D-04 and D-10 are unresolved human decisions, so any auth implementation would pre-empt them; sync depends on both auth and a domain model that does not exist yet."
+    },
+    {
+      "id": "A2-BF-007",
+      "statement": "The allowed surface is the whole KeepLab-Relay/backend/ prefix plus reports/ and one A2 evidence directory; KeepLab-Relay/app/** is fully blocked.",
+      "rationale": "backend/ is a directory this phase creates, so a whole-prefix allowance cannot overwrite product code and prevents ordinary compile fixes from needing a new contract. The Android app is untouched in A2 and stays protected."
+    },
+    {
+      "id": "A2-BF-008",
+      "statement": "All environment-specific values come from environment variables with non-secret defaults; .env.example carries placeholders and no .env is created.",
+      "rationale": "The foundation must be runnable locally and in a container without committing a credential. Development-only placeholder credentials are permitted precisely because they are obviously local and non-secret."
+    },
+    {
+      "id": "A2-BF-009",
+      "statement": "The mandatory gate is `cd /mnt/AndroidDev/Projects/KeepLab-Relay && ./gradlew -p backend test build`, run once; Docker checks are optional and a missing container runtime yields DOCKER_RUNTIME_SMOKE = SKIPPED_TOOL_UNAVAILABLE.",
+      "rationale": "Discovery found no Docker on this host. Blocking A2 on an unavailable tool would stop the phase for a non-deliverable reason, while the backend Gradle build and tests remain a genuine, honest gate."
+    },
+    {
+      "id": "A2-BF-010",
+      "statement": "Verification is ONE pass: PLAN ONCE -> EXECUTE -> VERIFY ONCE -> PASS = STOP; a failure fixes only the failed path and re-runs only the failed task.",
+      "rationale": "One contract validation is enough. No review of review, no post-PASS audit, no repeated re-reading of the same files, no full-repository scan."
+    }
+  ],
+  "read_first": [
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A2-BACKEND-FOUNDATION-001/KEEPLAB-A2-BACKEND-FOUNDATION-EXECUTE.md",
+      "why": "the execution prompt for this contract"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-ARCHITECTURE-SPEC.md",
+      "why": "§23 backend service model and §23.1 the human-approved stack (Kotlin+Ktor / PostgreSQL / Tencent Cloud with PORTABLE_DOCKER), including the explicit interpretation limits"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-IMPLEMENTATION-ROADMAP.md",
+      "why": "phase A2 'Backend foundation' scope, prerequisites and its do-NOT-include list"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-DATA-MODEL.md",
+      "why": "the future domain model the backend will eventually carry — read only to know what NOT to create in A2"
+    },
+    {
+      "path": "KeepLab-Relay/settings.gradle.kts",
+      "why": "proof that the root build is Android-only and must not gain a backend subproject"
+    },
+    {
+      "path": "KeepLab-Relay/gradle/wrapper/gradle-wrapper.properties",
+      "why": "the Gradle version the reused wrapper provides"
+    },
+    {
+      "path": "KeepLab-Relay/MISSION.md",
+      "why": "the hard invariants: local-first mandatory, account/network optional for local use, Room is the local SSOT, no silent data loss"
+    }
+  ],
+  "unresolved_questions": [],
+  "does_not_resolve": {
+    "D-01": "HUMAN_DECISION_PENDING (A3 blocker)",
+    "D-04": "HUMAN_DECISION_PENDING (A3 blocker)",
+    "D-10": "HUMAN_DECISION_PENDING (A3 blocker)",
+    "D-14": "HUMAN_DECISION_PENDING",
+    "A3": "BLOCKED_BY_HUMAN_DECISIONS",
+    "A4": "NOT_STARTED",
+    "OBS-1": "NON_BLOCKING MINOR_BACKLOG (A0 stays READY and is not reopened)"
+  },
+  "readiness": {
+    "status": "READY",
+    "gates": {
+      "acceptance": "PASS",
+      "boundaries": "PASS",
+      "hashes": "PASS",
+      "backend_path": "PASS",
+      "traceability": "PASS"
+    }
+  }
+}

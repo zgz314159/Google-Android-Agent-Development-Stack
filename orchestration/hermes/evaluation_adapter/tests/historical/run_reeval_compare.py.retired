@@ -1,0 +1,150 @@
+#!/usr/bin/env python3
+"""P0B-CLOSE / TASK-08 — isolated, non-mutating BEFORE/AFTER re-evaluation of the P0B session.
+
+Nothing here touches the production evaluation tree
+(`/mnt/AndroidDev/Projects/_evaluation`). Both passes write into the P0B-CLOSE evidence
+directory, and the production index is never opened:
+
+  BEFORE = the production shim exactly as the PRE-P0B-CLOSE adapter wrote it
+           (`_evaluation/_hermes_staging/<sid>.jsonl`, opened read-only), re-analysed by the
+           same frozen core. Reproduces the published 74.7% UNKNOWN / model=null / tokens=0.
+  AFTER  = the same session re-normalised by the improved adapter (tool-name canonicalisation +
+           model/identity stamping) and finalised with the additive `identity` overlay.
+
+Run:  python3 orchestration/hermes/evaluation_adapter/tests/run_reeval_compare.py
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import sys
+
+REPO = "/mnt/AndroidDev/Projects/Google-Android-Agent-Development-Stack"
+SESSION_ID = "20261005_021134_faf1e3"
+RUN_ID = "HERMES-%s" % SESSION_ID
+PROJECT = "Google-Android-Agent-Development-Stack"
+PROD_SHIM = "/mnt/AndroidDev/Projects/_evaluation/_hermes_staging/%s.jsonl" % SESSION_ID
+HERMES_DB = "/home/zhong/.hermes/profiles/android-stack/state.db"
+
+sys.path.insert(0, os.path.join(REPO, "evaluation", "commandcode"))
+sys.path.insert(0, os.path.join(REPO, "orchestration", "hermes", "evaluation_adapter"))
+
+import auto_finalize as af          # noqa: E402
+import finalize_session as fin      # noqa: E402
+import hermes_session_source as hs  # noqa: E402
+
+EVID = os.path.join(REPO, "orchestration", "hermes", "evidence", "p0b-close")
+BEFORE_ROOT = os.path.join(EVID, "reeval-before")
+AFTER_ROOT = os.path.join(EVID, "reeval-after")
+
+
+def summarize(root, label):
+    run_path = os.path.join(root, PROJECT, RUN_ID, "run.json")
+    with open(run_path, encoding="utf-8") as fh:
+        run = json.load(fh)
+    pt = run.get("phase_totals", {})
+    total_share = sum(v.get("share", 0.0) for v in pt.values())
+    unknown = pt.get("UNKNOWN", {})
+    tools = run.get("tools", {})
+    return {
+        "label": label,
+        "run_json": run_path,
+        "agent_host": run.get("agent_host"),
+        "model": run.get("model"),
+        "source_model": (run.get("source") or {}).get("model"),
+        "source_models": (run.get("source") or {}).get("models"),
+        "tokens_raw": run.get("tokens_raw"),
+        "result": run.get("result"),
+        "tokens_by_phase_keys": sorted((run.get("tokens_by_phase") or {}).keys()),
+        "phase_totals": pt,
+        "unknown_share": round(unknown.get("share", 0.0), 4),
+        "unknown_pct": round(100.0 * unknown.get("share", 0.0), 1),
+        "unknown_spans": unknown.get("spans", 0),
+        "unknown_seconds": unknown.get("wall_seconds", 0.0),
+        "phase_share_sum": round(total_share, 4),
+        "tools": {k: v.get("calls") for k, v in sorted(tools.items())},
+    }
+
+
+def unknown_by_native_tool(run_json_path):
+    """Attribute each UNKNOWN-classified span to its tool and evidence target."""
+    csv_path = os.path.join(os.path.dirname(run_json_path), "phase-timeline.csv")
+    import csv
+    counts = {}
+    targets = {}
+    with open(csv_path, encoding="utf-8") as fh:
+        for row in csv.DictReader(fh):
+            if (row.get("phase") or "") != "UNKNOWN":
+                continue
+            name = (row.get("tool") or "?").strip() or "?"
+            counts[name] = counts.get(name, 0) + 1
+            evidence = (row.get("evidence") or "").strip()
+            if evidence:
+                targets.setdefault(name, []).append(evidence[:120])
+    return {"unknown_spans_by_tool": counts, "unknown_targets": targets}
+
+
+def main():
+    if not os.path.isfile(PROD_SHIM):
+        print("PRODUCTION_SHIM_MISSING %s" % PROD_SHIM)
+        return 2
+    for root in (BEFORE_ROOT, AFTER_ROOT):
+        if os.path.isdir(root):
+            shutil.rmtree(root)
+        os.makedirs(root, exist_ok=True)
+
+    # ---------- BEFORE: pre-P0B-CLOSE shim, unchanged adapter path ------------- #
+    diag_before = fin.finalize(
+        session_path=PROD_SHIM, run_id=RUN_ID, project=PROJECT, workflow="hermes",
+        output_root=BEFORE_ROOT, force=True, require_completion=True,
+        execution_source={"source": "hermes", "session_id": SESSION_ID,
+                          "note": "BEFORE: production shim as written by the pre-P0B-CLOSE adapter"},
+    )
+    # ---------- AFTER: improved adapter + additive identity overlay ------------ #
+    results = af.scan_hermes(
+        output_root=AFTER_ROOT, db=HERMES_DB, session_id=SESSION_ID,
+        staging_root=os.path.join(AFTER_ROOT, "_hermes_staging"),
+        force=True, project=PROJECT, workflow="hermes",
+    )
+
+    before = summarize(BEFORE_ROOT, "BEFORE")
+    after = summarize(AFTER_ROOT, "AFTER")
+    before["unknown_by_native_tool"] = unknown_by_native_tool(before["run_json"])
+    after["unknown_by_native_tool"] = unknown_by_native_tool(after["run_json"])
+
+    comparison = {
+        "session_id": SESSION_ID,
+        "run_id": RUN_ID,
+        "production_evaluation_tree_touched": False,
+        "before_diag": {k: diag_before.get(k) for k in
+                        ("evaluation_outcome", "task_outcome", "finalized", "output_dir")},
+        "after_diag": results,
+        "before": before,
+        "after": after,
+        "delta": {
+            "unknown_pct": round(before["unknown_pct"] - after["unknown_pct"], 1),
+            "unknown_spans": before["unknown_spans"] - after["unknown_spans"],
+        },
+    }
+    out = os.path.join(EVID, "evaluation-reeval-comparison.json")
+    with open(out, "w", encoding="utf-8") as fh:
+        json.dump(comparison, fh, ensure_ascii=False, indent=2)
+    print(json.dumps({"before_unknown_pct": before["unknown_pct"],
+                      "after_unknown_pct": after["unknown_pct"],
+                      "before_unknown_spans": before["unknown_spans"],
+                      "after_unknown_spans": after["unknown_spans"],
+                      "before_model": before["model"], "after_model": after["model"],
+                      "before_agent_host": before["agent_host"],
+                      "after_agent_host": after["agent_host"],
+                      "before_tokens": before["tokens_raw"],
+                      "after_tokens": after["tokens_raw"],
+                      "after_tools": after["tools"],
+                      "after_unknown_by_native_tool": after["unknown_by_native_tool"],
+                      "comparison_file": out}, ensure_ascii=False, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

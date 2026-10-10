@@ -1,0 +1,63 @@
+{
+  "verification_id": "KEEPLAB-PIN-NOTES-B1-PHYSICAL",
+  "project": "KeepLab",
+  "description": "Physical-device closure smoke for B1: the frozen PC1-PIN-NOTE journey (engine uiautomator) on a real Redmi Note 7 Pro. Reuses the completed B1 app/test APKs unchanged; exercises the v1.0.1 fail-closed evidence gate. Diagnostic reference smoke only.",
+  "android": {
+    "package_name": "com.keeplab.app",
+    "apk": "/mnt/AndroidDev/Projects/KeepLab-Relay/app/build/outputs/apk/debug/app-debug.apk",
+    "test_apk": "/mnt/AndroidDev/Projects/KeepLab-Relay/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
+    "expected_app_sha256": "617913434b805b2efc1bc78b1f1b82b7678cbc6e3096efe66ca123d4b71cf692",
+    "expected_test_sha256": "f010b9b4c1cc4e7273c29dd50f91c4ff9738a22154ec6043495e468fe1cc9a09",
+    "runner": "androidx.test.runner.AndroidJUnitRunner"
+  },
+  "device": {
+    "serial": "87296ada",
+    "expected_api": "36"
+  },
+  "engine": "uiautomator",
+  "journey": {
+    "id": "PC1-PIN-NOTE",
+    "test_class": "com.keeplab.app.verify.Pc1PinNoteJourneyTest"
+  },
+  "fixture": {
+    "class": "com.keeplab.app.verify.FixtureSeeder",
+    "method": "seedB1"
+  },
+  "selectors": {
+    "compose": {
+      "note-pin-action": "testTag(note-pin-action)",
+      "note-unpin-action": "testTag(note-unpin-action)",
+      "note-pinned-indicator": "testTag(note-pinned-indicator)"
+    },
+    "contentDescription": [
+      "Pin",
+      "Unpin",
+      "Pinned",
+      "Search",
+      "Close search",
+      "Exit selection",
+      "More",
+      "Toggle grid or list"
+    ],
+    "immutableText": ["KeepLab", "PINNED", "OTHERS"]
+  },
+  "timeouts": {
+    "preflight": 60,
+    "install": 300,
+    "instrumentation": 900,
+    "oracle": 180,
+    "evidence": 120,
+    "cleanup": 60,
+    "shell": 30
+  },
+  "evidence_policy": "failure-only",
+  "measurement_class": "diagnostic",
+  "excluded_from_baseline": true,
+  "provenance": {
+    "verification_layer_version": "1.0.1"
+  },
+  "evaluation": {
+    "output_root": "/mnt/AndroidDev/Projects/_evaluation",
+    "project": "KeepLab"
+  }
+}

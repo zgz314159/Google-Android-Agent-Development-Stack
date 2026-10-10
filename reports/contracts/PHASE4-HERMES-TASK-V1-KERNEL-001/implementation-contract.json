@@ -1,0 +1,366 @@
+{
+  "acceptance_ids": [
+    "AC-PHASE4-001",
+    "AC-PHASE4-002",
+    "AC-PHASE4-003",
+    "AC-PHASE4-004",
+    "AC-PHASE4-005"
+  ],
+  "allowed_paths": [
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/"
+  ],
+  "artifact_hashes": {
+    "DESIGN.md": "34d4eb0ebb8bdc4134eee7ccea5219c123d0d2061519929f9d25779f8a093ec4",
+    "PRODUCT.md": "206589f6ac0f4f42061e457e882167e1d5798560b24a05084880824f37acf5d8",
+    "acceptance.md": "96d367d8b31cea60ba639c0765706943d4776f264557ed06b1805c37ec0eac6c",
+    "design.md": "0840faa79cfddda2aeea0c61b09410ce0ef998f57e310cfb8b2fbe349db17b6c",
+    "project-context.json": "6fe19c3f2d97f9939e9c8f302e2792e4d91300520fc70f7e176db50675a150b1",
+    "requirements.md": "55a5d75bc0f8b23ea8ad6e589a3c253fe3ad54611ef1d0b6433410aa04f1218f",
+    "tasks.md": "892baaafc16eebe6a7243bd4d0292873caa0588cc87e3c213a5d0129b7812c1f",
+    "verification-intent.json": "e83b1f40254fe87970da528bcff27a2daf504d70c8455e8de5b7b5282508e9e0"
+  },
+  "artifact_refs": [
+    {
+      "path": "PRODUCT.md",
+      "required": true,
+      "role": "product",
+      "source": "authored"
+    },
+    {
+      "path": "requirements.md",
+      "required": true,
+      "role": "requirements",
+      "source": "authored"
+    },
+    {
+      "path": "design.md",
+      "required": true,
+      "role": "design",
+      "source": "authored"
+    },
+    {
+      "path": "tasks.md",
+      "required": true,
+      "role": "tasks",
+      "source": "authored"
+    },
+    {
+      "path": "DESIGN.md",
+      "required": true,
+      "role": "ui_design",
+      "source": "authored"
+    },
+    {
+      "path": "acceptance.md",
+      "required": true,
+      "role": "acceptance",
+      "source": "authored"
+    },
+    {
+      "path": "project-context.json",
+      "required": true,
+      "role": "project_context",
+      "source": "authored"
+    },
+    {
+      "path": "verification-intent.json",
+      "required": true,
+      "role": "verification_intent",
+      "source": "authored"
+    }
+  ],
+  "assumptions": [
+    {
+      "id": "ASM-001",
+      "statement": "The staged tree under the Phase-4 evidence directory is still byte-identical to the implementation that passed 34/34 tests."
+    },
+    {
+      "id": "ASM-002",
+      "statement": "No other agent holds a write claim on orchestration/hermes/bridge/ during the install session."
+    },
+    {
+      "id": "ASM-003",
+      "statement": "The bridge kernel remains stdlib-only, so no dependency installation is required for the test run."
+    }
+  ],
+  "contract_id": "PHASE4-HERMES-TASK-V1-KERNEL-001",
+  "contract_version": "0.1.0",
+  "data_change": {
+    "migration_required": false,
+    "notes": "No persisted schema is touched. A previous write of a Phase-3 adapter already exists at the install target and is superseded.",
+    "schema_version_current": 0,
+    "schema_version_target": 0
+  },
+  "decisions": [
+    {
+      "id": "DEC-001",
+      "rationale": "The Phase-4 implementation run completed and 34/34 bridge tests passed. Re-designing it at install time would reopen a frozen implementation and invalidate that evidence.",
+      "statement": "Install the Phase-4 kernel by copying the already-tested staged tree verbatim; never re-implement or redesign it."
+    },
+    {
+      "id": "DEC-002",
+      "rationale": "These are the only two paths the install and its parity report need. A narrower surface removes the P0B-CLOSE blocker without widening what any agent may write.",
+      "statement": "The authorized write surface is exactly orchestration/hermes/bridge/ plus the existing Phase-4 evidence directory."
+    },
+    {
+      "id": "DEC-003",
+      "rationale": "The change is a file move, so byte equality and the kernel's own offline tests are sufficient and fully deterministic.",
+      "statement": "Verification is the deterministic bridge unit suite plus a staged-versus-installed sha256 parity check; no device, no network, no LLM judgment."
+    },
+    {
+      "id": "DEC-004",
+      "rationale": "The guard already supports per-session package selection. Editing the hook command would change the allowlist key and could silently deregister the guard.",
+      "statement": "The Contract Guard is activated for the install by pointing HERMES_CONTRACT_PACKAGE at this package; the profile config.yaml and the guard source are not modified."
+    },
+    {
+      "id": "DEC-005",
+      "rationale": "The staged adapter carries the send-semantics fix; leaving the Phase-3 copy would install an inconsistent kernel. This is the only pre-existing file the install overwrites.",
+      "statement": "The staged Phase-4 chatgpt_adapter.py supersedes the Phase-3 copy already at orchestration/hermes/bridge/chatgpt_adapter.py."
+    }
+  ],
+  "experiment_id": "PHASE4-HERMES-TASK-V1-KERNEL",
+  "experiment_type": "SPEC_FIRST_BROWNFIELD",
+  "feature": {
+    "feature_id": "PHASE4-BRIDGE-INSTALL",
+    "summary": "Authorize the write surface that installs the already-tested Phase-4 bridge kernel from its evidence staging tree into orchestration/hermes/bridge/, with a deterministic install, a test run and a byte-parity proof.",
+    "title": "Phase-4 Hermes Task V1 control kernel install"
+  },
+  "forbidden_paths": [
+    "Google-Android-Agent-Development-Stack/specification/",
+    "Google-Android-Agent-Development-Stack/verification/",
+    "Google-Android-Agent-Development-Stack/verification-benchmark/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/tools/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/HERMES-LOCK.json",
+    "Google-Android-Agent-Development-Stack/reports/contracts/",
+    "Google-Android-Agent-Development-Stack/.hermes.md",
+    "KeepLab-Relay/",
+    "KeepLab-Relay-evidence/",
+    "Testapp/",
+    "PowerAi/"
+  ],
+  "matched_control_available": false,
+  "mode": "brownfield",
+  "non_goals": [
+    "Phase-4 redesign or re-implementation",
+    "KeepLab product code",
+    "Specification Compiler source modification",
+    "Contract Guard source modification",
+    "Hermes profile configuration modification",
+    "Live bridge enablement or device execution",
+    "Any unrelated repository"
+  ],
+  "project": "Google-Android-Agent-Development-Stack",
+  "read_first": [
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/STAGING.md",
+      "why": "state why the kernel is staged and what the install command and precondition are"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/bridge/protocol.py",
+      "why": "the HERMES_TASK_V1 / HERMES_RESULT_V1 envelope being installed"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/bridge/bridge_state.py",
+      "why": "persistent state, replay journal and single-worker lock"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/bridge/contract_executor.py",
+      "why": "contract-package gate and guarded execution path"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/bridge/bridge_cli.py",
+      "why": "the one-round entry point being installed"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/bridge/chatgpt_adapter.py",
+      "why": "the Phase-4 adapter carrying the send-semantics fix that supersedes the Phase-3 copy"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/bridge/tests/test_bridge_kernel.py",
+      "why": "the deterministic suite that must pass against the installed tree"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/chatgpt_adapter.py",
+      "why": "the only pre-existing file at the install target, confirming the tracked overwrite"
+    }
+  ],
+  "readiness": {
+    "gates": {
+      "acceptance": "PASS",
+      "boundaries": "PASS",
+      "hashes": "PASS",
+      "schema": "PASS",
+      "traceability": "PASS"
+    },
+    "status": "READY"
+  },
+  "requirements": [
+    {
+      "acceptance_ids": [
+        "AC-PHASE4-001",
+        "AC-PHASE4-002"
+      ],
+      "id": "REQ-PHASE4-001",
+      "statement": "The generated contract must list `Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/` and `Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/` in `allowed_paths`, and must list no other project path as allowed.",
+      "task_ids": [
+        "TASK-01"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE4-003"
+      ],
+      "id": "REQ-PHASE4-002",
+      "statement": "Every Phase-4 kernel module present in the staging tree is copied into `orchestration/hermes/bridge/` byte-for-byte, with no module content edited, reformatted or redesigned.",
+      "task_ids": [
+        "TASK-01",
+        "TASK-03"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE4-004"
+      ],
+      "id": "REQ-PHASE4-003",
+      "statement": "The bridge test suite that the Phase-4 run already passed must pass again against the installed tree, offline and without a device.",
+      "task_ids": [
+        "TASK-02"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE4-005"
+      ],
+      "id": "REQ-PHASE4-004",
+      "statement": "The install session must produce a deterministic parity record showing that the installed kernel file set equals the staged kernel file set and that every shared module is byte-identical.",
+      "task_ids": [
+        "TASK-03"
+      ]
+    }
+  ],
+  "scope": [
+    "Write authorization for Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/",
+    "Write authorization for the Phase-4 evidence directory for the install-parity report",
+    "Verbatim copy of the staged Phase-4 kernel modules",
+    "Deterministic bridge test run and staged-vs-installed parity proof"
+  ],
+  "selector_contract": [
+    {
+      "compose_test_tag": "phase4_staged_kernel_source",
+      "name": "phase4_staged_kernel_source",
+      "required": true,
+      "state": "staged Phase-4 kernel tree present under orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/bridge/",
+      "uiautomator": "By.res(\"phase4_staged_kernel_source\")"
+    },
+    {
+      "compose_test_tag": "phase4_bridge_kernel_installed",
+      "name": "phase4_bridge_kernel_installed",
+      "required": true,
+      "state": "Phase-4 kernel tree present under orchestration/hermes/bridge/",
+      "uiautomator": "By.res(\"phase4_bridge_kernel_installed\")"
+    }
+  ],
+  "stop_conditions": [
+    "A required write falls outside allowed_paths or targets a forbidden path: STOP, CONTRACT_DEVIATION.",
+    "Installing the kernel would require editing, reformatting or redesigning a kernel module: STOP, PHASE4_REDESIGN_FORBIDDEN.",
+    "The staged tree and the installed tree cannot be made byte-identical by a plain copy: STOP, PARITY_UNREACHABLE.",
+    "The bridge test suite fails against the installed tree: STOP, INSTALLED_TEST_FAILURE; do not patch the kernel from this contract.",
+    "Satisfying the install would require modifying specification/, verification/, evaluation_adapter/, HERMES-LOCK.json or the profile config: STOP, ABSOLUTE_BLOCK_VIOLATION.",
+    "Satisfying the install would require broadening allowed_paths or a broad project write surface: STOP, SCOPE_WIDENING."
+  ],
+  "tasks": [
+    {
+      "acceptance_ids": [
+        "AC-PHASE4-001",
+        "AC-PHASE4-003"
+      ],
+      "allowed_paths": [
+        "Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/"
+      ],
+      "boundary": "The bridge install write surface only. No module content is authored, edited or reorganised during install.",
+      "depends": [],
+      "done_when": "protocol.py, bridge_state.py, contract_executor.py, bridge_cli.py, chatgpt_adapter.py and tests/ all exist at orchestration/hermes/bridge/ with the sha256 of their staged counterparts",
+      "goal": "Copy every Phase-4 kernel module from the staging tree orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/bridge/ into orchestration/hermes/bridge/, agreeing with the staged bytes and redesigning nothing.",
+      "id": "TASK-01",
+      "verification": [
+        "compare the staged kernel module file set and the installed kernel module file set and assert per-file sha256 equality"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE4-004"
+      ],
+      "allowed_paths": [
+        "Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/",
+        "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/"
+      ],
+      "boundary": "Test execution and result capture only. No test source and no kernel source is modified.",
+      "depends": [
+        "TASK-01"
+      ],
+      "done_when": "the installed suite reports zero failures and zero errors",
+      "goal": "Run the bridge unit suite from the installed location and report its pass/fail counts for the installed tree.",
+      "id": "TASK-02",
+      "verification": [
+        "python3 -m unittest discover -s tests -p \"test_*.py\"` executed in orchestration/hermes/bridge/ exits 0"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE4-005"
+      ],
+      "allowed_paths": [
+        "Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/",
+        "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/"
+      ],
+      "boundary": "Comparison and evidence writing only. No kernel source change.",
+      "depends": [
+        "TASK-01"
+      ],
+      "done_when": "a parity record exists under orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/ reporting equality for every kernel module",
+      "goal": "Prove that the installed kernel equals the staged kernel and write the parity record into the Phase-4 evidence directory.",
+      "id": "TASK-03",
+      "verification": [
+        "recompute sha256 for every staged and installed kernel module",
+        "assert equality",
+        "and assert the two module file sets are equal"
+      ]
+    }
+  ],
+  "ui_change": {
+    "selectors_added": [
+      "phase4_staged_kernel_source",
+      "phase4_bridge_kernel_installed"
+    ],
+    "surfaces": []
+  },
+  "unresolved_questions": [],
+  "verification_intent": {
+    "acceptance_ids": [
+      "AC-PHASE4-001",
+      "AC-PHASE4-002",
+      "AC-PHASE4-003",
+      "AC-PHASE4-004",
+      "AC-PHASE4-005"
+    ],
+    "engine": "maestro",
+    "feature_id": "PHASE4-BRIDGE-INSTALL",
+    "fixture_intent": "No Android fixture and no device. The fixtures are the staged kernel tree at orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/bridge/ and the installed tree at orchestration/hermes/bridge/.",
+    "journey_id": "PHASE4-INSTALL-STAGED-KERNEL",
+    "oracle_intent": "Deterministic only: process exit codes and pass/fail counts from the bridge unit suite, plus sha256 equality between each staged and installed kernel module and equality of the two module file sets. Zero LLM judgment, zero visual judgment, zero device interaction, no network. The engine field records the stack's selector-driven replay family; the actual oracle for this install is byte equality. Verification is performed once; PASS = STOP.",
+    "persistence_checks": [
+      "the installed kernel modules persist at orchestration/hermes/bridge/ after the install command completes",
+      "the install-parity record persists under orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/"
+    ],
+    "required_selectors": [
+      "phase4_staged_kernel_source",
+      "phase4_bridge_kernel_installed"
+    ],
+    "rotation_checks": [],
+    "search_checks": [
+      "the installed module file set equals the staged module file set"
+    ]
+  }
+}

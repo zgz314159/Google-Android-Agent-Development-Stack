@@ -1,0 +1,14 @@
+{
+  "contract_id": "PHASE4-TERMINATION-SMOKE-001",
+  "contract_version": "0.1.0",
+  "experiment_id": "PHASE4-TERMINATION-SMOKE",
+  "status": "READY",
+  "unresolved_questions": [],
+  "validation": {
+    "acceptance": "PASS",
+    "boundaries": "PASS",
+    "hashes": "PASS",
+    "schema": "PASS",
+    "traceability": "PASS"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "contract_id": "KEEPLAB-A0-GOVERNANCE-WRITE-001",
+  "contract_version": "0.1.0",
+  "experiment_id": "KEEPLAB-A0-GOVERNANCE-WRITE",
+  "status": "READY",
+  "package_role": "TEMPORARY_EXECUTION_CONTRACT",
+  "phase": "A0_GOVERNANCE_WRITE",
+  "human_authorization": true,
+  "human_decision": "D-15 YES_BOUNDED_ACCOUNT_NETWORK_UNLOCK",
+  "date": "2026-10-06",
+  "apply_executed": false,
+  "applies_to": "KEEPLAB-A0-GOVERNANCE-WRITE-APPLY (separate future task)",
+  "package_switch": {
+    "mechanism": "HERMES_CONTRACT_PACKAGE",
+    "guard_source_modified": false,
+    "hook_config_modified": false
+  },
+  "does_not_resolve": {
+    "D-14": "HUMAN_DECISION_PENDING"
+  },
+  "implementation_authorization": "NOT_GRANTED",
+  "implementation_authorization_model": "PHASE_GATED",
+  "validation": {
+    "acceptance": "PASS",
+    "boundaries": "PASS",
+    "hashes": "PASS",
+    "schema": "PASS",
+    "traceability": "PASS",
+    "guard_simulation": "PASS"
+  }
+}

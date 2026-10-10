@@ -1,0 +1,275 @@
+#!/usr/bin/env python3
+"""P0B-EVAL-WRAPPER-ROLE-FIX — isolated, non-mutating re-evaluation + regression harness.
+
+Nothing here touches the production evaluation tree (`/mnt/AndroidDev/Projects/_evaluation`): the
+production run.json is opened READ-ONLY as the published reference and every re-evaluation writes
+into this phase's own evidence directory, so the production Auto-Finalizer index is never opened or
+rewritten and no production finalization is forced.
+
+Sections:
+  1. LATEST SESSION 20261005_090430_53ce78 - isolated re-eval (switch ON) via the real Hermes
+                                              Auto-Finalizer path; semantic before/after identity.
+  2. REGRESSIONS 20261005_075257_cb5233 + 20261005_032302_4c6c40 - isolated re-eval.
+  3. COMMAND CODE REGRESSION - the real Command-Code session finalized OFF vs ON.
+  4. AUTO-FINALIZER REGRESSION - idempotency, atomic publish, task/evaluation separation,
+     Hermes-source activation, CC default backward compatibility.
+
+Run: python3 orchestration/hermes/evaluation_adapter/tests/run_p0b_eval_wrapper_role_fix_compare.py
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import sys
+
+REPO = "/mnt/AndroidDev/Projects/Google-Android-Agent-Development-Stack"
+EVID = os.path.join(REPO, "orchestration", "hermes", "evidence", "p0b-eval-wrapper-role-fix")
+PRODUCTION_ROOT = "/mnt/AndroidDev/Projects/_evaluation"
+PROJECT = "Google-Android-Agent-Development-Stack"
+HERMES_DB = "/home/zhong/.hermes/profiles/android-stack/state.db"
+CC_SESSION = ("/home/zhong/.commandcode/projects/"
+              "mnt-android-dev-projects-ai-engineering-governance-layer/"
+              "d64d231e-03eb-4cda-a61e-25123fa119cd.jsonl")
+CC_RUN_ID = "AI-ENGINEERING-GOVERNANC-V1-1-0-AI-ENGINEERING-GOVERNANCE-LAYER-A-20261002-103630"
+
+sys.path.insert(0, os.path.join(REPO, "evaluation", "commandcode"))
+sys.path.insert(0, os.path.join(REPO, "orchestration", "hermes", "evaluation_adapter"))
+
+import auto_finalize as af  # noqa: E402
+import core  # noqa: E402
+import failure_evidence as fe  # noqa: E402
+import finalize_session as fin  # noqa: E402
+
+RESULTS = {}
+
+
+def load(path):
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def failures_of(run):
+    return [{"id": f["logical_failure_id"], "type": f["type"]} for f in run.get("logical_failures") or []]
+
+
+def correction_of(run):
+    c = run.get("failure_evidence_correction")
+    if not c:
+        return None
+    return {"version": c.get("module_version"), "before": c.get("failures_before"),
+            "after": c.get("failures_after"), "removed": c.get("removed_count"),
+            "applied": c.get("applied"),
+            "removed_failures": [{"id": r.get("logical_failure_id"), "type": r.get("type"),
+                                  "rule": r.get("rule_id"), "roles": r.get("event_operation_roles"),
+                                  "events": r.get("raw_events")}
+                                 for r in c.get("removed_failures") or []]}
+
+
+def fresh(path):
+    if os.path.isdir(path):
+        shutil.rmtree(path)
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def hermes_reeval(session_id, out_root, force=True):
+    out_root = fresh(out_root)
+    results = af.scan_hermes(output_root=out_root, db=HERMES_DB, session_id=session_id,
+                             staging_root=os.path.join(out_root, "_hermes_staging"),
+                             force=force, project=PROJECT, workflow="hermes")
+    run_path = os.path.join(out_root, PROJECT, "HERMES-%s" % session_id, "run.json")
+    return results, run_path
+
+
+def _roles_of_events(session_file, failure):
+    """Operation role of every event behind one failure, re-derived from the shim session."""
+    data = core.load_session(session_file)
+    start, end, _ = core.resolve_task_window(data.rows, None)
+    calls, _by_id, _origins = core.index_calls(data.rows, list(range(start, end)))
+    by_row = {}
+    for c in calls:
+        by_row.setdefault(c.row_index, []).append(c)
+    out = []
+    for op in fe.collect_event_operations(failure, by_row):
+        out.append({"row": op.row, "role": op.role, "outcome": op.state.outcome,
+                    "exit": op.state.exit_code, "command": op.command[:220]})
+    return out
+
+
+def section_latest_session():
+    s = "20261005_090430_53ce78"
+    prod_path = os.path.join(PRODUCTION_ROOT, PROJECT, "HERMES-%s" % s, "run.json")
+    prod = load(prod_path)
+    diag, run_path = hermes_reeval(s, os.path.join(EVID, "reeval-latest"))
+    run = load(run_path)
+    staging = os.path.join(EVID, "reeval-latest", "_hermes_staging", "%s.jsonl" % s)
+    # re-derive the RAW (pre-correction) failures to report per-failure before/after semantics
+    data = core.load_session(staging)
+    start, end, _ = core.resolve_task_window(data.rows, None)
+    calls, _by_id, _origins = core.index_calls(data.rows, list(range(start, end)))
+    by_row = {}
+    for c in calls:
+        by_row.setdefault(c.row_index, []).append(c)
+    raw_failures = core.detect_logical_failures(calls)
+    kept_ids = {f["logical_failure_id"] for f in run["logical_failures"]}
+    per_failure = []
+    for f in raw_failures:
+        ops = fe.collect_event_operations(f, by_row)
+        per_failure.append({
+            "id": f["logical_failure_id"], "type": f["type"],
+            "raw_events": f.get("raw_events"),
+            "operation_target": (f.get("operation_target") or "")[:300],
+            "kept": f["logical_failure_id"] in kept_ids,
+            "roles": [op.role for op in ops],
+            "outcomes": [op.state.outcome for op in ops],
+            "exits": [op.state.exit_code for op in ops],
+            "operations": _roles_of_events(staging, f),
+        })
+    RESULTS["latest_session"] = {
+        "session_id": s,
+        "production_run_json": prod_path,
+        "isolated_run_json": run_path,
+        "auto_finalizer_diag": [{k: r.get(k) for k in ("status", "run_id", "output_dir")}
+                                for r in diag],
+        "published_failures_after": failures_of(prod),
+        "published_correction": correction_of(prod),
+        "isolated_failures_after": failures_of(run),
+        "isolated_correction": correction_of(run),
+        "per_failure_before_after": per_failure,
+        "repairs": [(r.get("repair_id"), r.get("failure_id"), r.get("result"))
+                    for r in run.get("repairs") or []],
+    }
+
+
+def section_regressions():
+    for key, s in (("cb5233", "20261005_075257_cb5233"), ("p0b_close", "20261005_032302_4c6c40")):
+        prod_path = os.path.join(PRODUCTION_ROOT, PROJECT, "HERMES-%s" % s, "run.json")
+        prod = load(prod_path)
+        diag, run_path = hermes_reeval(s, os.path.join(EVID, "reeval-%s" % key))
+        run = load(run_path)
+        staging = os.path.join(EVID, "reeval-%s" % key, "_hermes_staging", "%s.jsonl" % s)
+        data = core.load_session(staging)
+        start, end, _ = core.resolve_task_window(data.rows, None)
+        calls, _b, _o = core.index_calls(data.rows, list(range(start, end)))
+        by_row = {}
+        for c in calls:
+            by_row.setdefault(c.row_index, []).append(c)
+        raw_failures = core.detect_logical_failures(calls)
+        kept_ids = {f["logical_failure_id"] for f in run["logical_failures"]}
+        per_failure = []
+        for f in raw_failures:
+            ops = fe.collect_event_operations(f, by_row)
+            per_failure.append({
+                "id": f["logical_failure_id"], "type": f["type"],
+                "raw_events": f.get("raw_events"),
+                "operation_target": (f.get("operation_target") or "")[:260],
+                "kept": f["logical_failure_id"] in kept_ids,
+                "roles": [op.role for op in ops],
+                "outcomes": [op.state.outcome for op in ops],
+                "exits": [op.state.exit_code for op in ops],
+            })
+        RESULTS[key] = {
+            "session_id": s,
+            "production_run_json": prod_path,
+            "isolated_run_json": run_path,
+            "production_failures": failures_of(prod),
+            "isolated_failures": failures_of(run),
+            "isolated_correction": correction_of(run),
+            "per_failure_before_after": per_failure,
+            "repairs": [(r.get("repair_id"), r.get("failure_id"), r.get("result"))
+                        for r in run.get("repairs") or []],
+            "repair_linkage": run.get("repair_linkage"),
+            "execution_deviations": [d.get("type") for d in run.get("execution_deviations") or []],
+        }
+
+
+def section_cc_regression():
+    off_root = fresh(os.path.join(EVID, "cc-regression", "off"))
+    on_root = fresh(os.path.join(EVID, "cc-regression", "on"))
+    diag_off = fin.finalize(session_path=CC_SESSION, run_id=CC_RUN_ID, project="cc-regression-project",
+                            output_root=off_root, force=True, require_completion=True)
+    diag_on = fin.finalize(session_path=CC_SESSION, run_id=CC_RUN_ID, project="cc-regression-project",
+                           output_root=on_root, force=True, require_completion=True,
+                           failure_evidence=True)
+    off = load(os.path.join(off_root, "cc-regression-project", CC_RUN_ID, "run.json"))
+    on = load(os.path.join(on_root, "cc-regression-project", CC_RUN_ID, "run.json"))
+    extra = sorted(set(on) - set(off))
+    differing = [k for k in off if k in on and off[k] != on[k]]
+    RESULTS["cc_regression"] = {
+        "off_outcome": diag_off["evaluation_outcome"], "on_outcome": diag_on["evaluation_outcome"],
+        "off_run_json": os.path.join(off_root, "cc-regression-project", CC_RUN_ID, "run.json"),
+        "on_run_json": os.path.join(on_root, "cc-regression-project", CC_RUN_ID, "run.json"),
+        "failures_core_off": len(off.get("logical_failures") or []),
+        "failures_on": len(on.get("logical_failures") or []),
+        "removed_count": (correction_of(on) or {}).get("removed"),
+        "keys_added_by_the_switch": extra,
+        "differing_keys_off_vs_on": differing,
+        "repairs_off": [r.get("repair_id") for r in off.get("repairs") or []],
+        "repairs_on": [r.get("repair_id") for r in on.get("repairs") or []],
+        "on_correction": correction_of(on),
+    }
+
+
+def section_auto_finalizer():
+    s = "20261005_090430_53ce78"
+    root = os.path.join(EVID, "autofinalizer")
+    fresh(root)
+    first = af.scan_hermes(output_root=root, db=HERMES_DB, session_id=s,
+                           staging_root=os.path.join(root, "_hermes_staging"),
+                           force=False, project=PROJECT, workflow="hermes")
+    second = af.scan_hermes(output_root=root, db=HERMES_DB, session_id=s,
+                            staging_root=os.path.join(root, "_hermes_staging"),
+                            force=False, project=PROJECT, workflow="hermes")
+    run_path = os.path.join(root, PROJECT, "HERMES-%s" % s, "run.json")
+    fin_path = os.path.join(root, PROJECT, "HERMES-%s" % s, "finalization.json")
+    run = load(run_path)
+    finalization = load(fin_path)
+    leftovers = [p for p in os.listdir(os.path.join(root, PROJECT)) if p.endswith(".tmp")]
+    index = load(os.path.join(root, ".auto_finalize_index.json"))
+
+    cc_default_root = fresh(os.path.join(EVID, "autofinalizer-cc-default"))
+    tmp_projects = fresh(os.path.join(EVID, "autofinalizer-cc-projects", "proj"))
+    shutil.copyfile(CC_SESSION, os.path.join(tmp_projects, "session.jsonl"))
+    cc_default = af.scan(projects_root=os.path.join(EVID, "autofinalizer-cc-projects"),
+                         output_root=cc_default_root, stable_seconds=0.0, force=True)
+    cc_run = None
+    for dirpath, _dirs, files in os.walk(cc_default_root):
+        if "run.json" in files:
+            cc_run = load(os.path.join(dirpath, "run.json"))
+    RESULTS["auto_finalizer"] = {
+        "first_pass": [{k: r.get(k) for k in ("status", "run_id")} for r in first],
+        "second_pass": [{k: r.get(k) for k in ("status", "run_id")} for r in second],
+        "idempotency": bool(second and second[0]["status"] in ("SKIP_UNCHANGED", "ALREADY_FINALIZED")),
+        "atomic_publish_no_tmp_left": leftovers == [],
+        "finalized": finalization.get("finalized"),
+        "evaluation_outcome": finalization.get("evaluation_outcome"),
+        "task_outcome": finalization.get("task_outcome"),
+        "task_and_evaluation_separated": (finalization.get("evaluation_outcome") == "SUCCESS"
+                                          and finalization.get("task_outcome") in ("COMPLETED", "INCOMPLETE")),
+        "raw_jsonl_modified": finalization.get("raw_jsonl_modified"),
+        "hermes_source_uses_the_correction": bool(correction_of(run)),
+        "hermes_correction": correction_of(run),
+        "index_entries": len(index),
+        "cc_default_scan": [{k: r.get(k) for k in ("status", "run_id")} for r in cc_default],
+        "cc_default_failures": len((cc_run or {}).get("logical_failures") or []),
+        "cc_default_has_correction_block": bool(cc_run and "failure_evidence_correction" in cc_run),
+    }
+
+
+def main():
+    section_latest_session()
+    section_regressions()
+    section_cc_regression()
+    section_auto_finalizer()
+    out = os.path.join(EVID, "evaluation-reeval-and-regression.json")
+    with open(out, "w", encoding="utf-8") as fh:
+        json.dump(RESULTS, fh, ensure_ascii=False, indent=2)
+    print(json.dumps(RESULTS, ensure_ascii=False, indent=2))
+    print("\nwrote %s" % out)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

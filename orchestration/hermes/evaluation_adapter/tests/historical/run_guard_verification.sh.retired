@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# P0B-CLOSE / TASK-02 — Hermes contract-guard verification transcript generator.
+# Read-only apart from writing its own transcript into the evidence directory.
+set -u
+HERE="$(cd "$(dirname "$0")" && pwd)"
+REPO="$(cd "$HERE/../../../.." && pwd)"
+EVID="$REPO/orchestration/hermes/evidence/p0b-close"
+FIX="$HERE/fixtures"
+OUT="$EVID/guard-verification.txt"
+
+{
+  echo "P0B-CLOSE / TASK-02 / HERMES CONTRACT GUARD — verification transcript"
+  date -u +"captured_utc=%Y-%m-%dT%H:%M:%SZ"
+  echo "repo=$REPO"
+  echo
+  echo "## 1. guard policy unit tests (offline, deterministic, no device)"
+  ( cd "$REPO" && python3 -m unittest discover -s orchestration/hermes/evaluation_adapter/tests -v )
+  echo "unit_tests_exit=$?"
+  echo
+  echo "## 2. hermes hooks list"
+  hermes hooks list
+  echo
+  echo "## 3. hermes hooks doctor"
+  hermes hooks doctor
+  echo
+  echo "## 4. real hook dispatcher — BLOCK: production write (app/src/main)"
+  hermes hooks test pre_tool_call --for-tool write_file --payload-file "$FIX/guard_block_production_write.json"
+  echo
+  echo "## 5. real hook dispatcher — ALLOW: benchmark-source write"
+  hermes hooks test pre_tool_call --for-tool write_file --payload-file "$FIX/guard_allow_benchmark_write.json"
+  echo
+  echo "## 6. real hook dispatcher — BLOCK: destructive terminal command"
+  hermes hooks test pre_tool_call --for-tool terminal --payload-file "$FIX/guard_block_destructive_terminal.json"
+  echo
+  echo "## 7. real hook dispatcher — ALLOW: read-only synthetic payload (echo hello)"
+  hermes hooks test pre_tool_call --for-tool terminal
+  echo
+  echo "## 8. activation state"
+  echo "hook registered in config.yaml at: $(stat -c %y "$HOME/.hermes/profiles/android-stack/config.yaml")"
+  echo "this Hermes process started at   : $(stat -c %y /proc/$$/stat 2>/dev/null || echo unknown)"
+  echo "=> hook registration happens at process startup (agent/shell_hooks.py::register_from_config);"
+  echo "   a session that started BEFORE the registration cannot have it wired."
+} > "$OUT" 2>&1
+
+echo "wrote $OUT"

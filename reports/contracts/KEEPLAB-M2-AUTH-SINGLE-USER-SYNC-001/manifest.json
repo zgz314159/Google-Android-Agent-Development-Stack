@@ -1,0 +1,106 @@
+{
+  "package": "KEEPLAB-M2-AUTH-SINGLE-USER-SYNC-001",
+  "generated_by": "M2 milestone contract authoring (specification/compiler manifest schema)",
+  "algorithm": "sha256",
+  "contract_id": "KEEPLAB-M2-AUTH-SINGLE-USER-SYNC-001",
+  "metadata": {
+    "phase": "M2_AUTH_SINGLE_USER_SYNC",
+    "milestone": "M2 = A3 (auth/session) + A4 (single-user sync)",
+    "contracts_in_milestone": 1,
+    "execution_sessions": 1,
+    "verification_passes": 1,
+    "human_authorization": true,
+    "human_decisions": [
+      "D-01 EMAIL_PASSWORD_VERIFIED",
+      "D-04 PRESERVE_LOCAL_CACHE",
+      "D-10 JWT_ACCESS_OPAQUE_ROTATING_REFRESH"
+    ],
+    "human_decision_date": "2026-10-06",
+    "package_role": "TEMPORARY_EXECUTION_CONTRACT",
+    "package_access": "READ_ONLY_INPUT",
+    "project_data_stage": "EXPERIMENTAL",
+    "android_data_stage": "DISPOSABLE_TEST_DATA",
+    "backend_data_stage": "DISPOSABLE_TEST_DATA",
+    "test_data_disposable": true,
+    "old_test_db_compatibility": "NOT_REQUIRED",
+    "dev_database_reset_required": "YES",
+    "backend_path": "/mnt/AndroidDev/Projects/KeepLab-Relay/backend/",
+    "backend_path_state": "PRESENT (created by A2)",
+    "backend_build_model": "INDEPENDENT_GRADLE_PROJECT",
+    "root_android_gradle_change_required": false,
+    "root_android_gradle_modified": "NO",
+    "android_surface_policy": "ENUMERATED_NOT_WHOLE_APP",
+    "implementation_authorization": "GRANTED_TO_M2_EXECUTION_TASK_ONLY",
+    "implementation_authorization_model": "PHASE_GATED_MILESTONE",
+    "google_or_firebase_identity": "FORBIDDEN",
+    "account_deletion": "NOT_IMPLEMENTED",
+    "automatic_trash_retention": "NOT_IMPLEMENTED",
+    "attachments": "FORBIDDEN",
+    "collaboration": "FORBIDDEN",
+    "multi_account": "FORBIDDEN",
+    "push_provider": "FORBIDDEN",
+    "room_encryption_claim": "FORBIDDEN",
+    "cloud_provisioning": "FORBIDDEN",
+    "device_operation": "FORBIDDEN",
+    "execution_status": "NOT_EXECUTED",
+    "guard_modified": false,
+    "hook_config_modified": false,
+    "stops_after": "M2 (A3 + A4 verified once)",
+    "must_not_start": [
+      "A5",
+      "A6"
+    ],
+    "does_not_resolve": [
+      "D-05",
+      "D-06",
+      "D-11",
+      "D-12",
+      "D-13",
+      "D-14",
+      "A5",
+      "A6"
+    ]
+  },
+  "entries": [
+    {
+      "path": "implementation-contract.json",
+      "sha256": "84993325585b101abd66491d6d40ee07ec00a1934561f263ca610d71824e11a6",
+      "size": 97141,
+      "role": "contract",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "project-context.json",
+      "sha256": "3f1a3c9260da1f56e79c0d9fd84d1e5362f190db7912d954f2c548a80364998a",
+      "size": 12459,
+      "role": "project_context",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "acceptance.md",
+      "sha256": "9bdb9d97fce2db8c9ba9b680ac94e1065112e636f1a8864cd9d7ecb385f47e25",
+      "size": 28001,
+      "role": "acceptance",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "EXECUTOR-PROMPT.md",
+      "sha256": "4d22799395338d2bdcf4677a98b4e7caaeafd277651cdd5c6682f02ed05adfa1",
+      "size": 4079,
+      "role": "executor_prompt",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "KEEPLAB-M2-AUTH-SINGLE-USER-SYNC-EXECUTE.md",
+      "sha256": "1e3e4f9c3ef26b2ff5d5becb531e6a50552643b5d7f027d78242e41b18b30aee",
+      "size": 29147,
+      "role": "execution_prompt",
+      "required": true,
+      "source": "authored"
+    }
+  ]
+}

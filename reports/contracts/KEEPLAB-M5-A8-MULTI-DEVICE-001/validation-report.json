@@ -1,0 +1,191 @@
+{
+  "contract_sha256": "dc90b9f0dbfab9e669bf44c571a36d964e7f5deadb85c601c5b942cec82b9511",
+  "errors": [],
+  "gates": {
+    "acceptance": "PASS",
+    "boundaries": "PASS",
+    "hashes": "PASS",
+    "schema": "PASS",
+    "traceability": "PASS"
+  },
+  "manifest_sha256": "e4946e0672de5f82590ba869d73cbb3d0a1e3e8f56da3da9379202d3a4e003cc",
+  "status": "READY",
+  "traceability": [
+    {
+      "acceptance_ids": [
+        "AC-M5-004",
+        "AC-M5-025"
+      ],
+      "pc1_steps": [
+        "PC1-04",
+        "PC1-25"
+      ],
+      "requirement": "REQ-M5-001",
+      "task_ids": [
+        "TASK-01",
+        "TASK-02"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-001",
+        "AC-M5-002",
+        "AC-M5-022"
+      ],
+      "pc1_steps": [
+        "PC1-01",
+        "PC1-02",
+        "PC1-22"
+      ],
+      "requirement": "REQ-M5-002",
+      "task_ids": [
+        "TASK-03",
+        "TASK-07"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-003",
+        "AC-M5-023"
+      ],
+      "pc1_steps": [
+        "PC1-03",
+        "PC1-23"
+      ],
+      "requirement": "REQ-M5-003",
+      "task_ids": [
+        "TASK-04"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-005",
+        "AC-M5-006",
+        "AC-M5-007",
+        "AC-M5-008"
+      ],
+      "pc1_steps": [
+        "PC1-05",
+        "PC1-06",
+        "PC1-07",
+        "PC1-08"
+      ],
+      "requirement": "REQ-M5-004",
+      "task_ids": [
+        "TASK-02",
+        "TASK-05"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-009"
+      ],
+      "pc1_steps": [
+        "PC1-09"
+      ],
+      "requirement": "REQ-M5-005",
+      "task_ids": [
+        "TASK-06"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-010",
+        "AC-M5-011",
+        "AC-M5-012",
+        "AC-M5-024"
+      ],
+      "pc1_steps": [
+        "PC1-10",
+        "PC1-11",
+        "PC1-12",
+        "PC1-24"
+      ],
+      "requirement": "REQ-M5-006",
+      "task_ids": [
+        "TASK-01",
+        "TASK-06"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-016"
+      ],
+      "pc1_steps": [
+        "PC1-16"
+      ],
+      "requirement": "REQ-M5-007",
+      "task_ids": [
+        "TASK-08"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-018",
+        "AC-M5-019"
+      ],
+      "pc1_steps": [
+        "PC1-18",
+        "PC1-19"
+      ],
+      "requirement": "REQ-M5-008",
+      "task_ids": [
+        "TASK-07"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-020",
+        "AC-M5-021"
+      ],
+      "pc1_steps": [
+        "PC1-20",
+        "PC1-21"
+      ],
+      "requirement": "REQ-M5-009",
+      "task_ids": [
+        "TASK-08"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-017"
+      ],
+      "pc1_steps": [
+        "PC1-17"
+      ],
+      "requirement": "REQ-M5-010",
+      "task_ids": [
+        "TASK-08"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-013",
+        "AC-M5-014",
+        "AC-M5-015"
+      ],
+      "pc1_steps": [
+        "PC1-13",
+        "PC1-14",
+        "PC1-15"
+      ],
+      "requirement": "REQ-M5-011",
+      "task_ids": [
+        "TASK-08"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-026"
+      ],
+      "pc1_steps": [
+        "PC1-26"
+      ],
+      "requirement": "REQ-M5-012",
+      "task_ids": [
+        "TASK-08"
+      ]
+    }
+  ]
+}

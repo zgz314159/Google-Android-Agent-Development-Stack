@@ -1,0 +1,312 @@
+{
+  "contract_id": "KEEPLAB-A0-GOVERNANCE-TEXT-CLEANUP-001",
+  "contract_version": "0.1.0",
+  "experiment_id": "KEEPLAB-A0-GOVERNANCE-TEXT-CLEANUP",
+  "experiment_type": "HUMAN_APPROVED_GOVERNANCE_TEXT_CONSISTENCY_CLEANUP",
+  "mode": "governance",
+  "project": "KeepLab-Google-Keep-Parity",
+  "feature": {
+    "feature_id": "A0-GOVERNANCE-TEXT-CLEANUP",
+    "title": "A0 governance descriptive-sentence consistency cleanup (OBS-1)",
+    "summary": "Authorize, for one narrowly scoped future apply session, exactly one descriptive-sentence replacement inside KeepLab-Relay/MISSION.md so the residual 'Everything lives on the device: no account, no sync, no network.' sentence stops contradicting the already-landed BOUNDED_ACCOUNT_NETWORK_POLICY (D-15). No other MISSION.md line, and no other file, may change."
+  },
+  "purpose": "This package is a TEMPORARY EXECUTION CONTRACT. It exists so that a later fresh session can perform the already human-authorized OBS-1 descriptive cleanup through the SAME Contract Guard, under an explicit path boundary. It does not itself perform the replacement and it authorizes no implementation of any kind.",
+  "human_authorization_source": {
+    "authorizing_task": "KEEPLAB-A0-GOVERNANCE-TEXT-CLEANUP-CONTRACT",
+    "date": "2026-10-06",
+    "timezone": "CST (UTC+08:00)",
+    "approval_kind": "HUMAN_PROJECT_OWNER_DECISION_ALREADY_RECORDED",
+    "primary_decision": "D-15 = YES_BOUNDED_ACCOUNT_NETWORK_UNLOCK",
+    "decision_effect": "The cleanup is already semantically authorized by D-15 and must NOT change D-15's meaning. This contract is a text-consistency correction only; it introduces no new semantic scope.",
+    "observational_source": {
+      "id": "OBS-1",
+      "description": "A residual descriptive sentence in MISSION.md still stated the pre-D-15 absolute position. It was recorded as OBS-1 because it fell outside the exact previously-approved amendment sequence of KEEPLAB-A0-GOVERNANCE-WRITE-001.",
+      "state": "CONFIRMED"
+    },
+    "evidence": [
+      "KeepLab-Relay/MISSION.md",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-A0-GOVERNANCE-WRITE-APPLY.md",
+      "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-WRITE-001/implementation-contract.json",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-a0-governance-text-cleanup-contract/before-hash.json"
+    ],
+    "reinterpreted": false,
+    "reasked": false,
+    "substituted_with_model_preference": false
+  },
+  "authorization_semantics": {
+    "phase": "A0_GOVERNANCE_TEXT_CLEANUP",
+    "human_authorization": true,
+    "human_decision": "D-15 YES_BOUNDED_ACCOUNT_NETWORK_UNLOCK",
+    "human_decision_date": "2026-10-06",
+    "mutation_scope": [
+      "KeepLab-Relay/MISSION.md"
+    ],
+    "mutation_scope_count": 1,
+    "mutation_unit": "ONE_SEMANTIC_SENTENCE",
+    "implementation_authorization_model": "PHASE_GATED",
+    "implementation_authorization": "NOT_GRANTED",
+    "product_source_mutation": "FORBIDDEN",
+    "implementation_mutation": "FORBIDDEN",
+    "backend_mutation": "FORBIDDEN",
+    "device_mutation": "FORBIDDEN",
+    "historical_evidence_mutation": "FORBIDDEN",
+    "guard_mutation": "FORBIDDEN",
+    "contract_mutation": "FORBIDDEN",
+    "governance_write_only": true,
+    "requires_human_approval": true
+  },
+  "mutation_spec": {
+    "file": "KeepLab-Relay/MISSION.md",
+    "operation": "EXACT_SUBSTRING_REPLACEMENT",
+    "occurrences_required": {
+      "old_sentence": 1,
+      "new_sentence": 0
+    },
+    "old_sentence": "Everything lives on the device: no account, no sync, no network.",
+    "new_sentence": "KeepLab remains local-first: local notes require no account or network; optional account and sync capabilities are allowed only inside an explicitly human-approved, phase-gated contract.",
+    "insertion_form": "INLINE — the new sentence replaces the old sentence in place, inside the same line, with no re-flowing and no re-wrapping of that line or any other line. Re-wrapping MISSION.md prose would change bytes of other lines and is therefore FORBIDDEN.",
+    "expected_resulting_file_rule": "resulting_text == original_text.replace(old_sentence, new_sentence, 1), and the file must contain the old sentence 0 times and the new sentence exactly 1 time.",
+    "semantic_expansion": "NONE. No other semantic change is authorized. Other residual descriptive lines in MISSION.md (for example the sentences that follow the edited line) are explicitly OUT OF SCOPE for this contract; if a session believes another line must change, that is a STOP and a new human-approved contract."
+  },
+  "allowed_paths": [
+    "KeepLab-Relay/MISSION.md",
+    "Google-Android-Agent-Development-Stack/reports/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-a0-governance-text-cleanup/"
+  ],
+  "forbidden_paths": [
+    "KeepLab-Relay/app/",
+    "KeepLab-Relay/app/src/main/",
+    "KeepLab-Relay/app/src/debug/",
+    "KeepLab-Relay/app/src/release/",
+    "KeepLab-Relay/app/src/test/",
+    "KeepLab-Relay/app/src/androidTest/",
+    "KeepLab-Relay/app/src/benchmark/",
+    "KeepLab-Relay/app/proguard-rules.pro",
+    "KeepLab-Relay/app/schemas/",
+    "KeepLab-Relay/FACTORY_RULES.md",
+    "KeepLab-Relay/FACTORY.md",
+    "KeepLab-Relay/specs/google-keep-parity/ROADMAP.md",
+    "KeepLab-Relay/.factory/",
+    "KeepLab-Relay/HANDOFF.md",
+    "KeepLab-Relay/AGENTS.md",
+    "KeepLab-Relay/harness/",
+    "KeepLab-Relay/build.gradle.kts",
+    "KeepLab-Relay/build.gradle",
+    "KeepLab-Relay/settings.gradle.kts",
+    "KeepLab-Relay/settings.gradle",
+    "KeepLab-Relay/gradle/",
+    "KeepLab-Relay/gradle.properties",
+    "KeepLab-Relay/gradlew",
+    "KeepLab-Relay/gradlew.bat",
+    "KeepLab-Relay/specs/p0b-close-benchmarkability/",
+    "KeepLab-Relay/specs/p0b-performance-reliability/",
+    "KeepLab-Relay/specs/phase-c-pin-notes-b1/",
+    "Google-Android-Agent-Development-Stack/.hermes.md",
+    "Google-Android-Agent-Development-Stack/specification/",
+    "Google-Android-Agent-Development-Stack/evaluation/commandcode/core.py",
+    "Google-Android-Agent-Development-Stack/evaluation/commandcode/phase_rules.json",
+    "Google-Android-Agent-Development-Stack/evaluation/commandcode/analyze_session.py",
+    "Google-Android-Agent-Development-Stack/evaluation/taxonomy/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/HERMES-LOCK.json",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/",
+    "Google-Android-Agent-Development-Stack/verification/core/",
+    "Google-Android-Agent-Development-Stack/verification/runner/",
+    "Google-Android-Agent-Development-Stack/verification/adapters/",
+    "Google-Android-Agent-Development-Stack/verification/contracts/",
+    "Google-Android-Agent-Development-Stack/verification/reference-replay/",
+    "Google-Android-Agent-Development-Stack/verification/android/",
+    "Google-Android-Agent-Development-Stack/verification/tests/",
+    "Google-Android-Agent-Development-Stack/verification/docs/",
+    "Google-Android-Agent-Development-Stack/verification-benchmark/",
+    "Google-Android-Agent-Development-Stack/references/",
+    "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-TEXT-CLEANUP-001/",
+    "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-WRITE-001/",
+    "KeepLab-Relay-evidence/",
+    "Testapp/",
+    "PowerAi/"
+  ],
+  "boundary_notes": {
+    "source_root": "/mnt/AndroidDev/Projects",
+    "resolution": "allowed_paths / forbidden_paths are project-relative to the Contract Guard's project-context source_root, exactly as the frozen P0B-CLOSE contract and KEEPLAB-A0-GOVERNANCE-WRITE-001 are.",
+    "precedence": "The guard tests forbidden_paths first; a path matching both lists is BLOCKED. reports/ is allowed while both contract-package directories inside it are forbidden, so an executor cannot write its own contract.",
+    "unlisted_is_blocked": "Any path inside the project root that matches neither list is BLOCKED (UNCLASSIFIED_FAIL_CLOSED). The two non-governance locations above are the ONLY writes this contract authorizes.",
+    "preserved_protections": "Every unrelated forbidden path is preserved; this contract only narrows the allowed surface (one governance file instead of three) and adds prohibitions for the files this cleanup must not touch (FACTORY_RULES.md, ROADMAP.md, FACTORY.md, both contract packages).",
+    "out_of_project": "Paths outside /mnt/AndroidDev/Projects remain OUT_OF_CONTRACT_SCOPE/ALLOW as the guard is written today; this contract does not change that guard property and must never be read as authorizing writes outside the project.",
+    "hermes_config_core_limitation": "Hermes configuration and core live OUTSIDE the guard's source_root (/home/zhong/.hermes/...), so the guard's path lists cannot classify them. They are therefore protected here by an explicit hard prohibition and stop condition in this contract and in the APPLY prompt, enforced by fail-closed operator discipline — not by the path list. This limitation is stated rather than hidden."
+  },
+  "expected_before_hashes": {
+    "algorithm": "sha256",
+    "captured_at": "2026-10-06",
+    "captured_by": "KEEPLAB-A0-GOVERNANCE-TEXT-CLEANUP-CONTRACT (live filesystem read)",
+    "state": "FROZEN",
+    "verified_live": true,
+    "files": {
+      "KeepLab-Relay/MISSION.md": "f857295dd502ee64736fac04bc5e076874bcdb06a468ca1edad1eb7152d128cd"
+    }
+  },
+  "protected_snapshot": {
+    "note": "Hashes of the protected files as observed at contract creation. The apply session must re-hash these and assert byte-identity after its single write. ROADMAP.md and FACTORY_RULES.md therefore appear here as protected (they were modified/left by the earlier A0 phase, not by this contract).",
+    "files": {
+      "KeepLab-Relay/FACTORY_RULES.md": "7e6c489751a9f4ebbeb2d91005e56aa5ee06eb80fab65b7b623218f49ea268d1",
+      "KeepLab-Relay/specs/google-keep-parity/ROADMAP.md": "5ab14973778852e8021ecd522237f1561221b9164e345697dab8228b2314aef2",
+      "KeepLab-Relay/HANDOFF.md": "cc79c153e903e6be486a104e2a87170abaf67829f90d95a60f895a735457413b",
+      "KeepLab-Relay/AGENTS.md": "41ef7ae5c5e72ae09811f55d58e51b105d8fea1ff437ac35aeca62642e73c10e",
+      "KeepLab-Relay/FACTORY.md": "03644f960c6d6f44484f0da23d7304908e2555c219143ffc1ddd9c1d71b453db",
+      "KeepLab-Relay/build.gradle.kts": "ba09d5f46d33a5feff2236f53f482d87f2608e7153950695bd7e1333d7c6fae8",
+      "KeepLab-Relay/settings.gradle.kts": "6513bf224002bb5691e72e7a933ee766d2dab58c47b3d075a9fc77cd913a0ae7",
+      "KeepLab-Relay/app/build.gradle.kts": "20dd51e5d8bb8cababcac06fecad3e9d8b5771418eb88b0ba132409c5014e298",
+      "KeepLab-Relay/gradle.properties": "0a3448fbcc780cc608e0adaa28c10cfe77cc7ba6592da689c15ab34b70c76680",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/contract_guard.py": "e418fc28b08ac7afe4fdd42ec44d572ddaa2f23f6200de300ecac211404b3746",
+      "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-WRITE-001/implementation-contract.json": "4decb2894e259aaa4eb067c426af4a3607ea18f09b531a52d53c62aea5b3d1d9",
+      "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-WRITE-001/project-context.json": "4ca9aab711ffecba9f5ce2032f5748dbc0acc03e5660b0356f454cb3d5e3aaff",
+      "KeepLab-Relay/specs/p0b-close-benchmarkability/implementation-contract.json": "b07a0388afdd257ee2185ca7d275f956d2a92e240d31db4904d85f3a57e65c50",
+      "KeepLab-Relay/specs/p0b-close-benchmarkability/project-context.json": "395da698fca053647a3fb67c80c313f74763466dbc3025fef916d8dbe2a33137",
+      "KeepLab-Relay/specs/p0b-close-benchmarkability/manifest.json": "f5d6b39225eeb8d1756e98e5c79611286aa0a63d75634d3818b140786a0ef0da"
+    },
+    "hook_and_core": {
+      "note": "Outside the guard source_root; recorded for the apply session's stop conditions, not enforceable by the guard's path lists.",
+      "/home/zhong/.hermes/profiles/android-stack/config.yaml": "7ac5c4cbce7bad53147e45e35bd03d5d14accaced7929ab8a3adc5c669b74a5a",
+      "/home/zhong/.hermes/profiles/android-stack/shell-hooks-allowlist.json": "343cf57656af93f070a4361bdf07665af9b034cd4f01ab46fa4e68c5f387d248"
+    }
+  },
+  "staleness_policy": {
+    "rule": "The apply session MUST re-read and re-hash KeepLab-Relay/MISSION.md BEFORE any mutation and fail closed if its hash differs from expected_before_hashes.files.",
+    "on_mismatch": "STOP with STALE_GOVERNANCE_INPUT.",
+    "forbidden_behaviour": "Never silently patch a newer or different file; never re-baseline the expected hash to match the filesystem. A stale input is a STOP, never an auto-repair."
+  },
+  "contract_package_self_protection": {
+    "package": "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-TEXT-CLEANUP-001/",
+    "declaration": "CONTRACT_PACKAGE: READ_ONLY_INPUT",
+    "enforcement": "The package path is listed in forbidden_paths, so the same guard blocks any write into it while this contract is active.",
+    "apply_rules": [
+      "The apply session verifies the package sha256 manifest BEFORE touching MISSION.md.",
+      "The apply session must not rewrite, re-hash or extend its own contract package.",
+      "The apply session must not broaden its own allowed paths; a needed broadening is a STOP and a new human-approved contract."
+    ]
+  },
+  "apply_prompt": {
+    "path": "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-TEXT-CLEANUP-001/KEEPLAB-A0-GOVERNANCE-TEXT-CLEANUP-APPLY.md",
+    "executed_in_this_phase": false,
+    "must_stop_after": "A0_GOVERNANCE_TEXT_CLEANUP",
+    "must_not_start": ["A1", "A2", "A3"]
+  },
+  "phase_gates": {
+    "A0": "READY",
+    "A0_GOVERNANCE_TEXT_CLEANUP": "READY_TO_APPLY (this contract authorizes the one-sentence cleanup only)",
+    "A1": "READY_FOR_SEPARATE_CONTRACT",
+    "A2": "READY_FOR_SEPARATE_CONTRACT",
+    "A3": "BLOCKED_BY_HUMAN_DECISIONS",
+    "pending_human_decisions": ["D-01", "D-04", "D-10"],
+    "note": "A0 remains READY before and after the cleanup. This contract authorizes NO implementation."
+  },
+  "relationship_to_other_contracts": {
+    "current_frozen_contract": "KEEPLAB-P0B-CLOSE-001 (KeepLab-Relay/specs/p0b-close-benchmarkability/), untouched by this phase, protected here",
+    "prior_contract": "KEEPLAB-A0-GOVERNANCE-WRITE-001 (Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-WRITE-001/), READ ONLY, never modified, protected here",
+    "d14_status": "HUMAN_DECISION_PENDING",
+    "d14_note": "This is a TEMPORARY EXECUTION CONTRACT created under an already-authorized Stack reports location. It is NOT D-14's permanent formal spec-package decision and does not resolve D-14.",
+    "does_not_modify": [
+      "KeepLab-Relay/specs/p0b-close-benchmarkability/**",
+      "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-WRITE-001/**",
+      "orchestration/hermes/evaluation_adapter/contract_guard.py",
+      "Hermes core",
+      "hook configuration",
+      "project-wide guard defaults"
+    ]
+  },
+  "decisions": [
+    {
+      "id": "GOV-TC-001",
+      "statement": "This contract is created as a separate package; the active frozen P0B-CLOSE contract and the earlier A0 governance-write contract are never edited to make a write pass.",
+      "rationale": "Editing the governing contract to permit a write destroys the boundary the contract exists to enforce."
+    },
+    {
+      "id": "GOV-TC-002",
+      "statement": "The same Contract Guard, the same fail-closed pre_tool_call hook and the same guard source are used; only the package the guard loads differs, via the guard's own supported HERMES_CONTRACT_PACKAGE environment switch.",
+      "rationale": "Same guard, new contract. No guard patch, no hook removal, no file renaming to evade classification, no out-of-project write-and-copy."
+    },
+    {
+      "id": "GOV-TC-003",
+      "statement": "The allowed surface is exactly one governance file plus two evidence locations. Everything else in the project stays blocked by failing closed.",
+      "rationale": "A text-consistency cleanup must not become a general write authorization."
+    },
+    {
+      "id": "GOV-TC-004",
+      "statement": "The mutation is ONE exact substring replacement with a required occurrence count of 1, no re-flowing, and an exact expected resulting file.",
+      "rationale": "A prose cleanup must be provably minimal; any second occurrence or any re-wrapping is a STOP."
+    },
+    {
+      "id": "GOV-TC-005",
+      "statement": "The package protects itself and both other contract packages: all three are listed in forbidden_paths.",
+      "rationale": "An executor must not be able to widen its own authority or rewrite the contract it is running under."
+    },
+    {
+      "id": "GOV-TC-006",
+      "statement": "The expected before hash of MISSION.md is frozen in this contract; any drift fails closed with STALE_GOVERNANCE_INPUT.",
+      "rationale": "The cleanup must apply to exactly the reviewed text, never to a newer or different one."
+    },
+    {
+      "id": "GOV-TC-007",
+      "statement": "Second-order descriptive inconsistencies elsewhere in MISSION.md are explicitly NOT part of this contract.",
+      "rationale": "D-15 authorizes the bounded account/network policy, not an open prose rewrite; keeping the change to one sentence keeps it provably inside the approved scope."
+    }
+  ],
+  "non_goals": [
+    "performing the cleanup (that is the separate APPLY task)",
+    "changing any governance file other than the one authorized sentence in MISSION.md",
+    "touching FACTORY_RULES.md or ROADMAP.md (both are protected and must stay byte-identical)",
+    "A1 or A2 implementation of any kind",
+    "authentication or backend implementation",
+    "Room or any product schema change",
+    "any change under KeepLab-Relay/app/**",
+    "any Gradle, Ktor, Docker, PostgreSQL or Tencent Cloud artefact",
+    "any device operation, adb, Maestro or UiAutomator run",
+    "editing the frozen P0B-CLOSE contract or the earlier A0 governance-write contract",
+    "editing contract_guard.py, the hook configuration or Hermes core",
+    "resolving D-14",
+    "Testapp and PowerAi",
+    "any semantic expansion of D-15"
+  ],
+  "stop_conditions": [
+    "Any required write falls outside allowed_paths or targets a forbidden path: STOP and emit CONTRACT_DEVIATION.",
+    "The MISSION.md expected before hash no longer matches: STOP and emit STALE_GOVERNANCE_INPUT.",
+    "The old sentence does not occur exactly once (0 or >1 occurrences): STOP.",
+    "The new sentence already occurs: STOP.",
+    "The resulting file is not exactly original_text.replace(old_sentence, new_sentence, 1): STOP.",
+    "Any line other than the edited line would change, or the edit would require re-wrapping prose: STOP.",
+    "BOUNDED_ACCOUNT_NETWORK_POLICY would no longer be present after the edit: STOP.",
+    "The guard source, the hook configuration, the active frozen P0B-CLOSE contract or the earlier A0 contract would have to be modified: STOP.",
+    "The contract package manifest does not verify: STOP.",
+    "A change would exceed the one-file / one-sentence mutation scope or reach into implementation: STOP.",
+    "The apply session would have to broaden its own allowed paths: STOP; a new human-approved contract is required.",
+    "The governance files disagree after the cleanup: STOP with GOVERNANCE_INCONSISTENT."
+  ],
+  "read_first": [
+    {
+      "path": "KeepLab-Relay/MISSION.md",
+      "why": "the file whose one residual descriptive sentence is corrected, and whose BOUNDED_ACCOUNT_NETWORK_POLICY must remain authoritative"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-A0-GOVERNANCE-WRITE-APPLY.md",
+      "why": "the already-applied A0 amendment whose outcome the cleanup must not contradict"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-WRITE-001/implementation-contract.json",
+      "why": "the prior temporary execution contract whose mechanism this contract reuses and whose package must stay byte-identical"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-a0-governance-text-cleanup-contract/before-hash.json",
+      "why": "the frozen pre-cleanup MISSION.md hash and protected-file snapshot"
+    }
+  ],
+  "unresolved_questions": [],
+  "readiness": {
+    "status": "READY",
+    "gates": {
+      "acceptance": "PASS",
+      "boundaries": "PASS",
+      "hashes": "PASS",
+      "schema": "PASS",
+      "traceability": "PASS"
+    }
+  }
+}

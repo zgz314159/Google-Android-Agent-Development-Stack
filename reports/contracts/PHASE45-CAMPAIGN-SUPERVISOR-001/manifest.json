@@ -1,0 +1,71 @@
+{
+  "algorithm": "sha256",
+  "entries": [
+    {
+      "path": "PRODUCT.md",
+      "required": true,
+      "role": "product",
+      "sha256": "f3073df721bf37137f3c26562396826fa1920e859d2e4fba80683a40b374aacc",
+      "size": 5896,
+      "source": "authored"
+    },
+    {
+      "path": "requirements.md",
+      "required": true,
+      "role": "requirements",
+      "sha256": "328c931f4a2c35c53d423c7a0623c8d8a7b56796a54c95756fe75fe9b8a7e94a",
+      "size": 14370,
+      "source": "authored"
+    },
+    {
+      "path": "design.md",
+      "required": true,
+      "role": "design",
+      "sha256": "3d02a13a2958a11df82213495d0f0421adc86e403d8c38296cd8a0264454ffe7",
+      "size": 14220,
+      "source": "authored"
+    },
+    {
+      "path": "tasks.md",
+      "required": true,
+      "role": "tasks",
+      "sha256": "c7d3786171b0e417fd74994a88f87db9a47c28788dcda0ef8729886f419874bf",
+      "size": 8969,
+      "source": "authored"
+    },
+    {
+      "path": "DESIGN.md",
+      "required": true,
+      "role": "ui_design",
+      "sha256": "3c033bde8e5e11181ae22492c5368c6ca3d354dd0111b5f2b2cd551555cdbc8b",
+      "size": 2322,
+      "source": "authored"
+    },
+    {
+      "path": "acceptance.md",
+      "required": true,
+      "role": "acceptance",
+      "sha256": "ef0a67033330b0719ece2ccdde8416f0a2e3894a6749f7a84c590108766c533f",
+      "size": 12624,
+      "source": "authored"
+    },
+    {
+      "path": "project-context.json",
+      "required": true,
+      "role": "project_context",
+      "sha256": "dce3b62c66b9e849d9eb9fc676d346c6a7bcea06710208e674570fb0c2a48914",
+      "size": 12342,
+      "source": "authored"
+    },
+    {
+      "path": "verification-intent.json",
+      "required": true,
+      "role": "verification_intent",
+      "sha256": "a82d1c9721fd37a9a898a391a690afbc129f1819144155930d5776e6afcbd357",
+      "size": 2588,
+      "source": "authored"
+    }
+  ],
+  "generated_by": "specification/compiler/hash_manifest.py",
+  "package": "PHASE45-CAMPAIGN-SUPERVISOR-001"
+}

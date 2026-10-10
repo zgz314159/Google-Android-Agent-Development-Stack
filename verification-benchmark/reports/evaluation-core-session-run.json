@@ -1,0 +1,647 @@
+{
+  "run_id": "VC-BENCHMARK",
+  "project": "KeepLab",
+  "workflow": null,
+  "agent_host": "Command Code",
+  "model": "deepseek/deepseek-v4.1-flash",
+  "source": {
+    "jsonl_path": "/home/zhong/.commandcode/projects/mnt-android-dev-projects-keep-lab-relay/22aa5869-e08a-4e88-a456-e7866a7a71fe.jsonl",
+    "session_id": "22aa5869-e08a-4e88-a456-e7866a7a71fe",
+    "schema_version": 3,
+    "file_size_bytes": 2647368,
+    "sha256": "8cb3426a33c3676fa69005fb1b4334485f5fa86fc6ccf4dc6021f4559a6ccd42",
+    "first_session_timestamp": "2026-10-03T09:27:02.512Z",
+    "task_prompt_timestamp": "2026-10-03T09:27:33.408Z",
+    "task_end_timestamp": "2026-10-03T12:55:32.919Z",
+    "final_session_timestamp": "2026-10-03T12:55:32.919Z",
+    "cwd": "/mnt/AndroidDev/Projects/KeepLab-Relay",
+    "models": [
+      "deepseek/deepseek-v4.1-flash"
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_match": {
+      "contains": "P0 Verification Compression Benchmark",
+      "matched": true,
+      "prompt_index": 0,
+      "prompt_head": "你现在负责执行 KeepLab 的 **P0 Verification Compression Benchmark**。  本任务不是重新设计 KeepLab，不是重新设计 Evaluation Core，也不是继续泛化调研工具。  目标只有一个：  **通过真实 Redmi Note 7 Pro 物理设备实验，验证能",
+      "detail": "prompt-contains 'P0 Verification Compression Benchmark' matched at row 0"
+    }
+  },
+  "clocks": {
+    "session_open": "2026-10-03T09:27:02.512Z",
+    "task_start": "2026-10-03T09:27:33.408Z",
+    "task_end": "2026-10-03T12:55:32.919Z",
+    "session_wall_sec": 12510.407,
+    "task_wall_sec": 12479.511,
+    "pre_prompt_user_wait_sec": 30.896,
+    "trailing_prompts_excluded": 0,
+    "final_session_timestamp": "2026-10-03T12:55:32.919Z"
+  },
+  "result": "UNKNOWN",
+  "completion_rate": null,
+  "reconciliation": {
+    "sum_span_wall_sec": 12479.511,
+    "delta_sec": 0.0,
+    "ok": true
+  },
+  "phase_totals": {
+    "T0": {
+      "wall_seconds": 0.001,
+      "share": 0.0,
+      "spans": 1
+    },
+    "T1": {
+      "wall_seconds": 328.116,
+      "share": 0.0263,
+      "spans": 5
+    },
+    "T2": {
+      "wall_seconds": 3252.512,
+      "share": 0.2606,
+      "spans": 54
+    },
+    "T3": {
+      "wall_seconds": 36.457,
+      "share": 0.0029,
+      "spans": 2
+    },
+    "T4": {
+      "wall_seconds": 78.45,
+      "share": 0.0063,
+      "spans": 3
+    },
+    "T5": {
+      "wall_seconds": 407.967,
+      "share": 0.0327,
+      "spans": 12
+    },
+    "T6": {
+      "wall_seconds": 1051.774,
+      "share": 0.0843,
+      "spans": 27
+    },
+    "T7": {
+      "wall_seconds": 3726.191,
+      "share": 0.2986,
+      "spans": 87
+    },
+    "T8": {
+      "wall_seconds": 199.001,
+      "share": 0.0159,
+      "spans": 8
+    },
+    "UNKNOWN": {
+      "wall_seconds": 3399.042,
+      "share": 0.2724,
+      "spans": 16
+    }
+  },
+  "subphase_totals": {
+    "T1a": {
+      "wall_seconds": 40.164,
+      "share": 0.0032
+    },
+    "T1b": {
+      "wall_seconds": 287.952,
+      "share": 0.0231
+    },
+    "T7a": {
+      "wall_seconds": 1445.558,
+      "share": 0.1158
+    },
+    "T7b": {
+      "wall_seconds": 1261.402,
+      "share": 0.1011
+    },
+    "T7c": {
+      "wall_seconds": 1019.231,
+      "share": 0.0817
+    }
+  },
+  "tokens_raw": {
+    "requests": 215,
+    "input": 43589348,
+    "output": 167388,
+    "cache_read": 42971264,
+    "cache_write": 0,
+    "cost": 0.322059,
+    "provider": null,
+    "models": []
+  },
+  "tokens_by_phase": {
+    "T0": {
+      "requests": 1,
+      "input": 25135,
+      "output": 1277,
+      "cache_read": 7424,
+      "cache_write": 0,
+      "cost": 0.003445
+    },
+    "T1": {
+      "requests": 5,
+      "input": 749429,
+      "output": 2659,
+      "cache_read": 715008,
+      "cache_write": 0,
+      "cost": 0.008904
+    },
+    "T2": {
+      "requests": 54,
+      "input": 10322127,
+      "output": 36656,
+      "cache_read": 10190208,
+      "cache_write": 0,
+      "cost": 0.072352
+    },
+    "T3": {
+      "requests": 2,
+      "input": 298478,
+      "output": 2307,
+      "cache_read": 233216,
+      "cache_write": 0,
+      "cost": 0.011873
+    },
+    "T4": {
+      "requests": 3,
+      "input": 543099,
+      "output": 3623,
+      "cache_read": 537216,
+      "cache_write": 0,
+      "cost": 0.004668
+    },
+    "T5": {
+      "requests": 12,
+      "input": 1784770,
+      "output": 3654,
+      "cache_read": 1767424,
+      "cache_write": 0,
+      "cost": 0.010097
+    },
+    "T6": {
+      "requests": 27,
+      "input": 4958509,
+      "output": 40965,
+      "cache_read": 4913408,
+      "cache_write": 0,
+      "cost": 0.046084
+    },
+    "T7": {
+      "requests": 87,
+      "input": 21054971,
+      "output": 41714,
+      "cache_read": 20789120,
+      "cache_write": 0,
+      "cost": 0.127273
+    },
+    "T8": {
+      "requests": 8,
+      "input": 1094434,
+      "output": 12154,
+      "cache_read": 1084032,
+      "cache_write": 0,
+      "cost": 0.012105
+    },
+    "UNKNOWN": {
+      "requests": 16,
+      "input": 2758396,
+      "output": 22379,
+      "cache_read": 2734208,
+      "cache_write": 0,
+      "cost": 0.025258
+    }
+  },
+  "tools": {
+    "agent": {
+      "calls": 1,
+      "failed": 0,
+      "wall_seconds": 0.0
+    },
+    "ask_user_question": {
+      "calls": 2,
+      "failed": 0,
+      "wall_seconds": 0.0
+    },
+    "edit_file": {
+      "calls": 20,
+      "failed": 0,
+      "wall_seconds": 0.0
+    },
+    "enter_plan_mode": {
+      "calls": 1,
+      "failed": 0,
+      "wall_seconds": 0.0
+    },
+    "exit_plan_mode": {
+      "calls": 1,
+      "failed": 0,
+      "wall_seconds": 0.0
+    },
+    "glob": {
+      "calls": 1,
+      "failed": 0,
+      "wall_seconds": 0.0
+    },
+    "grep": {
+      "calls": 1,
+      "failed": 0,
+      "wall_seconds": 0.0
+    },
+    "read_directory": {
+      "calls": 3,
+      "failed": 0,
+      "wall_seconds": 0.0
+    },
+    "read_file": {
+      "calls": 37,
+      "failed": 0,
+      "wall_seconds": 0.0
+    },
+    "search_tools": {
+      "calls": 1,
+      "failed": 0,
+      "wall_seconds": 0.0
+    },
+    "shell_command": {
+      "calls": 141,
+      "failed": 1,
+      "wall_seconds": 0.0
+    },
+    "shell_output": {
+      "calls": 14,
+      "failed": 0,
+      "wall_seconds": 0.0
+    },
+    "todo_write": {
+      "calls": 2,
+      "failed": 0,
+      "wall_seconds": 0.0
+    },
+    "write_file": {
+      "calls": 37,
+      "failed": 0,
+      "wall_seconds": 0.0
+    }
+  },
+  "logical_failures": [
+    {
+      "logical_failure_id": "FAIL-001",
+      "logical_operation_id": "call:call_00_2e8kgd6h3qwecvp8lbw65l4l",
+      "type": "PROVIDER_QUOTA",
+      "raw_events": [
+        19
+      ],
+      "owner_row": 19,
+      "raw_types": [
+        "PROVIDER_QUOTA"
+      ],
+      "evidence": "\"command_regex\": \"(?i)(\\\\bclaude\\\\s+-p\\\\b|PROBE_|unrecognized_model|quota exhausted)\"",
+      "repair_id": null,
+      "phase": "T2"
+    },
+    {
+      "logical_failure_id": "FAIL-002",
+      "logical_operation_id": "bg:s2pkipn0",
+      "type": "BUILD_ERROR",
+      "raw_events": [
+        69
+      ],
+      "owner_row": 67,
+      "raw_types": [
+        "BUILD_ERROR"
+      ],
+      "evidence": "FAILURE: Build failed with an exception.",
+      "repair_id": "REPAIR-001",
+      "phase": "T5"
+    },
+    {
+      "logical_failure_id": "FAIL-003",
+      "logical_operation_id": "bg:s43fvbcz",
+      "type": "BUILD_ERROR",
+      "raw_events": [
+        81
+      ],
+      "owner_row": 79,
+      "raw_types": [
+        "BUILD_ERROR"
+      ],
+      "evidence": "FAILURE: Build failed with an exception.",
+      "repair_id": "REPAIR-002",
+      "phase": "T6"
+    },
+    {
+      "logical_failure_id": "FAIL-004",
+      "logical_operation_id": "bg:s5k83svs",
+      "type": "BUILD_ERROR",
+      "raw_events": [
+        87
+      ],
+      "owner_row": 85,
+      "raw_types": [
+        "BUILD_ERROR"
+      ],
+      "evidence": "BUILD FAILED in 19s",
+      "repair_id": "REPAIR-003",
+      "phase": "T6"
+    },
+    {
+      "logical_failure_id": "FAIL-005",
+      "logical_operation_id": "bg:s6c8zg59",
+      "type": "BUILD_ERROR",
+      "raw_events": [
+        99
+      ],
+      "owner_row": 97,
+      "raw_types": [
+        "BUILD_ERROR"
+      ],
+      "evidence": "BUILD FAILED in 19s",
+      "repair_id": "REPAIR-004",
+      "phase": "T6"
+    }
+  ],
+  "repairs": [
+    {
+      "repair_id": "REPAIR-001",
+      "trigger_failure": "FAIL-002",
+      "type": "BUILD_ERROR",
+      "phase": "T5",
+      "fix_span": "TURN-0037",
+      "fix_row": 73,
+      "rerun_span": "TURN-0039",
+      "rerun_row": 77,
+      "result": "PASS"
+    },
+    {
+      "repair_id": "REPAIR-002",
+      "trigger_failure": "FAIL-003",
+      "type": "BUILD_ERROR",
+      "phase": "T6",
+      "fix_span": "TURN-0042",
+      "fix_row": 83,
+      "rerun_span": "TURN-0044",
+      "rerun_row": 87,
+      "result": "PASS"
+    },
+    {
+      "repair_id": "REPAIR-003",
+      "trigger_failure": "FAIL-004",
+      "type": "BUILD_ERROR",
+      "phase": "T6",
+      "fix_span": "TURN-0048",
+      "fix_row": 95,
+      "rerun_span": "TURN-0050",
+      "rerun_row": 99,
+      "result": "PASS"
+    },
+    {
+      "repair_id": "REPAIR-004",
+      "trigger_failure": "FAIL-005",
+      "type": "BUILD_ERROR",
+      "phase": "T6",
+      "fix_span": "TURN-0064",
+      "fix_row": 127,
+      "rerun_span": "TURN-0066",
+      "rerun_row": 131,
+      "result": "PASS"
+    }
+  ],
+  "human_interventions": {
+    "count": 0,
+    "events": []
+  },
+  "execution_deviations": [
+    {
+      "type": "TOOL_WORKAROUND",
+      "count": 1,
+      "evidence": "tool invocation adjusted to work around CLI limitation"
+    },
+    {
+      "type": "OPTIONAL_CHECK_PENDING",
+      "count": 2,
+      "evidence": "optional runtime check deferred"
+    },
+    {
+      "type": "IME_SWITCH",
+      "count": 4,
+      "evidence": "IME switched for text input"
+    },
+    {
+      "type": "PROVIDER_FALLBACK",
+      "count": 1,
+      "evidence": "provider probe failed and execution fell back"
+    }
+  ],
+  "wait_totals": {
+    "WAIT_DEVICE": 3726.191,
+    "WAIT_BUILD": 791.161,
+    "WAIT_DEPENDENCY": 287.952
+  },
+  "time_class_totals": {
+    "PRODUCTIVE": 114.908,
+    "NECESSARY_OVERHEAD": 8965.561,
+    "UNKNOWN": 3399.042
+  },
+  "waste": {
+    "exclusive_wall_sec": 0.0,
+    "overlapped_background_sec": null,
+    "note": "exclusive wall = AVOIDABLE_WASTE turn-owned spans; overlapped marginal background wall NOT AVAILABLE"
+  },
+  "background": {
+    "jobs": [
+      {
+        "task_id": "s0lnlghm",
+        "op_id": "bg:s0lnlghm",
+        "wait_seconds": 60.0,
+        "polls": 1,
+        "final_status": "completed"
+      },
+      {
+        "task_id": "s1dqk6ne",
+        "op_id": "bg:s1dqk6ne",
+        "wait_seconds": 6.4,
+        "polls": 1,
+        "final_status": "completed"
+      },
+      {
+        "task_id": "s2pkipn0",
+        "op_id": "bg:s2pkipn0",
+        "wait_seconds": 0.0,
+        "polls": 1,
+        "final_status": "completed"
+      },
+      {
+        "task_id": "s36zyfos",
+        "op_id": "bg:s36zyfos",
+        "wait_seconds": 5.2,
+        "polls": 1,
+        "final_status": "completed"
+      },
+      {
+        "task_id": "s43fvbcz",
+        "op_id": "bg:s43fvbcz",
+        "wait_seconds": 0.0,
+        "polls": 1,
+        "final_status": "completed"
+      },
+      {
+        "task_id": "s5k83svs",
+        "op_id": "bg:s5k83svs",
+        "wait_seconds": 0.0,
+        "polls": 1,
+        "final_status": "completed"
+      },
+      {
+        "task_id": "s6c8zg59",
+        "op_id": "bg:s6c8zg59",
+        "wait_seconds": 0.0,
+        "polls": 1,
+        "final_status": "completed"
+      },
+      {
+        "task_id": "s738m7ms",
+        "op_id": "bg:s738m7ms",
+        "wait_seconds": 0.0,
+        "polls": 1,
+        "final_status": "completed"
+      },
+      {
+        "task_id": "s8t5h2oa",
+        "op_id": "bg:s8t5h2oa",
+        "wait_seconds": 0.0,
+        "polls": 1,
+        "final_status": "completed"
+      },
+      {
+        "task_id": "s95l2gap",
+        "op_id": "bg:s95l2gap",
+        "wait_seconds": 438.0,
+        "polls": 2,
+        "final_status": "completed"
+      },
+      {
+        "task_id": "sahjdbgr",
+        "op_id": "bg:sahjdbgr",
+        "wait_seconds": 600.0,
+        "polls": 1,
+        "final_status": "running"
+      },
+      {
+        "task_id": "sbb01bmh",
+        "op_id": "bg:sbb01bmh",
+        "wait_seconds": 134.0,
+        "polls": 1,
+        "final_status": "completed"
+      },
+      {
+        "task_id": "scx0x65g",
+        "op_id": "bg:scx0x65g",
+        "wait_seconds": 98.0,
+        "polls": 1,
+        "final_status": "completed"
+      }
+    ],
+    "background_duration_seconds": 1341.6,
+    "exclusive_wall_seconds": null,
+    "overlapped_background_seconds": null,
+    "note": "background durations parsed from shell_output waits; marginal wall contribution NOT AVAILABLE"
+  },
+  "unknown_ratio": 0.27237,
+  "observability_quality": "REVIEW",
+  "confidence": {
+    "HIGH": 128,
+    "MEDIUM": 62,
+    "LOW": 25
+  },
+  "top_time_consumers": [
+    {
+      "span_id": "TURN-0061",
+      "phase": "UNKNOWN",
+      "subphase": null,
+      "seconds": 2748.549,
+      "tool": "ask_user_question",
+      "evidence": "ask_user_question: {\"questions\": [{\"header\": \"Device lock\", \"options\": [{\"description\": \"You unlock the phone and set Screen lock to None (Settings \\u203a Security), so the screen"
+    },
+    {
+      "span_id": "TURN-0154",
+      "phase": "T2",
+      "subphase": null,
+      "seconds": 625.41,
+      "tool": "shell_command",
+      "evidence": "shell_output: {\"id\": \"sahjdbgr\", \"timeout_ms\": 600000, \"wait\": \"exit\"}"
+    },
+    {
+      "span_id": "TURN-0202",
+      "phase": "T7",
+      "subphase": "T7b",
+      "seconds": 341.511,
+      "tool": "shell_command",
+      "evidence": "cmd: SERIAL=87296ada; OUT=/mnt/AndroidDev/Projects/Google-Android-Agent-Development-Stack/verification-benchmark/results/A-J2 adb -s $SERIAL shell input tap 77 170 sleep 1 adb -s $SERIAL shell input tap 10"
+    },
+    {
+      "span_id": "TURN-0102",
+      "phase": "T6",
+      "subphase": null,
+      "seconds": 266.446,
+      "tool": "write_file",
+      "evidence": "write_file: /mnt/AndroidDev/Projects/Google-Android-Agent-Development-Stack/verification-benchmark/harness/measure.py"
+    },
+    {
+      "span_id": "TURN-0167",
+      "phase": "T2",
+      "subphase": null,
+      "seconds": 247.876,
+      "tool": "shell_command",
+      "evidence": "shell_output: {\"id\": \"scx0x65g\", \"timeout_ms\": 600000, \"wait\": \"exit\"}"
+    },
+    {
+      "span_id": "TURN-0215",
+      "phase": "T2",
+      "subphase": null,
+      "seconds": 228.868,
+      "tool": "shell_command",
+      "evidence": "cmd: cd /mnt/AndroidDev/Projects/Google-Android-Agent-Development-Stack/verification-benchmark python3 harness/measure.py echo \"=== summary.csv ===\"; cat results/summary.csv echo \"=== normalized adapter =="
+    },
+    {
+      "span_id": "TURN-0163",
+      "phase": "T2",
+      "subphase": null,
+      "seconds": 210.083,
+      "tool": "shell_command",
+      "evidence": "shell_output: {\"id\": \"sbb01bmh\", \"timeout_ms\": 480000, \"wait\": \"exit\"}"
+    },
+    {
+      "span_id": "TURN-0104",
+      "phase": "T1",
+      "subphase": "T1b",
+      "seconds": 208.044,
+      "tool": "shell_command",
+      "evidence": "shell_output: {\"id\": \"s95l2gap\", \"timeout_ms\": 300000, \"wait\": \"exit\"}"
+    },
+    {
+      "span_id": "TURN-0135",
+      "phase": "T7",
+      "subphase": "T7a",
+      "seconds": 171.69,
+      "tool": "shell_command",
+      "evidence": "cmd: export PATH=\"$PATH:/home/zhong/.maestro/bin\" BASE=/mnt/AndroidDev/Projects/Google-Android-Agent-Development-Stack/verification-benchmark SERIAL=87296ada; RUNNER=com.keeplab.app.test/androidx.test.runn"
+    },
+    {
+      "span_id": "TURN-0195",
+      "phase": "T7",
+      "subphase": "T7c",
+      "seconds": 156.075,
+      "tool": "read_file",
+      "evidence": "read_file: /mnt/AndroidDev/Projects/Google-Android-Agent-Development-Stack/verification-benchmark/results/A-J2/screenshots/06_selected.png"
+    }
+  ],
+  "top_avoidable_waste": [],
+  "schema_version": 3,
+  "parser": {
+    "additional_model_calls": 0,
+    "network_calls": 0
+  },
+  "design_reality_notes": [
+    "DESIGN/REALITY: the design listed an evidence-manifest.json artifact; per the v0.2 implementation brief only run.json / phase-timeline.csv / analysis.md are emitted, so evidence identity lives inside run.json and analysis.md.",
+    "NOTE: background job marginal wall is NOT AVAILABLE (only summed shell_output waits are reported); raw JSONL is never modified or copied."
+  ]
+}

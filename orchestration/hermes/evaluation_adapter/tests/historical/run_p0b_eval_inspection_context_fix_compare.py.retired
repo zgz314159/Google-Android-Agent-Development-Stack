@@ -1,0 +1,228 @@
+#!/usr/bin/env python3
+"""P0B-EVAL-INSPECTION-CONTEXT-FIX — isolated, non-mutating re-evaluation + regression harness.
+
+Nothing here touches the production evaluation tree (`/mnt/AndroidDev/Projects/_evaluation`): the
+production run.json is opened READ-ONLY as the published reference and every re-evaluation writes
+into this phase's own evidence directory, so the production Auto-Finalizer index is never opened or
+rewritten and no production finalization is forced.
+
+Sections:
+  1. CURRENT SESSION 20261005_075257_cb5233   - isolated re-eval (switch OFF vs ON) via the real
+                                                Hermes Auto-Finalizer path (adapter -> finalizer).
+  2. P0B-CLOSE        20261005_032302_4c6c40  - isolated re-eval (switch ON) vs the published run.
+  3. COMMAND CODE REGRESSION                  - the real Command-Code session finalized OFF vs ON.
+  4. AUTO-FINALIZER REGRESSION                - idempotency, atomic publish, task/evaluation
+                                                separation, Hermes-source activation, CC default
+                                                backward compatibility.
+
+Run: python3 orchestration/hermes/evaluation_adapter/tests/run_p0b_eval_inspection_context_fix_compare.py
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import sys
+
+REPO = "/mnt/AndroidDev/Projects/Google-Android-Agent-Development-Stack"
+EVID = os.path.join(REPO, "orchestration", "hermes", "evidence", "p0b-eval-inspection-context-fix")
+PRODUCTION_ROOT = "/mnt/AndroidDev/Projects/_evaluation"
+PROJECT = "Google-Android-Agent-Development-Stack"
+HERMES_DB = "/home/zhong/.hermes/profiles/android-stack/state.db"
+CC_SESSION = ("/home/zhong/.commandcode/projects/"
+              "mnt-android-dev-projects-ai-engineering-governance-layer/"
+              "d64d231e-03eb-4cda-a61e-25123fa119cd.jsonl")
+CC_RUN_ID = "AI-ENGINEERING-GOVERNANC-V1-1-0-AI-ENGINEERING-GOVERNANCE-LAYER-A-20261002-103630"
+
+sys.path.insert(0, os.path.join(REPO, "evaluation", "commandcode"))
+sys.path.insert(0, os.path.join(REPO, "orchestration", "hermes", "evaluation_adapter"))
+
+import auto_finalize as af  # noqa: E402
+import finalize_session as fin  # noqa: E402
+
+RESULTS = {}
+
+
+def load(path):
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def failures_of(run):
+    return [{"id": f["logical_failure_id"], "type": f["type"]} for f in run.get("logical_failures") or []]
+
+
+def correction_of(run):
+    c = run.get("failure_evidence_correction")
+    if not c:
+        return None
+    return {"version": c.get("module_version"), "before": c.get("failures_before"),
+            "after": c.get("failures_after"), "removed": c.get("removed_count"),
+            "applied": c.get("applied"),
+            "removed_failures": [{"id": r.get("logical_failure_id"), "type": r.get("type"),
+                                  "rule": r.get("rule_id"), "roles": r.get("event_operation_roles")}
+                                 for r in c.get("removed_failures") or []]}
+
+
+def fresh(path):
+    if os.path.isdir(path):
+        shutil.rmtree(path)
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+# --------------------------------------------------------------------------- #
+# 1 + 2. Hermes sessions through the real Auto-Finalizer path, isolated output
+# --------------------------------------------------------------------------- #
+def hermes_reeval(session_id, out_root, force=True):
+    out_root = fresh(out_root)
+    results = af.scan_hermes(output_root=out_root, db=HERMES_DB, session_id=session_id,
+                             staging_root=os.path.join(out_root, "_hermes_staging"),
+                             force=force, project=PROJECT, workflow="hermes")
+    run_path = os.path.join(out_root, PROJECT, "HERMES-%s" % session_id, "run.json")
+    return results, run_path
+
+
+def section_current_session():
+    s = "20261005_075257_cb5233"
+    prod = load(os.path.join(PRODUCTION_ROOT, PROJECT, "HERMES-%s" % s, "run.json"))
+    diag, run_path = hermes_reeval(s, os.path.join(EVID, "reeval-current"))
+    run = load(run_path)
+    RESULTS["current_session"] = {
+        "session_id": s,
+        "production_run_json": os.path.join(PRODUCTION_ROOT, PROJECT, "HERMES-%s" % s, "run.json"),
+        "isolated_run_json": run_path,
+        "auto_finalizer_diag": [{k: r.get(k) for k in ("status", "run_id", "output_dir")}
+                                for r in diag],
+        "published_failures": failures_of(prod),
+        "isolated_failures": failures_of(run),
+        "isolated_correction": correction_of(run),
+        "published_failures_before": len(prod.get("logical_failures") or []),
+        "isolated_failures_after": len(run.get("logical_failures") or []),
+        "repairs": [(r.get("repair_id"), r.get("failure_id"), r.get("result"))
+                    for r in run.get("repairs") or []],
+    }
+
+
+def section_p0b_close():
+    s = "20261005_032302_4c6c40"
+    prod = load(os.path.join(PRODUCTION_ROOT, PROJECT, "HERMES-%s" % s, "run.json"))
+    # the P0B-EVAL-GUARD-FIX published re-evaluation (read-only baseline), untouched
+    guard_after = os.path.join(REPO, "orchestration", "hermes", "evidence", "p0b-eval-guard-fix",
+                               "reeval-after", PROJECT, "HERMES-%s" % s, "run.json")
+    diag, run_path = hermes_reeval(s, os.path.join(EVID, "reeval-p0b-close"))
+    run = load(run_path)
+    RESULTS["p0b_close"] = {
+        "session_id": s,
+        "production_run_json": os.path.join(PRODUCTION_ROOT, PROJECT, "HERMES-%s" % s, "run.json"),
+        "isolated_run_json": run_path,
+        "guard_fix_baseline_run_json": guard_after,
+        "production_failures": failures_of(prod),
+        "guard_fix_failures": failures_of(load(guard_after)) if os.path.isfile(guard_after) else None,
+        "isolated_failures": failures_of(run),
+        "isolated_correction": correction_of(run),
+        "repairs": [(r.get("repair_id"), r.get("failure_id"), r.get("result"))
+                    for r in run.get("repairs") or []],
+        "repair_linkage": run.get("repair_linkage"),
+        "execution_deviations": [d.get("type") for d in run.get("execution_deviations") or []],
+        "identity": {k: (run.get("identity") or {}).get(k)
+                     for k in ("agent_host", "provider", "model")},
+    }
+
+
+# --------------------------------------------------------------------------- #
+# 3. Command Code regression (real session, switch OFF vs ON)
+# --------------------------------------------------------------------------- #
+def section_cc_regression():
+    off_root = fresh(os.path.join(EVID, "cc-regression", "off"))
+    on_root = fresh(os.path.join(EVID, "cc-regression", "on"))
+    diag_off = fin.finalize(session_path=CC_SESSION, run_id=CC_RUN_ID, project="cc-regression-project",
+                            output_root=off_root, force=True, require_completion=True)
+    diag_on = fin.finalize(session_path=CC_SESSION, run_id=CC_RUN_ID, project="cc-regression-project",
+                           output_root=on_root, force=True, require_completion=True,
+                           failure_evidence=True)
+    off = load(os.path.join(off_root, "cc-regression-project", CC_RUN_ID, "run.json"))
+    on = load(os.path.join(on_root, "cc-regression-project", CC_RUN_ID, "run.json"))
+    extra = sorted(set(on) - set(off))
+    differing = [k for k in off if k in on and off[k] != on[k]]
+    RESULTS["cc_regression"] = {
+        "off_outcome": diag_off["evaluation_outcome"], "on_outcome": diag_on["evaluation_outcome"],
+        "off_run_json": os.path.join(off_root, "cc-regression-project", CC_RUN_ID, "run.json"),
+        "on_run_json": os.path.join(on_root, "cc-regression-project", CC_RUN_ID, "run.json"),
+        "failures_core_off": len(off.get("logical_failures") or []),
+        "failures_on": len(on.get("logical_failures") or []),
+        "removed_count": (correction_of(on) or {}).get("removed"),
+        "keys_added_by_the_switch": extra,
+        "differing_keys_off_vs_on": differing,
+        "repairs_off": [r.get("repair_id") for r in off.get("repairs") or []],
+        "repairs_on": [r.get("repair_id") for r in on.get("repairs") or []],
+        "on_correction": correction_of(on),
+    }
+
+
+# --------------------------------------------------------------------------- #
+# 4. Auto-finalizer regression
+# --------------------------------------------------------------------------- #
+def section_auto_finalizer():
+    s = "20261005_075257_cb5233"
+    root = os.path.join(EVID, "autofinalizer")
+    fresh(root)
+    first = af.scan_hermes(output_root=root, db=HERMES_DB, session_id=s,
+                           staging_root=os.path.join(root, "_hermes_staging"),
+                           force=False, project=PROJECT, workflow="hermes")
+    second = af.scan_hermes(output_root=root, db=HERMES_DB, session_id=s,
+                            staging_root=os.path.join(root, "_hermes_staging"),
+                            force=False, project=PROJECT, workflow="hermes")
+    run_path = os.path.join(root, PROJECT, "HERMES-%s" % s, "run.json")
+    fin_path = os.path.join(root, PROJECT, "HERMES-%s" % s, "finalization.json")
+    run = load(run_path)
+    finalization = load(fin_path)
+    leftovers = [p for p in os.listdir(os.path.join(root, PROJECT)) if p.endswith(".tmp")]
+    index = load(os.path.join(root, ".auto_finalize_index.json"))
+
+    # Command Code default (source=commandcode) must stay backward compatible: no correction block.
+    cc_default_root = fresh(os.path.join(EVID, "autofinalizer-cc-default"))
+    tmp_projects = fresh(os.path.join(EVID, "autofinalizer-cc-projects", "proj"))
+    shutil.copyfile(CC_SESSION, os.path.join(tmp_projects, "session.jsonl"))
+    cc_default = af.scan(projects_root=os.path.join(EVID, "autofinalizer-cc-projects"),
+                         output_root=cc_default_root, stable_seconds=0.0, force=True)
+    cc_run = None
+    for dirpath, _dirs, files in os.walk(cc_default_root):
+        if "run.json" in files:
+            cc_run = load(os.path.join(dirpath, "run.json"))
+    RESULTS["auto_finalizer"] = {
+        "first_pass": [{k: r.get(k) for k in ("status", "run_id")} for r in first],
+        "second_pass": [{k: r.get(k) for k in ("status", "run_id")} for r in second],
+        "idempotency": second and second[0]["status"] in ("SKIP_UNCHANGED", "ALREADY_FINALIZED"),
+        "atomic_publish_no_tmp_left": leftovers == [],
+        "finalized": finalization.get("finalized"),
+        "evaluation_outcome": finalization.get("evaluation_outcome"),
+        "task_outcome": finalization.get("task_outcome"),
+        "task_and_evaluation_separated": (finalization.get("evaluation_outcome") == "SUCCESS"
+                                          and finalization.get("task_outcome") in ("COMPLETED", "INCOMPLETE")),
+        "raw_jsonl_modified": finalization.get("raw_jsonl_modified"),
+        "hermes_source_uses_the_correction": bool(correction_of(run)),
+        "hermes_correction": correction_of(run),
+        "index_entries": len(index),
+        "cc_default_scan": [{k: r.get(k) for k in ("status", "run_id")} for r in cc_default],
+        "cc_default_failures": len((cc_run or {}).get("logical_failures") or []),
+        "cc_default_has_correction_block": bool(cc_run and "failure_evidence_correction" in cc_run),
+    }
+
+
+def main():
+    section_current_session()
+    section_p0b_close()
+    section_cc_regression()
+    section_auto_finalizer()
+    out = os.path.join(EVID, "evaluation-reeval-and-regression.json")
+    with open(out, "w", encoding="utf-8") as fh:
+        json.dump(RESULTS, fh, ensure_ascii=False, indent=2)
+    print(json.dumps(RESULTS, ensure_ascii=False, indent=2))
+    print("\nwrote %s" % out)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,237 @@
+{
+  "project": "Google-Android-Agent-Development-Stack",
+  "project_type": "brownfield",
+  "source_root": "/mnt/AndroidDev/Projects",
+  "phase": "PHASE45",
+  "contract_id": "PHASE45-CAMPAIGN-SUPERVISOR-001",
+  "purpose": "Authorize exactly the write surface needed for a thin, bounded, stdlib-only Campaign Supervisor that schedules one-round-at-a-time wake-ups of the already-PASS GPT<->Hermes bridge for a single milestone. This package authorizes the Supervisor contract; it implements nothing itself.",
+  "architecture": {
+    "gpt": "GPT-5.6 (the external driver that emits control envelopes and decides milestone outcomes)",
+    "supervisor": "orchestration/hermes/supervisor/ — the new thin wake-up / scheduling layer this contract authorizes",
+    "bridge": "orchestration/hermes/bridge/ — the existing one-round GPT<->Hermes control kernel; READ-ONLY here and the sole task-authorization authority",
+    "hermes": "Hermes / DeepSeek (the execution side the bridge already drives)",
+    "flow": "GPT-5.6 <-> Campaign Supervisor <-> existing bridge_cli.py ONE ROUND <-> Hermes / DeepSeek"
+  },
+  "read_only_reuse": {
+    "status": "READ_ONLY_NO_MODIFY",
+    "modules": [
+      "orchestration/hermes/bridge/bridge_cli.py",
+      "orchestration/hermes/bridge/bridge_state.py",
+      "orchestration/hermes/bridge/protocol.py",
+      "orchestration/hermes/bridge/chatgpt_adapter.py",
+      "orchestration/hermes/bridge/contract_executor.py"
+    ],
+    "interfaces": [
+      "bridge_cli.py round — invoke exactly ONE bridge round",
+      "bridge_state.load_state() / BridgeState.as_dict() — read the chain state (expected_sequence, expected_nonce, expected_in_reply_to, status, last_result_sha256)",
+      "bridge_state.read_pending() — resolve a durable pending result at startup",
+      "bridge_state.bridge_lock — the Bridge's own single-worker guard",
+      "chatgpt_adapter.read_latest_assistant() — the deterministic READ seam for the latest completed assistant response and its sha256"
+    ],
+    "note": "The Supervisor wraps these interfaces. It does not copy, edit or vendor them, and it introduces no duplicate task-authorization layer."
+  },
+  "bridge_is_sole_authority": [
+    "HERMES task schema validation",
+    "nonce / sequence / in_reply_to",
+    "replay",
+    "risk",
+    "contract validation",
+    "self-modification gate",
+    "Contract Guard execution",
+    "durable result transaction",
+    "browser result send"
+  ],
+  "supervisor_is_layering_only": {
+    "may_do": [
+      "acquire one campaign lock",
+      "snapshot the initial Bridge challenge",
+      "poll the latest completed assistant response and compute its sha256",
+      "never process the same assistant response twice",
+      "invoke bridge_cli.py round exactly once per valid new expected task",
+      "wait for the next new assistant response",
+      "validate and honour a campaign-terminal envelope",
+      "persist bounded campaign state and exit"
+    ],
+    "must_not_do": [
+      "execute a Hermes contract directly",
+      "send a ChatGPT message itself",
+      "bypass the Bridge",
+      "redesign, replace or copy the Bridge",
+      "auto-repair a Bridge safety state or edit Bridge state"
+    ]
+  },
+  "campaign_protocol": {
+    "open_marker_components": ["LESS_THAN repeated three times", "HERMES_CAMPAIGN_V1", "GREATER_THAN repeated three times"],
+    "close_marker_components": ["LESS_THAN repeated three times", "END_HERMES_CAMPAIGN_V1", "GREATER_THAN repeated three times"],
+    "note": "The marker constants are composed at runtime from their components in code; the literal delimiter is deliberately not written in this package's prose.",
+    "fields": ["protocol", "campaign_id", "milestone", "status", "outcome", "in_reply_to"],
+    "protocol_value": "HERMES_CAMPAIGN_V1",
+    "status_values": ["CLOSED", "PAUSED"],
+    "outcome_values": ["PASS", "BLOCKED", "FAILED", "HUMAN_REQUIRED", "SAFETY_STOP", "LIMIT_REACHED"],
+    "terminal_requires": {
+      "campaign_id": "equals the current campaign",
+      "milestone": "equals the current milestone",
+      "in_reply_to": "equals Bridge state.last_result_sha256"
+    },
+    "terminal_effect": "persist terminal state, journal it, exit; never call bridge_cli.py round, so the Bridge stays WAITING_FOR_GPT with its next sequence available for the next milestone"
+  },
+  "state_model": {
+    "state_root": "~/.local/state/hermes-chatgpt-supervisor/",
+    "per_campaign_files": ["state.json", "journal.jsonl", "campaign.lock"],
+    "directory_mode": "0700",
+    "file_mode": "0600 where practical",
+    "durability": "atomic replace plus fsync where practical",
+    "persisted_fields": [
+      "campaign_id",
+      "milestone",
+      "status",
+      "started_at",
+      "deadline",
+      "max_rounds",
+      "round_count",
+      "initial_sequence",
+      "last_seen_assistant_sha256",
+      "last_dispatched_task_id",
+      "last_bridge_result_sha256",
+      "terminal_outcome"
+    ],
+    "primary_guard": "the latest completed assistant response sha256; the Bridge's sequence / nonce / replay remains authoritative",
+    "single_owner": "only one Supervisor process may own a campaign"
+  },
+  "bridge_states": {
+    "may_continue_from": ["WAITING_FOR_GPT"],
+    "pause_and_exit_nonzero": ["AWAITING_APPROVAL", "RECOVERY_REQUIRED", "SEND_UNCERTAIN", "STOPPED", "ERROR"],
+    "note": "No auto-repair, no manual Bridge state edit. A durable pending result on startup is reconciled by invoking bridge_cli.py round exactly once for the Bridge's own startup reconciliation."
+  },
+  "task_outcome_policy": {
+    "supervisor_decides_product_success": false,
+    "bridge_reports": "HERMES_RESULT_V1 back to GPT",
+    "gpt_decides": [
+      "milestone finished -> campaign terminal envelope",
+      "failed item repairable -> next valid Bridge task",
+      "blocked -> campaign terminal BLOCKED",
+      "human approval required -> campaign terminal HUMAN_REQUIRED"
+    ],
+    "note": "A Bridge result of FAILED/BLOCKED does not itself cause an automatic retry; the Supervisor waits for the next new assistant response unless the Bridge entered a safety state."
+  },
+  "bounded_autonomy": {
+    "cli_flags": ["--campaign-id", "--milestone", "--start-sequence", "--start-nonce", "--start-in-reply-to", "--max-rounds", "--max-wall-seconds", "--poll-seconds"],
+    "conservative_defaults": true,
+    "m5_values": {
+      "campaign_id": "KEEPLAB-M5-A8",
+      "milestone": "M5",
+      "start_sequence": 5,
+      "max_rounds": 12,
+      "max_wall_seconds": 21600,
+      "poll_seconds": 3
+    },
+    "on_limit": "persist PAUSED with outcome LIMIT_REACHED and exit; no infinite autonomy"
+  },
+  "read_first": [
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/bridge_cli.py",
+      "why": "the one-round entry point the Supervisor invokes exactly once per new valid task; read-only"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/protocol.py",
+      "why": "the HERMES_TASK_V1 / HERMES_RESULT_V1 envelope, strict JSON decoding and field validation the Supervisor reuses read-only"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/bridge_state.py",
+      "why": "chain state, replay journal, durable pending result and the single-worker lock the Supervisor reads read-only"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/chatgpt_adapter.py",
+      "why": "the deterministic READ seam for the latest completed assistant response and its sha256 the Supervisor wraps"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/contract_executor.py",
+      "why": "the contract gate and guarded execution path that remain entirely inside the Bridge"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/README.md",
+      "why": "the orchestration layer's own entry description and boundaries"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/INTEGRATION.md",
+      "why": "how the orchestration layer integrates, confirming the Supervisor consumes existing seams only"
+    }
+  ],
+  "allowed_paths": [
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/supervisor/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/campaign-supervisor/"
+  ],
+  "forbidden_paths": [
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/HERMES-LOCK.json",
+    "Google-Android-Agent-Development-Stack/specification/",
+    "Google-Android-Agent-Development-Stack/verification/",
+    "Google-Android-Agent-Development-Stack/verification-benchmark/",
+    "Google-Android-Agent-Development-Stack/evaluation/",
+    "Google-Android-Agent-Development-Stack/references/",
+    "Google-Android-Agent-Development-Stack/probes/",
+    "Google-Android-Agent-Development-Stack/.hermes.md",
+    "Google-Android-Agent-Development-Stack/reports/contracts/",
+    "KeepLab-Relay/",
+    "KeepLab-Relay-evidence/",
+    "Testapp/",
+    "PowerAi/"
+  ],
+  "path_classes": {
+    "PRODUCTION_IMMUTABLE": [
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/HERMES-LOCK.json",
+      "Google-Android-Agent-Development-Stack/specification/",
+      "Google-Android-Agent-Development-Stack/.hermes.md"
+    ],
+    "TEST_SOURCE": [
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/supervisor/tests/"
+    ],
+    "EVIDENCE_OUTPUT": [
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/campaign-supervisor/"
+    ],
+    "FORBIDDEN": [
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/",
+      "Google-Android-Agent-Development-Stack/verification/",
+      "Google-Android-Agent-Development-Stack/verification-benchmark/",
+      "Google-Android-Agent-Development-Stack/evaluation/",
+      "Google-Android-Agent-Development-Stack/references/",
+      "Google-Android-Agent-Development-Stack/probes/",
+      "KeepLab-Relay/",
+      "KeepLab-Relay-evidence/",
+      "Testapp/",
+      "PowerAi/"
+    ]
+  },
+  "boundary_notes": {
+    "source_root": "/mnt/AndroidDev/Projects",
+    "resolution": "allowed_paths and forbidden_paths are project-relative to the Contract Guard source_root; an entry is a directory prefix or an exact file.",
+    "two_allowed_directories": "Exactly two directories are allowed: the Supervisor package and its evidence directory. No parent directory above either is allow-listed, so the authorization cannot widen into the Bridge or the control plane.",
+    "no_overlap": "No allowed path is equal to, inside, or a parent of any forbidden path; the compiler reports zero E_PATH_CONFLICT.",
+    "unlisted_is_blocked": "Any path inside the project root matching neither list stays BLOCKED (UNCLASSIFIED_FAIL_CLOSED), which protects the Bridge, the compiler, the guard and every historical artifact.",
+    "bridge_immutable": "orchestration/hermes/bridge/ is forbidden for writes and is proven byte-identical by pre/post sha256 comparison."
+  },
+  "protected_snapshot": {
+    "device": "87296ada",
+    "device_used": false,
+    "device_operation": "FORBIDDEN",
+    "android_verification_behaviour": "UNCHANGED",
+    "no_visual_llm_judgment": true,
+    "browser_cdp_used": false,
+    "network_access": "FORBIDDEN",
+    "live_bridge_round": "FORBIDDEN",
+    "live_sequence": 5,
+    "live_sequence_consumed": false
+  },
+  "contract_notes": {
+    "package_role": "EXECUTION_AUTHORIZATION_CONTRACT",
+    "package_access": "READ_ONLY_INPUT",
+    "generated_by": "specification/compiler (hash_manifest.py -> build_contract.py -> validate_package.py)",
+    "execution_sessions": 1,
+    "verification_passes": 1,
+    "generated_artifacts_owner": "the deterministic Specification Compiler only; never hand-patched",
+    "this_session": "CONTRACT_AUTHORING_ONLY — authors and validates the contract package; implements nothing",
+    "implementation_next": "a later human-approved installation session implements the Supervisor inside the authorized write surface"
+  }
+}

@@ -1,0 +1,16 @@
+appId: com.keeplab.app
+name: input-smoke
+tags:
+  - smoke
+---
+# Minimal input-capability smoke for Engine C (Maestro inputText + IME).
+# Proves a field is locatable and that inputText round-trips a fixed ASCII probe.
+# Never part of the benchmark metric; the runner's fixture seed resets any residue.
+- launchApp:
+    clearState: false
+- tapOn: "New text note"
+- tapOn:
+    id: "editor-title"
+- inputText: "VC-SMOKE-ASCII-0123"
+- assertVisible: "VC-SMOKE-ASCII-0123"
+- tapOn: "Back"

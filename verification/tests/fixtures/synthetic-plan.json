@@ -1,0 +1,17 @@
+{
+  "verification_id": "SYNTHETIC-FIXTURE",
+  "project": "Synthetic",
+  "description": "Illustrative plan used by fixture integration tests. The test itself generates a temp plan with an absolute APK path and a matching sha.",
+  "android": {
+    "package_name": "com.example.synth",
+    "apk": "tests/fixtures/synthetic-app.apk"
+  },
+  "engine": "uiautomator",
+  "journey": {
+    "id": "J1",
+    "test_class": "com.example.synth.J1JourneyTest"
+  },
+  "measurement_class": "diagnostic",
+  "excluded_from_baseline": true,
+  "evidence_policy": "failure-only"
+}

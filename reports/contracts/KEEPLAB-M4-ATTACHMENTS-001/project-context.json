@@ -1,0 +1,246 @@
+{
+  "project": "KeepLab-Google-Keep-Parity",
+  "project_type": "brownfield",
+  "source_root": "/mnt/AndroidDev/Projects",
+  "phase": "M4_ATTACHMENTS",
+  "contract_id": "KEEPLAB-M4-ATTACHMENTS-001",
+  "architecture": {
+    "product_repo": "KeepLab-Relay (backend/** plus the enumerated Android attachment surface are writable in this milestone; everything else under app/ is read-only)",
+    "product_stack": "Kotlin 2.3.21, Jetpack Compose + Material 3, Navigation 3, Hilt, Room 2.8.4 (KSP), AGP 9.2.1 — as extended by M2 (Ktor CIO client, a Keystore-backed session store, one unique WorkManager `note_sync` pipeline) and by M3 (bounded retry, manual retry, a persisted conflict record, a 7-day product Trash distinct from the sync tombstone). M4 extends it further only with the A7 attachment foundation, the backend binary path, the Android offline/upload/download path and the minimal attachment UX.",
+    "android_under_construction": {
+      "new_packages": [
+        "data/attachment/** (the attachment domain: model, local store, import/storage, transfer coordination)",
+        "ui/attachment/** (the minimal attachment surface)"
+      ],
+      "extended_packages": [
+        "data/local/** (attachment entity + DAO, the direct experimental schema bump, attachment metadata queries)",
+        "data/remote/** (the attachment API client: config, upload session, chunk append, status, complete, download)",
+        "data/sync/** (the separate `attachment_sync` pipeline and its trigger seam, bounded attachment retry)",
+        "data/NoteRepository.kt (only if the attachment creation/removal boundary genuinely belongs beside the note boundary)",
+        "di/** (wiring for the attachment store, the attachment API and the attachment pipeline)",
+        "ui/editor/**, ui/note/**, ui/home/**, ui/settings/**, ui/trash/**, ui/navigation/**, ui/auth/** (tiny integration points only: attach, list, show state, retry, remove)"
+      ],
+      "entry_points": [
+        "KeepLabApplication.kt (only if an M4 wiring change is genuinely required)",
+        "MainActivity.kt (only if an M4 navigation integration point is genuinely required)",
+        "AndroidManifest.xml (only if genuinely required; a FileProvider is not expected to be needed)"
+      ],
+      "gradle": [
+        "app/build.gradle.kts (dependencies required by M4 only; the expected outcome is NO change)",
+        "gradle/libs.versions.toml (versions/libraries required by M4 only; the expected outcome is NO change)"
+      ],
+      "tests": "app/src/test/** (JVM only; no androidTest, no benchmark, no device)",
+      "explicitly_absent_from_m4": "A8 multi-device hardening, A9 multi-account, collaboration/sharing, cloud deployment, release hardening, Tencent COS provisioning, camera/drawing/voice/video capture, audio/video/octet-stream/executable/archive support, multipart or cloud-presigned upload architecture, a production orphan scheduler, a push provider/FCM, a permanent background socket, account deletion, production email, Google/Firebase identity, room encryption claims, tombstone GC"
+    },
+    "backend_under_construction": {
+      "location": "KeepLab-Relay/backend/ (created by A2, extended by M2 and M3; PRESENT)",
+      "build_model": "INDEPENDENT_GRADLE_PROJECT with its own backend/settings.gradle.kts and backend/build.gradle.kts",
+      "invocation": "cd /mnt/AndroidDev/Projects/KeepLab-Relay && ./gradlew -p backend <tasks>",
+      "wrapper": "the existing repository wrapper, reused as-is (Gradle 9.5.1)",
+      "stack": "Kotlin 2.4.20 + Ktor 3.6.0 (Netty) · PostgreSQL via HikariCP + JDBC · Flyway migrations · portable Docker assets (untouched, not executed)",
+      "m4_additions": "the server-configurable KEEPLAB_ATTACHMENT_* limit set with the D-13 defaults; the authenticated attachment configuration endpoint; the portable ObjectStorage abstraction with the FilesystemObjectStorage development reference driver; the attachment persistence model (metadata, upload session/resume state, content objects, quota reservations, orphan state) with new Flyway migrations after V3; the resumable upload session protocol with server-side byte/hash/MIME verification; quota reservation inside one atomic persistence boundary; account/note authorization derived from the JWT subject; same-account content deduplication that never bypasses quota or count; satisfied download; safe removal; the findOrphanCandidates()/cleanupEligibleOrphans() boundary; deterministic backend tests; backend/.env.example placeholders",
+      "backend_non_goals": "no cloud provisioning, no Tencent COS adapter, no cloud credential, no real backend/.env, no multipart/cloud-presigned upload architecture, no production orphan scheduler, no audio/video/archive support, no collaboration/multi-account/push code"
+    },
+    "stack_repo": "Google-Android-Agent-Development-Stack (Specification Compiler, Verification Layer, Evaluation Core / Auto-Finalizer, Hermes orchestration kernel)",
+    "hermes": "pinned vgit.af90026 (2026.9.24) at /home/zhong/.hermes/hermes-agent; never upgraded, reinstalled or core-patched",
+    "guard": "the same unmodified orchestration/hermes/evaluation_adapter/contract_guard.py, invoked by the same fail-closed pre_tool_call hook",
+    "note": "M4 is a host-side backend + Android build/unit-test milestone. It provisions no cloud resource, uses no device, executes no Docker asset, and needs no live PostgreSQL."
+  },
+  "path_classes": {
+    "BACKEND_CONSTRUCTION_TARGET": [
+      "KeepLab-Relay/backend/"
+    ],
+    "ANDROID_M4_SURFACE": [
+      "KeepLab-Relay/app/build.gradle.kts",
+      "KeepLab-Relay/gradle/libs.versions.toml",
+      "KeepLab-Relay/app/src/main/AndroidManifest.xml",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/KeepLabApplication.kt",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/MainActivity.kt",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/model/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/attachment/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/settings/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/auth/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/navigation/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/trash/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/note/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/editor/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/home/",
+      "KeepLab-Relay/app/src/main/res/xml/",
+      "KeepLab-Relay/app/src/test/"
+    ],
+    "TEST_SOURCE": [
+      "KeepLab-Relay/app/src/test/"
+    ],
+    "EVIDENCE_OUTPUT": [
+      "Google-Android-Agent-Development-Stack/reports/",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-m4-attachments/"
+    ],
+    "PRODUCTION_IMMUTABLE": [
+      "KeepLab-Relay/app/src/main/res/drawable/",
+      "KeepLab-Relay/app/src/main/res/mipmap-anydpi/",
+      "KeepLab-Relay/app/src/main/res/mipmap-anydpi-v26/",
+      "KeepLab-Relay/app/src/main/res/values/",
+      "KeepLab-Relay/app/src/main/res/values-night/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/theme/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/common/",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/conflict/",
+      "KeepLab-Relay/app/src/androidTest/",
+      "KeepLab-Relay/app/src/benchmark/",
+      "KeepLab-Relay/app/src/debug/",
+      "KeepLab-Relay/app/src/release/",
+      "KeepLab-Relay/app/schemas/",
+      "KeepLab-Relay/app/proguard-rules.pro",
+      "KeepLab-Relay/benchmark/",
+      "KeepLab-Relay/build.gradle.kts",
+      "KeepLab-Relay/settings.gradle.kts",
+      "KeepLab-Relay/gradle/wrapper/",
+      "KeepLab-Relay/gradle.properties",
+      "KeepLab-Relay/gradlew",
+      "KeepLab-Relay/gradlew.bat",
+      "KeepLab-Relay/local.properties",
+      "KeepLab-Relay/specs/",
+      "KeepLab-Relay/verification/",
+      "KeepLab-Relay/harness/",
+      "KeepLab-Relay/docs/",
+      "KeepLab-Relay/factory/",
+      "KeepLab-Relay/.factory/",
+      "KeepLab-Relay/.agents/",
+      "KeepLab-Relay/.commandcode/",
+      "KeepLab-Relay/MISSION.md",
+      "KeepLab-Relay/FACTORY.md",
+      "KeepLab-Relay/FACTORY_RULES.md",
+      "KeepLab-Relay/AGENTS.md",
+      "KeepLab-Relay/HANDOFF.md",
+      "KeepLab-Relay/PHASE-A-RESULT.md",
+      "KeepLab-Relay/PHASE-B-RESULT.md",
+      "KeepLab-Relay/ANDROID-STACK-GAPS.md",
+      "KeepLab-Relay/Dockerfile",
+      "KeepLab-Relay/docker-compose.yml",
+      "KeepLab-Relay/docker/",
+      "KeepLab-Relay/server/",
+      "KeepLab-Relay/infra/",
+      "KeepLab-Relay/cloud/",
+      "KeepLab-Relay/firebase/",
+      "Google-Android-Agent-Development-Stack/.hermes.md",
+      "Google-Android-Agent-Development-Stack/specification/",
+      "Google-Android-Agent-Development-Stack/verification/",
+      "Google-Android-Agent-Development-Stack/verification-benchmark/",
+      "Google-Android-Agent-Development-Stack/references/",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/HERMES-LOCK.json",
+      "Google-Android-Agent-Development-Stack/evaluation/",
+      "Google-Android-Agent-Development-Stack/reports/contracts/"
+    ],
+    "FORBIDDEN": [
+      "Testapp/",
+      "PowerAi/",
+      "KeepLab-Relay-evidence/"
+    ]
+  },
+  "m4_facts": {
+    "milestone": "M4 = A7_ATTACHMENTS",
+    "contracts_created": 1,
+    "sessions": 1,
+    "verification_passes": 1,
+    "metadata_upload_download_split": "FORBIDDEN — one contract, one session, one pass",
+    "reviews_created": "NONE (no Attachment Review, no Storage Review, no Upload Review, no post-PASS audit)",
+    "android_surface_policy": "ENUMERATED_NOT_WHOLE_APP",
+    "root_gradle_change_required": false,
+    "root_android_gradle_modified": "NO (required outcome of this contract)",
+    "expected_gradle_change": "NO dependency change is expected; app/build.gradle.kts and gradle/libs.versions.toml are conditionally authorized only so a genuinely required addition is not a breach by itself, and any addition must be recorded in the M4 report",
+    "room_schema": "current 5 -> next clean version (expected 6) by direct experimental bump for the attachment structures; DEV_DATABASE_RESET_REQUIRED = YES; no migration chain authored; exportSchema stays false",
+    "backend_schema": "new Flyway migrations after V3 (V4+) only as M4 requires; no production compatibility chain",
+    "frozen_human_decision": "D-13 = ATTACHMENT_LIMITS_V1 (HUMAN_PROJECT_OWNER_APPROVAL, 2026-10-06)",
+    "attachment_limits": {
+      "MAX_SINGLE_ATTACHMENT_BYTES": 26214400,
+      "MAX_ATTACHMENTS_PER_NOTE": 20,
+      "ACCOUNT_ATTACHMENT_QUOTA_BYTES": 1073741824,
+      "ALLOWED_MIME_TYPES": [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "application/pdf"
+      ],
+      "LIMIT_AUTHORITY": "SERVER_CONFIGURABLE"
+    },
+    "quota": "LOGICAL attachment bytes owned by the account; duplicates count; a pending upload reservation counts while active and is released on abort/expiry/failed initiation",
+    "object_storage": "PORTABLE_ABSTRACTION (ObjectStorage) + FILESYSTEM_DEV_TEST reference driver (KEEPLAB_OBJECT_STORAGE_DRIVER, KEEPLAB_OBJECT_STORAGE_ROOT)",
+    "cloud_provisioning": "FORBIDDEN — TENCENT_CLOUD_PROVISIONED = NO",
+    "content_addressing": "SHA-256; the server verifies the uploaded bytes; the object key derives from account scope + verified hash; the user filename is never a path component",
+    "note_usability": "INVARIANT ATT-1 — a pending/offline/failed/resuming attachment upload never blocks note use",
+    "transfer_pipeline": "one separate durable `attachment_sync` pipeline beside the existing `note_sync` pipeline; no duplicate upload for the same attachment",
+    "push": "FORBIDDEN — no FCM, no push provider",
+    "process_death": "deterministic simulation only (persist Room state, destroy/recreate repository/pipeline objects, resume from persisted state); no adb, no Maestro, no UiAutomator, no device",
+    "gates": [
+      "cd /mnt/AndroidDev/Projects/KeepLab-Relay && ./gradlew -p backend test build",
+      "cd /mnt/AndroidDev/Projects/KeepLab-Relay && ./gradlew :app:testDebugUnitTest :app:assembleDebug"
+    ],
+    "gate_runs": "each ONCE",
+    "live_postgres": "not installed on this host -> LIVE_POSTGRES_INTEGRATION = SKIPPED_TOOL_UNAVAILABLE; never a blocker; no infrastructure is installed inside M4 and the transactional quota semantics are not weakened",
+    "device": "NOT_USED"
+  },
+  "guard": {
+    "source": "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/contract_guard.py",
+    "guard_version": "p0b-close-1",
+    "guard_sha256": "e418fc28b08ac7afe4fdd42ec44d572ddaa2f23f6200de300ecac211404b3746",
+    "hook_event": "pre_tool_call",
+    "matcher": "write_file|patch|terminal",
+    "fail_closed": true,
+    "package_switch": "HERMES_CONTRACT_PACKAGE",
+    "package_switch_semantics": "The guard resolves its package dir as os.environ['HERMES_CONTRACT_PACKAGE'] or the built-in default. The hook subprocess inherits the Hermes process environment. Setting the variable for the Hermes process points the SAME unmodified guard at this package; no guard, hook or config change is involved.",
+    "modified_by_this_phase": false,
+    "known_limitation": "Hermes configuration, Hermes core and the hook allowlist live OUTSIDE the guard's source_root (/home/zhong/.hermes/...), so the guard's path lists cannot classify them. They are protected by an explicit hard prohibition and stop condition in this contract and in the M4 execution prompt, enforced by fail-closed operator discipline — not by the path list. Stated rather than hidden.",
+    "write_intent_note": "The guard's terminal write-intent extractor reads a literal '>' anywhere in a shell command as a redirect (MB-A1-003 / MB-A2-008 / MB-M2-006 / MB-M3-006). Drive the guard by files and read-only commands; never inline heredocs or payload-bearing shell text."
+  },
+  "contract_notes": {
+    "temporary_execution_contract": true,
+    "project_data_stage": "EXPERIMENTAL (android DISPOSABLE_TEST_DATA + backend DISPOSABLE_TEST_DATA)",
+    "test_data_disposable": true,
+    "old_test_db_compatibility_required": false,
+    "dev_database_reset_required": "YES",
+    "implementation_authorization_model": "PHASE_GATED_MILESTONE",
+    "implementation_authorization": "NOT_GRANTED_IN_THIS_TASK",
+    "human_decisions_frozen": [
+      "D-13 ATTACHMENT_LIMITS_V1"
+    ],
+    "human_decisions_pending_not_blocking": [
+      "D-05",
+      "D-11",
+      "D-12",
+      "D-14"
+    ],
+    "device_operation_allowed": false,
+    "cloud_provisioning_allowed": false,
+    "tencent_cos_adapter_allowed": false,
+    "real_backend_env_allowed": false,
+    "storage_permission_allowed": false,
+    "capture_ux_allowed": false,
+    "audio_video_archive_support_allowed": false,
+    "collaboration_allowed": false,
+    "multi_account_allowed": false,
+    "multi_device_hardening_allowed": false,
+    "push_allowed": false,
+    "production_orphan_scheduler_allowed": false,
+    "multipart_or_presigned_upload_allowed": false,
+    "attachment_sub_contracts_allowed": false,
+    "account_deletion_allowed": false,
+    "release_hardening_allowed": false,
+    "google_keep_work_allowed": false,
+    "tombstone_gc_allowed": false,
+    "historical_evidence_mutation_allowed": false,
+    "supersedes": "nothing; the frozen P0B-CLOSE contract and the A0/A1/A2/M2/M3 contract packages remain active and unedited",
+    "does_not_resolve": [
+      "D-05 (HUMAN_DECISION_PENDING)",
+      "D-11 (HUMAN_DECISION_PENDING)",
+      "D-12 (HUMAN_DECISION_PENDING)",
+      "D-14 (HUMAN_DECISION_PENDING)",
+      "SYNC_TOMBSTONE_RETENTION_OR_COMPACTION (IMPLEMENTATION_DECISION_PENDING)",
+      "TENCENT_COS_PRODUCTION_ADAPTER (NOT_IMPLEMENTED)",
+      "PRODUCTION_ORPHAN_SCHEDULER (NOT_IMPLEMENTED)",
+      "A8 (NOT_STARTED)",
+      "A9 (NOT_STARTED)"
+    ]
+  }
+}

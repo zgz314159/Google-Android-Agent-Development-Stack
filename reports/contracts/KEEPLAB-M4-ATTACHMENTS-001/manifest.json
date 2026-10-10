@@ -1,0 +1,143 @@
+{
+  "package": "KEEPLAB-M4-ATTACHMENTS-001",
+  "generated_by": "M4 milestone contract authoring (specification/compiler manifest schema)",
+  "algorithm": "sha256",
+  "contract_id": "KEEPLAB-M4-ATTACHMENTS-001",
+  "metadata": {
+    "phase": "M4_ATTACHMENTS",
+    "milestone": "M4 = A7 (attachments)",
+    "contracts_in_milestone": 1,
+    "execution_sessions": 1,
+    "verification_passes": 1,
+    "human_authorization": true,
+    "human_decisions": [
+      "D-13 ATTACHMENT_LIMITS_V1"
+    ],
+    "human_decision_source": "HUMAN_PROJECT_OWNER_APPROVAL",
+    "human_decision_date": "2026-10-06",
+    "human_decision_record": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M4-HUMAN-DECISIONS.md",
+    "package_role": "TEMPORARY_EXECUTION_CONTRACT",
+    "package_access": "READ_ONLY_INPUT",
+    "project_data_stage": "EXPERIMENTAL",
+    "android_data_stage": "DISPOSABLE_TEST_DATA",
+    "backend_data_stage": "DISPOSABLE_TEST_DATA",
+    "test_data_disposable": true,
+    "old_test_db_compatibility": "NOT_REQUIRED",
+    "dev_database_reset_required": "YES",
+    "backend_path": "/mnt/AndroidDev/Projects/KeepLab-Relay/backend/",
+    "backend_path_state": "PRESENT (created by A2, extended by M2 and M3)",
+    "backend_build_model": "INDEPENDENT_GRADLE_PROJECT",
+    "root_android_gradle_change_required": false,
+    "root_android_gradle_modified": "NO",
+    "expected_dependency_change": "NO",
+    "gradle_module_changes_allowed": [
+      "KeepLab-Relay/app/build.gradle.kts (only if targeted discovery proves a dependency change is required)",
+      "KeepLab-Relay/gradle/libs.versions.toml (only if targeted discovery proves a dependency change is required)"
+    ],
+    "android_surface_policy": "ENUMERATED_NOT_WHOLE_APP",
+    "android_new_packages": [
+      "data/attachment/**",
+      "ui/attachment/**"
+    ],
+    "implementation_authorization": "GRANTED_TO_M4_EXECUTION_TASK_ONLY",
+    "implementation_authorization_model": "PHASE_GATED_MILESTONE",
+    "execution_model": "PLAN ONCE -> IMPLEMENT ATTACHMENT FOUNDATION -> IMPLEMENT BACKEND BINARY PATH -> IMPLEMENT ANDROID OFFLINE/UPLOAD/DOWNLOAD PATH -> IMPLEMENT MINIMAL UX -> VERIFY M4 ONCE -> PASS = STOP",
+    "attachment_limits": {
+      "MAX_SINGLE_ATTACHMENT_BYTES": 26214400,
+      "MAX_ATTACHMENTS_PER_NOTE": 20,
+      "ACCOUNT_ATTACHMENT_QUOTA_BYTES": 1073741824,
+      "ALLOWED_MIME_TYPES": [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "application/pdf"
+      ],
+      "LIMIT_AUTHORITY": "SERVER_CONFIGURABLE"
+    },
+    "out_of_scope_mime": "audio/*, video/*, application/octet-stream, arbitrary binary, executables, archives",
+    "object_storage": "PORTABLE_ABSTRACTION",
+    "object_storage_reference_driver": "FILESYSTEM_DEV_TEST",
+    "tencent_cloud_provisioned": false,
+    "cloud_provisioning": "FORBIDDEN",
+    "content_addressing": "SHA-256 with a server-verified hash",
+    "quota_semantics": "LOGICAL bytes; duplicates do not bypass; a pending reservation counts while active",
+    "note_usability": "ATT-1: a pending upload never blocks note use",
+    "transfer_pipeline": "one durable `attachment_sync` pipeline beside the existing `note_sync` pipeline",
+    "device_operation": "FORBIDDEN",
+    "device": "NOT_USED",
+    "push_provider": "FORBIDDEN",
+    "collaboration": "FORBIDDEN",
+    "multi_account": "FORBIDDEN",
+    "multi_device_hardening": "FORBIDDEN",
+    "capture_ux": "FORBIDDEN",
+    "storage_permission": "FORBIDDEN",
+    "multipart_or_presigned_upload": "FORBIDDEN",
+    "production_orphan_scheduler": "FORBIDDEN",
+    "tencent_cos_adapter": "FORBIDDEN",
+    "real_backend_env": "FORBIDDEN",
+    "attachment_sub_contracts": "FORBIDDEN",
+    "reviews": "FORBIDDEN",
+    "post_pass_audit": "FORBIDDEN",
+    "execution_status": "NOT_EXECUTED",
+    "guard_modified": false,
+    "hook_config_modified": false,
+    "stops_after": "M4 (A7 attachments verified once)",
+    "must_not_start": [
+      "A8",
+      "A9"
+    ],
+    "does_not_resolve": [
+      "D-05",
+      "D-11",
+      "D-12",
+      "D-14",
+      "SYNC_TOMBSTONE_RETENTION_OR_COMPACTION",
+      "TENCENT_COS_PRODUCTION_ADAPTER",
+      "PRODUCTION_ORPHAN_SCHEDULER",
+      "A8",
+      "A9"
+    ]
+  },
+  "entries": [
+    {
+      "path": "implementation-contract.json",
+      "sha256": "4aac37d83fc7c265ef3d66b49bed8a87908e27e0aaddef063d69bd1c5ef57bf4",
+      "size": 136772,
+      "role": "contract",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "project-context.json",
+      "sha256": "80561739e2f2d88cc61f08cb74f6e92df78981c34e7b4f47a004b6c995622609",
+      "size": 16112,
+      "role": "project_context",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "acceptance.md",
+      "sha256": "aaae809cc7b26eb9bfdc42fa37e0b25fc39e416c45bbb06f9f0341062cda1d4e",
+      "size": 30478,
+      "role": "acceptance",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "EXECUTOR-PROMPT.md",
+      "sha256": "73078125aee94758b4b9a91d97e684b59e3ad785bf121fffa973a91b7640c5f1",
+      "size": 7280,
+      "role": "executor_prompt",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "KEEPLAB-M4-ATTACHMENTS-EXECUTE.md",
+      "sha256": "04ad8cd24046c9271582e0110241a22f61802eed3975613e188e7429db3812f2",
+      "size": 26957,
+      "role": "execution_prompt",
+      "required": true,
+      "source": "authored"
+    }
+  ]
+}

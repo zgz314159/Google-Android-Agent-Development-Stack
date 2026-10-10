@@ -1,0 +1,14 @@
+{
+  "contract_id": "PHASE4-HERMES-TASK-V1-KERNEL-001",
+  "contract_version": "0.1.0",
+  "experiment_id": "PHASE4-HERMES-TASK-V1-KERNEL",
+  "status": "READY",
+  "unresolved_questions": [],
+  "validation": {
+    "acceptance": "PASS",
+    "boundaries": "PASS",
+    "hashes": "PASS",
+    "schema": "PASS",
+    "traceability": "PASS"
+  }
+}

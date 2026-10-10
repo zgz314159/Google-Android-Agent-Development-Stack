@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# P0B-EVAL-GUARD-FIX — verification transcript generator.
+#
+# Offline and deterministic: runs the targeted Evaluation / adapter / finalizer test suites and
+# records the live Contract Guard evidence. It writes ONLY into its own evidence directory.
+# No device, no benchmark battery, no product code.
+set -u
+HERE="$(cd "$(dirname "$0")" && pwd)"
+REPO="$(cd "$HERE/../../../.." && pwd)"
+OUT_ROOT="$REPO/orchestration/hermes/evidence/p0b-eval-guard-fix"
+LOGS="$OUT_ROOT/testlogs"
+TRANSCRIPT="$OUT_ROOT/verification.txt"
+PROBE_DIR="$REPO/.guard-live-probe"
+PROBE_FILE="$PROBE_DIR/SHOULD_NOT_EXIST.txt"
+DECISIONS="$REPO/orchestration/hermes/evidence/p0b-close/contract-guard-decisions.jsonl"
+
+mkdir -p "$LOGS"
+
+{
+  echo "P0B-EVAL-GUARD-FIX — verification transcript"
+  date -u +"captured_utc=%Y-%m-%dT%H:%M:%SZ"
+  echo "repo=$REPO"
+  echo
+
+  echo "## 0. baseline identity (must be preserved)"
+  echo "this Hermes process started at : $(stat -c %y /proc/$$/stat 2>/dev/null || echo unknown)"
+  echo "hook config.yaml mtime         : $(stat -c %y "$HOME/.hermes/profiles/android-stack/config.yaml")"
+  echo
+
+  echo "## 1. targeted test suites (all offline, deterministic)"
+  for f in test_evaluation_core.py test_evaluation_core_v022.py test_evaluation_core_v023.py \
+           test_finalize_session.py test_task_window_v021.py; do
+    ( cd "$REPO" && python3 "evaluation/tests/$f" ) > "$LOGS/$f.txt" 2>&1
+    echo "  evaluation/tests/$f -> exit=$?"
+  done
+  ( cd "$REPO" && python3 evaluation/tests/test_hermes_source.py ) > "$LOGS/hermes_source.txt" 2>&1
+  echo "  evaluation/tests/test_hermes_source.py -> exit=$?"
+  ( cd "$REPO" && python3 -m unittest discover -s orchestration/hermes/evaluation_adapter/tests ) \
+      > "$LOGS/adapter_suite.txt" 2>&1
+  echo "  orchestration/.../tests (guard + failure evidence) -> exit=$?"
+  echo
+  echo "  result lines:"
+  for f in test_evaluation_core.py.txt test_evaluation_core_v022.py.txt \
+           test_evaluation_core_v023.py.txt test_finalize_session.py.txt \
+           test_task_window_v021.py.txt adapter_suite.txt; do
+    printf "    %-34s %s\n" "$f" "$(tail -3 "$LOGS/$f" | tr -d '\n' | sed 's/  */ /g')"
+  done
+  printf "    %-34s %s\n" "hermes_source.txt" "$(tail -1 "$LOGS/hermes_source.txt")"
+  echo
+
+  echo "## 2. hermes hooks list"
+  hermes hooks list
+  echo
+  echo "## 3. hermes hooks doctor"
+  hermes hooks doctor
+  echo
+  echo "## 4. live pre_tool_call enforcement probe"
+  echo "target: $PROBE_FILE"
+  if [ -e "$PROBE_FILE" ]; then
+    echo "PROBE FILE EXISTS AFTER TEST: YES -> the live guard did NOT block"
+  else
+    echo "PROBE FILE EXISTS AFTER TEST: NO -> the live guard blocked the write before mutation"
+  fi
+  echo
+  echo "## 5. guard decision log tail (append-only audit trail)"
+  echo "decisions log: $DECISIONS"
+  echo "line count: $(wc -l < "$DECISIONS")"
+  tail -4 "$DECISIONS"
+  echo
+  echo "## 6. P0B-CLOSE isolated re-evaluation (this session 20261005_032302_4c6c40)"
+  echo "BEFORE root: $OUT_ROOT/reeval-before"
+  echo "AFTER  root: $OUT_ROOT/reeval-after"
+  echo
+  echo "## 7. production evaluation tree untouched"
+  echo "published run.json sha256: $(sha256sum /mnt/AndroidDev/Projects/_evaluation/Google-Android-Agent-Development-Stack/HERMES-20261005_032302_4c6c40/run.json | cut -d' ' -f1)"
+  echo "production index sha256    : $(sha256sum /mnt/AndroidDev/Projects/_evaluation/.auto_finalize_index.json | cut -d' ' -f1)"
+} > "$TRANSCRIPT" 2>&1
+
+echo "wrote $TRANSCRIPT"

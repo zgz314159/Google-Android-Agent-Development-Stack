@@ -1,0 +1,8 @@
+appId: com.keeplab.app
+name: intentional-failure
+tags:
+  - failtest
+---
+- launchApp:
+    clearState: false
+- assertVisible: "__KEEP_LAB_INTENTIONAL_FAILURE__"

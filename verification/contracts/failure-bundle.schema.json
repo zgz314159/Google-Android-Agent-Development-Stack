@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://android-agent-stack/verification/contracts/failure-bundle.schema.json",
+  "title": "Failure Bundle Metadata",
+  "description": "Shape of failure/metadata.json inside a failed run's evidence bundle. Every artifact is either present or explicitly declared unavailable with a reason; nothing is silently missing and no format is ever faked (XML stays .xml).",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["layout_provider", "artifacts"],
+  "properties": {
+    "run_id": {"type": ["string", "null"]},
+    "verification_id": {"type": ["string", "null"]},
+    "engine": {"type": ["string", "null"]},
+    "journey": {"type": ["string", "null"]},
+    "device_serial": {"type": ["string", "null"]},
+    "device_available": {"type": "boolean"},
+    "layout_provider": {"enum": ["android_cli", "uiautomator_xml", "unavailable"]},
+    "evidence_steps": {"type": "array", "items": {"type": "string"}},
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["name", "available"],
+        "properties": {
+          "name": {"type": "string"},
+          "file": {"type": ["string", "null"]},
+          "available": {"type": "boolean"},
+          "reason": {"type": "string"}
+        }
+      }
+    },
+    "timestamp": {"type": "string"}
+  }
+}

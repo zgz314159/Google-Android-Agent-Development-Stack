@@ -1,0 +1,927 @@
+{
+  "acceptance_ids": [
+    "AC-M5-001",
+    "AC-M5-002",
+    "AC-M5-003",
+    "AC-M5-004",
+    "AC-M5-005",
+    "AC-M5-006",
+    "AC-M5-007",
+    "AC-M5-008",
+    "AC-M5-009",
+    "AC-M5-010",
+    "AC-M5-011",
+    "AC-M5-012",
+    "AC-M5-013",
+    "AC-M5-014",
+    "AC-M5-015",
+    "AC-M5-016",
+    "AC-M5-017",
+    "AC-M5-018",
+    "AC-M5-019",
+    "AC-M5-020",
+    "AC-M5-021",
+    "AC-M5-022",
+    "AC-M5-023",
+    "AC-M5-024",
+    "AC-M5-025",
+    "AC-M5-026"
+  ],
+  "allowed_paths": [
+    "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/auth/",
+    "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/account/",
+    "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/sync/",
+    "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/routes/",
+    "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/Application.kt",
+    "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/BackendServices.kt",
+    "KeepLab-Relay/backend/src/main/resources/db/migration/",
+    "KeepLab-Relay/backend/src/test/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/auth/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/sync/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/remote/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/NoteRepository.kt",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/model/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/settings/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/auth/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/navigation/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/conflict/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/KeepLabApplication.kt",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/MainActivity.kt",
+    "KeepLab-Relay/app/src/test/",
+    "KeepLab-Relay/app/src/androidTest/",
+    "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M5-A8-EXECUTION.md",
+    "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M5-HUMAN-DECISIONS.md",
+    "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-HUMAN-DECISIONS.md",
+    "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-DECISION-REGISTER.md",
+    "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-IMPLEMENTATION-ROADMAP.md",
+    "Google-Android-Agent-Development-Stack/reports/KEEPLAB-MINOR-BACKLOG.md",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-m5-a8/"
+  ],
+  "artifact_hashes": {
+    "DESIGN.md": "8a1b8fe89a0dc2ae7573fef8ac85e3ab992da7d2fb2ae8eeebb2ce147d50c672",
+    "PRODUCT.md": "a5cccba94bd1546ab86b9ae0638ebfc47757925c12c04f95c1209435a13fdc59",
+    "acceptance.md": "141a89507b75e2e5742023431963dab7967a7b019385d315d830745874820800",
+    "design.md": "18561d3b70050ee736c7bc1cd6aaef0bf1537c48843f7e16fb4e527ce2b53c6f",
+    "project-context.json": "5a9c0495bba2651a3997f0136e461cd871a5a755c697d06c387be96b13b608a5",
+    "requirements.md": "d70c16d7530373b6cc210c0ca15d4d7fd4344a01fa154b8d00e7677374505329",
+    "tasks.md": "a6cda56d0632a027f08c7aa54984352db1d4f328f969a24b956fa3a18bb76b4c",
+    "verification-intent.json": "c8bd081cb51e468e7c8ed4f44f27b0266071abbcd7359fd0afc524346c83ae47"
+  },
+  "artifact_refs": [
+    {
+      "path": "PRODUCT.md",
+      "required": true,
+      "role": "product",
+      "source": "authored"
+    },
+    {
+      "path": "requirements.md",
+      "required": true,
+      "role": "requirements",
+      "source": "authored"
+    },
+    {
+      "path": "design.md",
+      "required": true,
+      "role": "design",
+      "source": "authored"
+    },
+    {
+      "path": "tasks.md",
+      "required": true,
+      "role": "tasks",
+      "source": "authored"
+    },
+    {
+      "path": "DESIGN.md",
+      "required": true,
+      "role": "ui_design",
+      "source": "authored"
+    },
+    {
+      "path": "acceptance.md",
+      "required": true,
+      "role": "acceptance",
+      "source": "authored"
+    },
+    {
+      "path": "project-context.json",
+      "required": true,
+      "role": "project_context",
+      "source": "authored"
+    },
+    {
+      "path": "verification-intent.json",
+      "required": true,
+      "role": "verification_intent",
+      "source": "authored"
+    }
+  ],
+  "assumptions": [
+    {
+      "id": "ASM-001",
+      "statement": "The existing development backend/test environment is sufficient to run the two-client integration and the two-device journey; no cloud provisioning is needed."
+    },
+    {
+      "id": "ASM-002",
+      "statement": "The existing one unique WorkManager `note_sync` pipeline and the existing `attachment_sync` separation remain the only sync executors; M5 adds no second pipeline concept."
+    },
+    {
+      "id": "ASM-003",
+      "statement": "Two independent Android device instances can be obtained from the existing bounded project tooling (two ADB-visible emulators, one physical device plus one emulator, or two physical devices)."
+    },
+    {
+      "id": "ASM-004",
+      "statement": "The A3 refresh-rotation model (single-use, retry-safe, reuse detection) is reused as-is for session validity so that revocation invalidates both access and refresh capability."
+    }
+  ],
+  "contract_id": "KEEPLAB-M5-A8-MULTI-DEVICE-001",
+  "contract_version": "0.1.0",
+  "data_change": {
+    "migration_required": false,
+    "notes": "Android Room moves 6 -> 7 by a direct experimental bump (project data is disposable; DEV_DATABASE_RESET_REQUIRED = YES; exportSchema stays false; no migration chain is authored), adding only the local installation/session identity and account lifecycle state M5 needs. On the backend, new Flyway migrations after V4 add the session installation identity and the account lifecycle (state, deletion_requested_at, purge_after); no production compatibility chain is authored.",
+    "schema_version_current": 6,
+    "schema_version_target": 7
+  },
+  "decisions": [
+    {
+      "id": "DEC-001",
+      "rationale": "This is a human project-owner decision, not a model choice. Re-asking or reinterpreting it would reopen a frozen decision; consuming it as stated keeps the account lifecycle distinct from the Trash lifecycle (D-06) and from the sync tombstone.",
+      "statement": "D-05 = ACCOUNT_DELETE_GRACE_30_DAYS is frozen exactly as approved on 2026-10-07: request enters DELETION_PENDING, access is disabled, all sessions are revoked immediately, no new normal sync write is accepted, purge_after = deletion_requested_at + 30 days under server clock authority, cancellation inside the grace window uses the EXISTING verified credential system and restores ACTIVE without resurrecting purged data, and expiry reaches an explicit deterministic purge boundary."
+    },
+    {
+      "id": "DEC-002",
+      "rationale": "The approved decision makes push a future latency optimization only. Making correctness depend on push would invert the approved posture and would add a forbidden dependency.",
+      "statement": "D-11 = NO_PUSH_PROVIDER_IN_A8_CORRECTNESS_PATH is frozen: no FCM, Firebase, Google services or vendor push dependency; correctness stays pull/delta based; any future push must sit behind a provider abstraction; A8 PASS must be possible with PUSH_PROVIDER = NONE."
+    },
+    {
+      "id": "DEC-003",
+      "rationale": "A6 is frozen and closed. Redesigning the conflict policy inside a multi-device milestone would invalidate M3 evidence and reopen a completed milestone.",
+      "statement": "M5 consumes the existing A6 conflict semantics unchanged and never redesigns them; it only exercises them under real two-client concurrency."
+    },
+    {
+      "id": "DEC-004",
+      "rationale": "Multi-device correctness is exactly the property under test; a single-object mock would silently downgrade the milestone and produce a false PASS.",
+      "statement": "The final M5 journey must use two real, independently addressable Android device instances on one account; backend two-client integration tests never replace it, and an unavailable pair yields A8_DEVICE_PAIR_UNAVAILABLE with no PASS."
+    },
+    {
+      "id": "DEC-005",
+      "rationale": "Sessions must be distinguishable without device fingerprinting or invasive identifiers, and without changing the credential architecture.",
+      "statement": "A privacy-bounded installation identity generated and persisted by KeepLab itself is used to distinguish independent installations; IMEI, hardware serial, Android ID as a global tracking identity, advertising ID and phone number are never used."
+    },
+    {
+      "id": "DEC-006",
+      "rationale": "A 30-real-day test is not runnable and a production scheduler is out of scope, so the boundary is proven deterministically against the existing development backend/test environment.",
+      "statement": "Purge is a deterministic service boundary exercised with an injected/fake clock; no production scheduler and no cloud infrastructure is built or provisioned in M5."
+    },
+    {
+      "id": "DEC-007",
+      "rationale": "Every needed capability (JWT session auth, Room, WorkManager, Ktor client, Flyway) already exists; a new dependency would enlarge the change set and require a separate human decision.",
+      "statement": "No Gradle dependency change is authorized; the existing implementation seams are used, and a genuinely indispensable dependency is STOP = M5_DEPENDENCY_DECISION_REQUIRED."
+    },
+    {
+      "id": "DEC-008",
+      "rationale": "The Contract Guard fails closed on unclassified paths, and a broad prefix would re-authorize frozen areas such as the compiler, the verification layer and the contract packages.",
+      "statement": "The authorized write surface is exactly the enumerated M5 backend, Android, report and evidence paths, with no broad prefix; a file genuinely outside it is STOP = M5_SURFACE_BROADENING_REQUIRED."
+    }
+  ],
+  "experiment_id": "KEEPLAB-M5-A8-MULTI-DEVICE",
+  "experiment_type": "SPEC_FIRST_BROWNFIELD",
+  "feature": {
+    "feature_id": "KEEPLAB-M5-A8-MULTI-DEVICE",
+    "summary": "One milestone that proves and hardens multi-device correctness on a single KeepLab account: independent device/session identities, bidirectional propagation and convergence, the existing A6 conflict semantics under real two-client concurrency, a server session list, per-session revoke with non-destructive remote invalidation, account disable, and the human-approved D-05 30-day deletion grace state machine with a deterministic purge boundary — all with PUSH_PROVIDER = NONE (D-11) and with Room kept as the local source of truth.",
+    "title": "M5 = A8 multi-device hardening"
+  },
+  "forbidden_paths": [
+    "Google-Android-Agent-Development-Stack/specification/",
+    "Google-Android-Agent-Development-Stack/verification/",
+    "Google-Android-Agent-Development-Stack/verification-benchmark/",
+    "Google-Android-Agent-Development-Stack/evaluation/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/HERMES-LOCK.json",
+    "Google-Android-Agent-Development-Stack/.hermes.md",
+    "Google-Android-Agent-Development-Stack/reports/contracts/",
+    "KeepLab-Relay/MISSION.md",
+    "KeepLab-Relay/FACTORY_RULES.md",
+    "KeepLab-Relay/specs/",
+    "KeepLab-Relay/verification/",
+    "KeepLab-Relay/harness/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/attachment/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/attachment/",
+    "KeepLab-Relay/app/src/main/res/",
+    "KeepLab-Relay/app/src/benchmark/",
+    "KeepLab-Relay/app/schemas/",
+    "KeepLab-Relay/app/build.gradle.kts",
+    "KeepLab-Relay/build.gradle.kts",
+    "KeepLab-Relay/settings.gradle.kts",
+    "KeepLab-Relay/gradle/",
+    "KeepLab-Relay/gradle.properties",
+    "KeepLab-Relay/gradlew",
+    "KeepLab-Relay/gradlew.bat",
+    "KeepLab-Relay/firebase/",
+    "KeepLab-Relay/cloud/",
+    "KeepLab-Relay/infra/",
+    "KeepLab-Relay-evidence/",
+    "Testapp/",
+    "PowerAi/"
+  ],
+  "matched_control_available": false,
+  "mode": "brownfield",
+  "non_goals": [
+    "Reopening A0/A1/A2/M2/M3/M4 or any frozen decision",
+    "A9 multi-account or collaboration",
+    "Any FCM/Firebase/vendor push provider or Google services dependency",
+    "A production cloud scheduler or any cloud provisioning",
+    "Trash retention (D-06) and sync-tombstone retention/GC",
+    "Any new Gradle dependency, networking stack or CRDT library",
+    "Broadening the authorized write surface"
+  ],
+  "project": "KeepLab-Relay",
+  "read_first": [
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-IMPLEMENTATION-ROADMAP.md",
+      "why": "Phase A8 multi-device hardening: scope, prerequisites, acceptance gate, rollback and what must not be bundled"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-HUMAN-DECISIONS.md",
+      "why": "the human decision table; D-05 and D-11 now carry the approved A8 values"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-DECISION-REGISTER.md",
+      "why": "AUTH-DEC-012 (account deletion distinct from sign-out) and BACKEND-DEC-005 (push provider), plus the frozen session/refresh and conflict decisions A8 consumes"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-API-CONTRACT.md",
+      "why": "the conceptual session/revoke/refresh and sync endpoint semantics and the error taxonomy"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M4-ATTACHMENTS-EXECUTION.md",
+      "why": "the M4 PASS/CLOSED state, the gate commands and the evidence conventions M5 must not reopen"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/auth/AuthService.kt",
+      "why": "the existing login/refresh-rotation/logout/listSessions/revokeSession/authenticate seam M5 extends"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/auth/AuthStore.kt",
+      "why": "the auth persistence port and the InMemoryAuthStore executable specification"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/auth/AuthModels.kt",
+      "why": "SessionRecord, RefreshState, AuthenticatedPrincipal, TokenPair, SessionView — the records M5 extends"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/auth/JwtService.kt",
+      "why": "the access-token claims (sub/sid) that make a session remotely invalidatable"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/auth/Clock.kt",
+      "why": "the injectable clock seam the D-05 fake-clock boundary tests must use"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/routes/AuthRoutes.kt",
+      "why": "the existing session list/revoke routes and their response models"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/routes/SyncRoutes.kt",
+      "why": "the sync routes and the authoritative 409 conflict body used by the two-client concurrency tests"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/sync/SyncService.kt",
+      "why": "the JWT-only authorization path that must refuse a revoked/disabled account"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/sync/SyncStore.kt",
+      "why": "the server revision/change-log authority the conflict tests assert against"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/Application.kt",
+      "why": "the service construction and module wiring point for the new account component"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/BackendServices.kt",
+      "why": "the single service graph the new account component joins"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/resources/db/migration/V2__auth_schema.sql",
+      "why": "the existing auth/session schema the new migration extends"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/resources/db/migration/V3__sync_schema.sql",
+      "why": "the existing sync/change-log schema M5 must preserve"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/auth/SessionManager.kt",
+      "why": "the one-active-account owner whose sign-out is non-destructive and which M5 must not make destructive"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/auth/SecureSessionStore.kt",
+      "why": "the encrypted credential store where the installation identity must not leak secrets"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/auth/AuthRepository.kt",
+      "why": "requireAccessToken/refreshNow and the non-destructive AccessTokenOutcome.AuthRequired signal"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/auth/DeviceLabelProvider.kt",
+      "why": "the existing device-label seam the installation identity extends"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/sync/SyncEngine.kt",
+      "why": "the sync engine that already returns AUTH_REQUIRED with Room and the outbox intact"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/KeepLabDatabase.kt",
+      "why": "the Room database version M5 bumps by a direct experimental bump"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/settings/SettingsScreen.kt",
+      "why": "the account surface where the session list, revoke and lifecycle affordances belong"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/conflict/ConflictScreen.kt",
+      "why": "the A6 surface M5 consumes unchanged as the conflict entry point"
+    }
+  ],
+  "readiness": {
+    "gates": {
+      "acceptance": "PASS",
+      "boundaries": "PASS",
+      "hashes": "PASS",
+      "schema": "PASS",
+      "traceability": "PASS"
+    },
+    "status": "READY"
+  },
+  "requirements": [
+    {
+      "acceptance_ids": [
+        "AC-M5-004",
+        "AC-M5-025"
+      ],
+      "id": "REQ-M5-001",
+      "statement": "Two or more independent installations must be able to hold a valid session on ONE KeepLab account, and the session representation must let a user tell them apart without device fingerprinting or invasive identifiers.",
+      "task_ids": [
+        "TASK-01",
+        "TASK-02"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-001",
+        "AC-M5-002",
+        "AC-M5-022"
+      ],
+      "id": "REQ-M5-002",
+      "statement": "A write accepted from one client must become visible to the other client through its own pull, and the reverse must hold too, converging without user intervention.",
+      "task_ids": [
+        "TASK-03",
+        "TASK-07"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-003",
+        "AC-M5-023"
+      ],
+      "id": "REQ-M5-003",
+      "statement": "The A6 conflict rules must be exercised and preserved under real server concurrency: two distinct authenticated clients acting from the same base revision.",
+      "task_ids": [
+        "TASK-04"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-005",
+        "AC-M5-006",
+        "AC-M5-007",
+        "AC-M5-008"
+      ],
+      "id": "REQ-M5-004",
+      "statement": "Device A must be able to revoke Device B's session without destroying B's local data; B's next authenticated request, refresh or sync must be rejected and B must be able to authenticate again.",
+      "task_ids": [
+        "TASK-02",
+        "TASK-05"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-009"
+      ],
+      "id": "REQ-M5-005",
+      "statement": "Disabling an account must make all of its sessions unusable while leaving the Android local notes intact.",
+      "task_ids": [
+        "TASK-06"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-010",
+        "AC-M5-011",
+        "AC-M5-012",
+        "AC-M5-024"
+      ],
+      "id": "REQ-M5-006",
+      "statement": "Account deletion must be a deliberate, authenticated act that is strictly distinct from the Trash lifecycle and must follow the human-approved D-05 `ACCOUNT_DELETE_GRACE_30_DAYS` semantics.",
+      "task_ids": [
+        "TASK-01",
+        "TASK-06"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-016"
+      ],
+      "id": "REQ-M5-007",
+      "statement": "A8 correctness must hold with `PUSH_PROVIDER = NONE`, and no push provider may be introduced by this milestone.",
+      "task_ids": [
+        "TASK-08"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-018",
+        "AC-M5-019"
+      ],
+      "id": "REQ-M5-008",
+      "statement": "The final M5 device journey must run against two independent Android device/app instances on one KeepLab account, and multi-device may never be silently downgraded to a single-object mock and reported PASS.",
+      "task_ids": [
+        "TASK-07"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-020",
+        "AC-M5-021"
+      ],
+      "id": "REQ-M5-009",
+      "statement": "The contract must authorize only the enumerated M5 surfaces and must not authorize any broad prefix.",
+      "task_ids": [
+        "TASK-08"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-017"
+      ],
+      "id": "REQ-M5-010",
+      "statement": "M5 must be implemented with the existing implementation seams and must not add a dependency.",
+      "task_ids": [
+        "TASK-08"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-013",
+        "AC-M5-014",
+        "AC-M5-015"
+      ],
+      "id": "REQ-M5-011",
+      "statement": "Local Room remains the single source of truth for the Android UI and the server remains the only revision/order authority; local data is never silently destroyed or reassigned.",
+      "task_ids": [
+        "TASK-08"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-026"
+      ],
+      "id": "REQ-M5-012",
+      "statement": "M5 is planned once, implemented fully, and verified once, producing one M5 report.",
+      "task_ids": [
+        "TASK-08"
+      ]
+    }
+  ],
+  "scope": [
+    "Freeze D-05 ACCOUNT_DELETE_GRACE_30_DAYS and D-11 NO_PUSH_PROVIDER_IN_A8_CORRECTNESS_PATH as approved",
+    "Server session/device/account lifecycle: installation-distinguishing session representation, per-session revoke, account disable, ACTIVE -> DELETION_PENDING -> ACTIVE | PURGED",
+    "Android installation/session identity, session-list and revoke UX, non-destructive AUTH_REQUIRED",
+    "Two independent Android device/app instances on one KeepLab account for the final journey",
+    "Real server concurrency between two independent authenticated clients exercising the existing A6 conflict rules",
+    "One combined M5 verification pass and one M5 report"
+  ],
+  "selector_contract": [
+    {
+      "compose_test_tag": "m5_session_list",
+      "name": "m5_session_list",
+      "required": true,
+      "state": "the account session list is rendered for the signed-in account",
+      "uiautomator": "By.res(\"m5_session_list\")"
+    },
+    {
+      "compose_test_tag": "m5_session_row_current",
+      "name": "m5_session_row_current",
+      "required": true,
+      "state": "the session list marks the session of the current installation",
+      "uiautomator": "By.res(\"m5_session_row_current\")"
+    },
+    {
+      "compose_test_tag": "m5_session_revoke_action",
+      "name": "m5_session_revoke_action",
+      "required": true,
+      "state": "a per-session revoke affordance is available for another session",
+      "uiautomator": "By.res(\"m5_session_revoke_action\")"
+    },
+    {
+      "compose_test_tag": "m5_auth_required_banner",
+      "name": "m5_auth_required_banner",
+      "required": true,
+      "state": "the client is in the non-destructive session-invalid / AUTH_REQUIRED state",
+      "uiautomator": "By.res(\"m5_auth_required_banner\")"
+    },
+    {
+      "compose_test_tag": "m5_note_list",
+      "name": "m5_note_list",
+      "required": true,
+      "state": "the note list renders local Room state",
+      "uiautomator": "By.res(\"m5_note_list\")"
+    },
+    {
+      "compose_test_tag": "m5_note_editor_title",
+      "name": "m5_note_editor_title",
+      "required": true,
+      "state": "the note title field of the editor",
+      "uiautomator": "By.res(\"m5_note_editor_title\")"
+    },
+    {
+      "compose_test_tag": "m5_conflict_banner",
+      "name": "m5_conflict_banner",
+      "required": true,
+      "state": "a persisted conflict is surfaced for resolution",
+      "uiautomator": "By.res(\"m5_conflict_banner\")"
+    },
+    {
+      "compose_test_tag": "m5_account_delete_request",
+      "name": "m5_account_delete_request",
+      "required": true,
+      "state": "the deliberate authenticated deletion-request affordance",
+      "uiautomator": "By.res(\"m5_account_delete_request\")"
+    },
+    {
+      "compose_test_tag": "m5_account_delete_pending",
+      "name": "m5_account_delete_pending",
+      "required": true,
+      "state": "the account is shown as DELETION_PENDING with the grace window",
+      "uiautomator": "By.res(\"m5_account_delete_pending\")"
+    },
+    {
+      "compose_test_tag": "m5_account_delete_cancel",
+      "name": "m5_account_delete_cancel",
+      "required": true,
+      "state": "the in-grace cancellation affordance",
+      "uiautomator": "By.res(\"m5_account_delete_cancel\")"
+    },
+    {
+      "compose_test_tag": "m5_sync_status",
+      "name": "m5_sync_status",
+      "required": true,
+      "state": "the manual sync / sync-status affordance",
+      "uiautomator": "By.res(\"m5_sync_status\")"
+    }
+  ],
+  "stop_conditions": [
+    "A required write falls outside the enumerated allowed_paths or targets a forbidden path: STOP, CONTRACT_DEVIATION.",
+    "Implementation genuinely requires a file outside the enumerated surface: STOP, M5_SURFACE_BROADENING_REQUIRED.",
+    "A genuinely indispensable new dependency is discovered: STOP, M5_DEPENDENCY_DECISION_REQUIRED.",
+    "Fewer than two usable independent Android device instances exist and no second isolated emulator instance can be supplied: STOP, A8_DEVICE_PAIR_UNAVAILABLE; M5 is NOT reported PASS.",
+    "Any push provider, FCM, Firebase, Google services or vendor push dependency would be required: STOP, D11_VIOLATION.",
+    "Satisfying M5 would require redesigning the A6 conflict policy, the A5 retry/outbox policy, the A7 attachment architecture or any frozen decision: STOP, CONTRACT_DEVIATION (frozen decision reopening is forbidden).",
+    "Any step would delete, reset or reassign Android local Room data or the durable outbox because of a remote revoke, disable, deletion-pending or purge: STOP, LOCAL_DATA_DESTRUCTION_FORBIDDEN.",
+    "Satisfying M5 would require modifying specification/, verification/, evaluation/, orchestration/hermes/bridge/, orchestration/hermes/evaluation_adapter/, HERMES-LOCK.json, .hermes.md, reports/contracts/, or the ~/.hermes profile: STOP, ABSOLUTE_BLOCK_VIOLATION."
+  ],
+  "tasks": [
+    {
+      "acceptance_ids": [
+        "AC-M5-004",
+        "AC-M5-009",
+        "AC-M5-010",
+        "AC-M5-011",
+        "AC-M5-012",
+        "AC-M5-024",
+        "AC-M5-025"
+      ],
+      "allowed_paths": [
+        "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/auth/",
+        "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/account/",
+        "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/sync/",
+        "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/routes/",
+        "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/Application.kt",
+        "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/BackendServices.kt",
+        "KeepLab-Relay/backend/src/main/resources/db/migration/",
+        "KeepLab-Relay/backend/src/test/",
+        "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M5-HUMAN-DECISIONS.md"
+      ],
+      "boundary": "The server-side auth/account/sync/routes surface and its schema and tests only. The A3 session and refresh-rotation model is extended, never replaced; the A6 conflict policy and the A5 outbox policy are untouched.",
+      "depends": [],
+      "done_when": "the approved values are recorded verbatim; the server holds an installation-distinguishing session per login; revoke/disable/deletion-pending are refused on authenticated paths; the fake-clock boundary, cancellation and purge behave exactly as specified",
+      "goal": "Record D-05 = ACCOUNT_DELETE_GRACE_30_DAYS and D-11 = NO_PUSH_PROVIDER_IN_A8_CORRECTNESS_PATH at their approved values, and implement the server-side session/installation identity, the per-session revoke surface and the account lifecycle state machine (ACTIVE / DISABLED / DELETION_PENDING / PURGED) with deletion_requested_at, purge_after = deletion_requested_at + 30 days, immediate session revocation on request, refusal of normal sync writes while pending, in-grace cancellation through the existing verified credential system, and a deterministic purge boundary invoked with an injected clock.",
+      "id": "TASK-01",
+      "verification": [
+        "deterministic backend tests for the session/installation identity",
+        "per-session revoke",
+        "disable",
+        "the fake-clock 30-day boundary",
+        "cancel-before-purge and purge-after-boundary"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-004",
+        "AC-M5-005",
+        "AC-M5-025"
+      ],
+      "allowed_paths": [
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/auth/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/remote/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/model/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/settings/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/auth/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/navigation/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/KeepLabApplication.kt",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/MainActivity.kt",
+        "KeepLab-Relay/app/src/test/",
+        "KeepLab-Relay/app/src/androidTest/"
+      ],
+      "boundary": "The Android auth/remote/local/UI surface for sessions only. No credential architecture change; no device fingerprinting or invasive identifier; no destructive sign-out; Room rows and outbox rows are never deleted here.",
+      "depends": [
+        "TASK-01"
+      ],
+      "done_when": "two installations are distinguishable in the session list; the current installation is marked; another session can be revoked; the state is visible without deleting any local data",
+      "goal": "Generate and persist a KeepLab-owned, privacy-bounded installation identity app-privately, present it at login as the session's installation identity, and add the session list, the current-installation marker, the per-session revoke affordance and the non-destructive session-invalid state.",
+      "id": "TASK-02",
+      "verification": [
+        "Android JVM tests for the installation identity generation/persistence",
+        "the session list mapping",
+        "the revoke request and the session-invalid state; the session-list and revoke selectors resolve"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-001",
+        "AC-M5-002",
+        "AC-M5-022"
+      ],
+      "allowed_paths": [
+        "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/sync/",
+        "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/routes/",
+        "KeepLab-Relay/backend/src/test/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/sync/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/remote/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/NoteRepository.kt",
+        "KeepLab-Relay/app/src/test/"
+      ],
+      "boundary": "The sync/repository and backend-sync surface, and its tests. The A4 pull/push semantics, the outbox and the checkpoint are consumed as frozen.",
+      "depends": [
+        "TASK-01"
+      ],
+      "done_when": "both directions converge deterministically in the two-client integration test, and no convergence depends on a client wall clock",
+      "goal": "Prove, with two independent authenticated clients on one account, that a write accepted from one client becomes visible to the other through its own pull, and the reverse, converging on the server-accepted representation.",
+      "id": "TASK-03",
+      "verification": [
+        "a deterministic backend integration test that drives two independent authenticated clients (distinct sessions",
+        "distinct installation identities",
+        "same account) and asserts A-to-B and B-to-A convergence on the server revision stream"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-003",
+        "AC-M5-023"
+      ],
+      "allowed_paths": [
+        "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/sync/",
+        "KeepLab-Relay/backend/src/test/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/sync/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/conflict/",
+        "KeepLab-Relay/app/src/test/"
+      ],
+      "boundary": "The conflict/sync surface and its tests only. The A6 policy is consumed as frozen and is not redesigned.",
+      "depends": [
+        "TASK-03"
+      ],
+      "done_when": "every named A6 conflict class is exercised under real two-client concurrency with the specified outcome and no silent overwrite",
+      "goal": "Drive two distinct authenticated clients from the same base revision and prove the frozen A6 policy holds: title/body never silently overwritten with KEEP_LOCAL/KEEP_SERVER/KEEP_BOTH, KEEP_BOTH producing a NEW logical note with a NEW client UUID enqueued as CREATE, concurrent checklist additions both surviving, a concurrent label removal not resurrected, delete-vs-edit explicit, and server revision/order as the only authority.",
+      "id": "TASK-04",
+      "verification": [
+        "deterministic two-client concurrency tests for each A6 conflict class",
+        "asserting the observable outcome and that no resolution consults an unsynchronised client wall clock"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-006",
+        "AC-M5-007",
+        "AC-M5-008"
+      ],
+      "allowed_paths": [
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/auth/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/sync/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/remote/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/settings/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/auth/",
+        "KeepLab-Relay/app/src/test/",
+        "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/auth/",
+        "KeepLab-Relay/backend/src/test/"
+      ],
+      "boundary": "The Android auth/sync surface and its tests, plus the backend refusal path. No destructive sign-out, no local deletion, no reassignment of local notes.",
+      "depends": [
+        "TASK-01",
+        "TASK-02"
+      ],
+      "done_when": "a revoked remote session is refused everywhere, is non-destructive everywhere, and can authenticate again",
+      "goal": "Make a revoked or disabled remote session produce a session-invalid / AUTH_REQUIRED outcome on the next authenticated request, refresh or sync, while keeping the Room data, the conflicts and the durable outbox intact and allowing re-authentication.",
+      "id": "TASK-05",
+      "verification": [
+        "deterministic tests that revoke a session and assert the next authenticated call",
+        "refresh and sync are refused",
+        "that a revoked refresh token cannot rotate into a new valid chain",
+        "and that Room rows and outbox rows are unchanged"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-009",
+        "AC-M5-010",
+        "AC-M5-011",
+        "AC-M5-012",
+        "AC-M5-024"
+      ],
+      "allowed_paths": [
+        "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/account/",
+        "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/auth/",
+        "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/routes/",
+        "KeepLab-Relay/backend/src/main/resources/db/migration/",
+        "KeepLab-Relay/backend/src/test/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/settings/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/auth/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/auth/",
+        "KeepLab-Relay/app/src/test/"
+      ],
+      "boundary": "The backend account/auth lifecycle surface and its tests. Account lifecycle stays separate from the Trash lifecycle and the sync tombstone; no production scheduler and no cloud resource.",
+      "depends": [
+        "TASK-01"
+      ],
+      "done_when": "ACTIVE → DELETION_PENDING → ACTIVE-or-PURGED is deterministic under an injected clock, and Android local notes are untouched throughout",
+      "goal": "Implement account disable (all sessions unusable, local notes intact) and the D-05 deletion lifecycle: request → DELETION_PENDING with immediate access disable and full session revocation, cancel inside the grace window through the existing credential system restoring ACTIVE, and the deterministic purge boundary after purge_after that permanently deletes the server account data.",
+      "id": "TASK-06",
+      "verification": [
+        "deterministic fake-clock tests for the disable path",
+        "request",
+        "no-new-write-while-pending",
+        "cancel-before-purge",
+        "the boundary at exactly purge_after",
+        "purge-after-boundary",
+        "and idempotent purge"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-001",
+        "AC-M5-002",
+        "AC-M5-018",
+        "AC-M5-019"
+      ],
+      "allowed_paths": [
+        "KeepLab-Relay/app/src/androidTest/",
+        "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-m5-a8/"
+      ],
+      "boundary": "The existing bounded device/verification seam only. `adb devices` is inspected once; no broad host scan; no cloud provisioning; no `screenshot → LLM → tap` loop; deterministic selectors drive the journey and screenshots are failure evidence only.",
+      "depends": [
+        "TASK-02",
+        "TASK-03",
+        "TASK-04",
+        "TASK-05",
+        "TASK-06"
+      ],
+      "done_when": "the journey completes on two real independent Android instances on one account, or the milestone returns A8_DEVICE_PAIR_UNAVAILABLE and is not reported PASS",
+      "goal": "Run the final M5 device journey on two independent Android device/app instances on one account: session list, A↔B propagation, real concurrency conflict, per-session revoke, remote invalidation with local data and outbox survival, account disable and the deletion-grace states — all with PUSH_PROVIDER = NONE.",
+      "id": "TASK-07",
+      "verification": [
+        "the two-device journey with deterministic assertions per step; on FAIL the evidence is screenshot + layout + logcat + the failed assertion",
+        "read once"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-M5-013",
+        "AC-M5-014",
+        "AC-M5-015",
+        "AC-M5-016",
+        "AC-M5-017",
+        "AC-M5-020",
+        "AC-M5-021",
+        "AC-M5-026"
+      ],
+      "allowed_paths": [
+        "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M5-A8-EXECUTION.md",
+        "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M5-HUMAN-DECISIONS.md",
+        "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-HUMAN-DECISIONS.md",
+        "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-DECISION-REGISTER.md",
+        "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-IMPLEMENTATION-ROADMAP.md",
+        "Google-Android-Agent-Development-Stack/reports/KEEPLAB-MINOR-BACKLOG.md",
+        "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-m5-a8/"
+      ],
+      "boundary": "Verification and the report only. No post-PASS exploration, no Auto-Finalizer inspection, no reopening of M4, no dependency change, no surface broadening.",
+      "depends": [
+        "TASK-07"
+      ],
+      "done_when": "every A8 acceptance value is PASS or the milestone is BLOCKED/FAIL with evidence, and one M5 report exists",
+      "goal": "Run the single combined M5 verification pass (all affected existing backend and Android tests plus the new A8 tests, the deterministic two-client backend integration, the real two-device journey, revoke, invalidation, Room survival, outbox survival, the D-05 fake-clock boundary, cancel-before-purge, purge-after-boundary, no cross-account leakage, PUSH_PROVIDER = NONE, no M4 attachment modification, no A9 work) and produce the M5 report.",
+      "id": "TASK-08",
+      "verification": [
+        "run the backend gate and the Android gate once each",
+        "plus the deterministic A8 suites",
+        "and assert every A8 gate value",
+        "DEPENDENCY_CHANGE = NO",
+        "M4 NOT_REOPENED and A9 NOT_STARTED"
+      ]
+    }
+  ],
+  "ui_change": {
+    "selectors_added": [
+      "m5_session_list",
+      "m5_session_row_current",
+      "m5_session_revoke_action",
+      "m5_auth_required_banner",
+      "m5_note_list",
+      "m5_note_editor_title",
+      "m5_conflict_banner",
+      "m5_account_delete_request",
+      "m5_account_delete_pending",
+      "m5_account_delete_cancel",
+      "m5_sync_status"
+    ],
+    "surfaces": [
+      "ui/settings (session list, per-session revoke, account disable/deletion affordances)",
+      "ui/auth (re-authentication used for in-grace cancellation)",
+      "ui/navigation (routes for the session list and the account lifecycle states)",
+      "ui/conflict (consumed unchanged; entry point only)"
+    ]
+  },
+  "unresolved_questions": [],
+  "verification_intent": {
+    "acceptance_ids": [
+      "AC-M5-001",
+      "AC-M5-002",
+      "AC-M5-003",
+      "AC-M5-004",
+      "AC-M5-005",
+      "AC-M5-006",
+      "AC-M5-007",
+      "AC-M5-008",
+      "AC-M5-009",
+      "AC-M5-010",
+      "AC-M5-011",
+      "AC-M5-012",
+      "AC-M5-018",
+      "AC-M5-019",
+      "AC-M5-022",
+      "AC-M5-023",
+      "AC-M5-024",
+      "AC-M5-026"
+    ],
+    "engine": "maestro",
+    "feature_id": "KEEPLAB-M5-A8-MULTI-DEVICE",
+    "fixture_intent": "Two independent Android device/app instances on ONE KeepLab account (two ADB-visible emulators, one physical device plus one emulator, or two physical devices), each with its own app process, local Room database, secure/session store, KeepLab-generated installation identity and authenticated session. The backend fixture is the existing development backend/test environment with two independent authenticated clients (distinct sessions and installation identities, same account); no cloud infrastructure is provisioned. The D-05 boundary fixture is an injected/fake server clock, never a 30-real-day wait.",
+    "journey_id": "M5-A8-TWO-DEVICE-JOURNEY",
+    "oracle_intent": "Deterministic only. Primary oracle: the deterministic backend tests, the deterministic two-client backend integration, the deterministic Android JVM tests, and explicit assertions on the two-device journey (persisted Room/outbox state, server-accepted revision, refused status codes, the fake-clock purge_after arithmetic, and the exact A8 gate values). Screenshots are never the primary oracle; on a device failure the evidence may include a screenshot plus the layout hierarchy, logcat and the failed assertion, read once. PUSH_PROVIDER = NONE and PUSH_REQUIRED_FOR_CORRECTNESS = NO are asserted, not assumed. The engine field records the stack's selector-driven device replay family; the real oracle is the deterministic assertions above. Verification runs once; PASS = STOP, and an unavailable real device pair yields A8_DEVICE_PAIR_UNAVAILABLE rather than a mock PASS.",
+    "persistence_checks": [
+      "after a remote revoke or disable the Device B Room note set is unchanged",
+      "after a remote revoke or disable the Device B durable outbox is unchanged",
+      "LOCAL_ONLY notes remain local and account-scoped cached notes remain account-scoped and are never reassigned",
+      "an account in DELETION_PENDING leaves the Android local notes intact",
+      "a purge removes only the server account data and never touches Android local Room data"
+    ],
+    "required_selectors": [
+      "m5_session_list",
+      "m5_session_row_current",
+      "m5_session_revoke_action",
+      "m5_auth_required_banner",
+      "m5_note_list",
+      "m5_note_editor_title",
+      "m5_conflict_banner",
+      "m5_account_delete_request",
+      "m5_account_delete_pending",
+      "m5_account_delete_cancel",
+      "m5_sync_status"
+    ],
+    "rotation_checks": [
+      "a revoked refresh token never rotates into a new valid refresh chain",
+      "a retried rotation with the same refresh_request_id still recovers the same result",
+      "after in-grace cancellation the account is ACTIVE again and a fresh login or refresh succeeds"
+    ],
+    "search_checks": [
+      "exactly one session in the session list is flagged as the current installation",
+      "the two device instances hold distinct session ids and distinct installation identities on the same account",
+      "a concurrent write from the same base revision is answered with the authoritative 409 body and no silent overwrite"
+    ]
+  }
+}

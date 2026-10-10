@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://android-agent-stack/verification/contracts/verification-result.schema.json",
+  "title": "Verification Result",
+  "description": "Compact PASS record (and FAIL record) emitted by the Verification Layer. Values that cannot be proven are null, never estimated.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "verification_id", "project", "engine", "journey", "outcome",
+    "started_at", "finished_at", "app_apk_sha256",
+    "verification_layer_version", "device", "measurements", "checks", "evidence"
+  ],
+  "properties": {
+    "verification_id": {"type": "string", "minLength": 1},
+    "project": {"type": "string", "minLength": 1},
+    "engine": {"enum": ["uiautomator", "maestro"]},
+    "journey": {"type": "string", "minLength": 1},
+    "outcome": {"enum": ["PASS", "FAIL"]},
+    "started_at": {"type": "string", "minLength": 1},
+    "finished_at": {"type": "string", "minLength": 1},
+    "app_apk_sha256": {"$ref": "#/definitions/sha256"},
+    "test_apk_sha256": {"type": ["string", "null"]},
+    "verification_layer_version": {"type": "string", "minLength": 1},
+    "runner_version": {"type": "string"},
+    "device": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["serial"],
+      "properties": {
+        "serial": {"type": "string"},
+        "model": {"type": ["string", "null"]},
+        "api": {"type": ["string", "null"]}
+      }
+    },
+    "measurements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class", "total_wall_ms"],
+      "properties": {
+        "class": {"enum": ["measured", "control", "warmup", "diagnostic", "failed-pre-fix"]},
+        "excluded_from_baseline": {"type": "boolean"},
+        "setup_wall_ms": {"type": ["integer", "null"]},
+        "total_wall_ms": {"type": ["integer", "null"]},
+        "t7a_ms": {"type": ["number", "null"]},
+        "t7b_ms": {"type": ["number", "null"]},
+        "t7c_ms": {"type": ["number", "null"]}
+      }
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ui", "database", "process", "visual"],
+      "properties": {
+        "ui": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["evidence", "reachable"],
+          "properties": {
+            "evidence": {"enum": ["uiautomator", "maestro", "screenshot+vision-inspection"]},
+            "reachable": {"type": "boolean"}
+          }
+        },
+        "database": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["checked"],
+          "properties": {
+            "checked": {"type": "boolean"},
+            "outcome": {"type": ["string", "null"]},
+            "checks": {"type": "array", "items": {"type": "object"}}
+          }
+        },
+        "process": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["crashed", "executor_ok", "evidence"],
+          "properties": {
+            "crashed": {"type": "boolean"},
+            "executor_ok": {"type": "boolean"},
+            "evidence": {"enum": ["CRASH", "no-crash"]}
+          }
+        },
+        "visual": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode"],
+          "properties": {
+            "mode": {"enum": ["failure-only", "always"]},
+            "screenshots": {"type": "integer", "minimum": 0}
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy"],
+      "properties": {
+        "policy": {"enum": ["failure-only", "always"]},
+        "bundle": {"type": ["string", "null"]},
+        "complete": {"type": ["boolean", "null"]}
+      }
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "stage": {"type": ["string", "null"]},
+        "marker": {"type": ["string", "null"]}
+      }
+    }
+  },
+  "definitions": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

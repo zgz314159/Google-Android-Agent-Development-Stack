@@ -1,0 +1,56 @@
+{
+  "verification_id": "KEEPLAB-REFERENCE-J1",
+  "project": "KeepLab",
+  "description": "Reference smoke: the promoted Verification Layer drives the frozen KeepLab APK through journey J1 on a physical device. Diagnostic only — excluded from the frozen benchmark.",
+  "android": {
+    "package_name": "com.keeplab.app",
+    "apk": "/mnt/AndroidDev/Projects/Google-Android-Agent-Development-Stack/verification-benchmark/frozen/app-debug-frozen.apk",
+    "test_apk": "/mnt/AndroidDev/Worktrees/KeepLab-Verification-Compression/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
+    "expected_app_sha256": "a8858bd1f57b328a5042a120023508ced8e1cbbf68446bab3ce0e5e80f6fdf06",
+    "runner": "androidx.test.runner.AndroidJUnitRunner"
+  },
+  "device": {
+    "expected_api": "36"
+  },
+  "engine": "uiautomator",
+  "journey": {
+    "id": "J1",
+    "test_class": "com.keeplab.app.benchmark.J1JourneyTest"
+  },
+  "fixture": {
+    "class": "com.keeplab.app.benchmark.FixtureSeeder",
+    "method": "seedJ1"
+  },
+  "input_smoke": {
+    "enabled": true,
+    "class": "com.keeplab.app.benchmark.InputSmokeTest"
+  },
+  "selectors": {
+    "compose": {
+      "editor-title": "testTag(editor-title)",
+      "editor-body": "testTag(editor-body)",
+      "search-field": "testTag(search-field)"
+    },
+    "contentDescription": ["Back", "Search", "New text note"],
+    "immutableText": ["KeepLab"]
+  },
+  "timeouts": {
+    "preflight": 30,
+    "install": 300,
+    "instrumentation": 600,
+    "oracle": 120,
+    "evidence": 120,
+    "cleanup": 60,
+    "shell": 30
+  },
+  "evidence_policy": "failure-only",
+  "measurement_class": "diagnostic",
+  "excluded_from_baseline": true,
+  "provenance": {
+    "verification_layer_version": "1.0.0"
+  },
+  "evaluation": {
+    "output_root": "/mnt/AndroidDev/Projects/_evaluation",
+    "project": "KeepLab"
+  }
+}

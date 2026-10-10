@@ -1,0 +1,71 @@
+{
+  "package": "KEEPLAB-A0-GOVERNANCE-WRITE-001",
+  "generated_by": "A0 governance-write contract authoring (specification/compiler manifest schema)",
+  "algorithm": "sha256",
+  "contract_id": "KEEPLAB-A0-GOVERNANCE-WRITE-001",
+  "metadata": {
+    "phase": "A0_GOVERNANCE_WRITE",
+    "human_authorization": true,
+    "human_decision": "D-15 YES_BOUNDED_ACCOUNT_NETWORK_UNLOCK",
+    "human_decision_date": "2026-10-06",
+    "package_role": "TEMPORARY_EXECUTION_CONTRACT",
+    "package_access": "READ_ONLY_INPUT",
+    "mutation_scope": [
+      "KeepLab-Relay/MISSION.md",
+      "KeepLab-Relay/FACTORY_RULES.md",
+      "KeepLab-Relay/specs/google-keep-parity/ROADMAP.md"
+    ],
+    "product_source_mutation": "FORBIDDEN",
+    "implementation_mutation": "FORBIDDEN",
+    "backend_mutation": "FORBIDDEN",
+    "device_mutation": "FORBIDDEN",
+    "historical_evidence_mutation": "FORBIDDEN",
+    "guard_mutation": "FORBIDDEN",
+    "implementation_authorization_model": "PHASE_GATED",
+    "implementation_authorization": "NOT_GRANTED",
+    "d14_status": "HUMAN_DECISION_PENDING",
+    "apply_executed": false
+  },
+  "entries": [
+    {
+      "path": "implementation-contract.json",
+      "sha256": "4decb2894e259aaa4eb067c426af4a3607ea18f09b531a52d53c62aea5b3d1d9",
+      "size": 16983,
+      "role": "contract",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "project-context.json",
+      "sha256": "4ca9aab711ffecba9f5ce2032f5748dbc0acc03e5660b0356f454cb3d5e3aaff",
+      "size": 8240,
+      "role": "project_context",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "acceptance.md",
+      "sha256": "431eafc5ad38c1b9380f62b14ac8e6d033c6501f7994eb67d4d044924b49ea83",
+      "size": 5489,
+      "role": "acceptance",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "EXECUTOR-PROMPT.md",
+      "sha256": "880c895450499177565fdab0f49e613f0910af0d68213bc89ee329c0113abf77",
+      "size": 1874,
+      "role": "executor_prompt",
+      "required": true,
+      "source": "authored"
+    },
+    {
+      "path": "KEEPLAB-A0-GOVERNANCE-WRITE-APPLY.md",
+      "sha256": "07d7c417c355266a1f5114ea0b7a56a2b1652c82bfbe926a0e393eb64efc7d28",
+      "size": 8395,
+      "role": "apply_prompt",
+      "required": true,
+      "source": "authored"
+    }
+  ]
+}

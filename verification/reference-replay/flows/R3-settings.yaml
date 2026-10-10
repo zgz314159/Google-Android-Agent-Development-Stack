@@ -1,0 +1,39 @@
+appId: com.google.android.keep
+name: R3-HOME-DRAWER-SETTINGS
+tags:
+  - reference-replay
+  - non-destructive
+---
+# Flow R3 - HOME -> DRAWER -> SETTINGS (non-destructive: read-only navigation).
+# Selectors are locale-independent resource IDs (device UI locale: zh-Hans-CN).
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible:
+      id: com.google.android.keep:id/menu_button
+    timeout: 20000
+- tapOn:
+    id: com.google.android.keep:id/menu_button
+- extendedWaitUntil:
+    visible:
+      id: com.google.android.keep:id/drawer_link_settings
+    timeout: 10000
+- assertVisible:
+    id: com.google.android.keep:id/drawer_link_settings
+- takeScreenshot: R3-drawer
+- tapOn:
+    id: com.google.android.keep:id/drawer_link_settings
+- extendedWaitUntil:
+    visible:
+      id: com.google.android.keep:id/settings_scroll
+    timeout: 10000
+- assertVisible:
+    id: com.google.android.keep:id/settings_scroll
+- takeScreenshot: R3-settings
+- back
+- extendedWaitUntil:
+    visible:
+      id: com.google.android.keep:id/menu_button
+    timeout: 10000
+- assertVisible:
+    id: com.google.android.keep:id/menu_button

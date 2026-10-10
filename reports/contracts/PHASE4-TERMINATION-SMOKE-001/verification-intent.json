@@ -1,0 +1,24 @@
+{
+  "feature_id": "PHASE4-TERMINATION-SMOKE",
+  "journey_id": "PHASE4-TERMINATION-SMOKE-EVIDENCE-ONLY",
+  "engine": "maestro",
+  "acceptance_ids": [
+    "AC-PHASE4SM-001",
+    "AC-PHASE4SM-002",
+    "AC-PHASE4SM-003",
+    "AC-PHASE4SM-004"
+  ],
+  "required_selectors": [
+    "phase4_termination_smoke_dir_present",
+    "phase4_termination_smoke_marker_present"
+  ],
+  "persistence_checks": [
+    "the single evidence-only marker persists under orchestration/hermes/evidence/phase4-termination-smoke/ after the task completes"
+  ],
+  "rotation_checks": [],
+  "search_checks": [
+    "no file outside orchestration/hermes/evidence/phase4-termination-smoke/ was created or modified by the smoke"
+  ],
+  "fixture_intent": "No Android fixture and no device. The only fixture is the isolated evidence directory orchestration/hermes/evidence/phase4-termination-smoke/.",
+  "oracle_intent": "Deterministic only: the presence and content of exactly one marker file, a single successful read-back verification, and exactly one normal verification-layer pass. Zero LLM judgment, zero visual judgment, zero device interaction, no browser, no network. On PASS the executor emits the Phase C report in the final assistant response and stops immediately; Auto-Finalizer is POST-SESSION only. Verification is performed once; PASS = STOP."
+}

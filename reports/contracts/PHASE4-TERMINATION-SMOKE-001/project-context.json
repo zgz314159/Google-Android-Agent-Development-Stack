@@ -1,0 +1,74 @@
+{
+  "project": "Google-Android-Agent-Development-Stack",
+  "project_type": "brownfield",
+  "source_root": "/mnt/AndroidDev/Projects",
+  "phase": "PHASE4-HARDENING",
+  "contract_id": "PHASE4-TERMINATION-SMOKE-001",
+  "purpose": "Authorize exactly one isolated evidence directory so a single final live sequence-4 smoke can prove the hardened bridge termination semantics end to end: one evidence-only marker, one deterministic verification of it, one normal verification-layer pass, then PASS -> FINAL RESPONSE -> STOP. This package authorizes the task; it performs nothing itself.",
+  "smoke_role": {
+    "why": "The hardened bridge must be shown once, live, to consume a task, execute it, verify it once and terminate cleanly.",
+    "must_be_safe": "Its entire write surface is one isolated evidence directory, so it cannot reach the control plane by construction.",
+    "must_not_run_during_hardening": true
+  },
+  "read_first": [
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/README.md",
+      "why": "the orchestration layer's own entry description, confirming this task touches no orchestration code"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/INTEGRATION.md",
+      "why": "how the orchestration layer integrates, confirming the smoke consumes existing seams only"
+    }
+  ],
+  "allowed_paths": [
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/phase4-termination-smoke/"
+  ],
+  "forbidden_paths": [
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/HERMES-LOCK.json",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/phase4-hermes-task-v1-kernel/",
+    "Google-Android-Agent-Development-Stack/specification/",
+    "Google-Android-Agent-Development-Stack/.hermes.md",
+    "Google-Android-Agent-Development-Stack/evaluation/",
+    "Google-Android-Agent-Development-Stack/verification/",
+    "Google-Android-Agent-Development-Stack/verification-benchmark/",
+    "Google-Android-Agent-Development-Stack/reports/contracts/",
+    "KeepLab-Relay/",
+    "KeepLab-Relay-evidence/",
+    "Testapp/",
+    "PowerAi/"
+  ],
+  "boundary_notes": {
+    "source_root": "/mnt/AndroidDev/Projects",
+    "resolution": "allowed_paths and forbidden_paths are project-relative to the Contract Guard source_root; an entry is a directory prefix or an exact file.",
+    "single_allowed_directory": "Exactly one directory is allowed. No parent directory above it is allow-listed, so the authorization cannot widen into the control plane.",
+    "no_overlap": "No allowed path is equal to, inside, or a parent of any forbidden path; the compiler reports zero E_PATH_CONFLICT.",
+    "unlisted_is_blocked": "Any path inside the project root matching neither list stays BLOCKED (UNCLASSIFIED_FAIL_CLOSED).",
+    "control_plane_unreachable": "bridge/, evaluation_adapter/, HERMES-LOCK.json, specification/ and .hermes.md are all forbidden, so this smoke cannot modify the control plane even if it tried."
+  },
+  "termination_semantics": {
+    "verification_layer_runs": "exactly once",
+    "autofinalizer": "POST-SESSION only; never invoked, inspected, waited for or verified inside the session",
+    "on_pass": "no further tool call, no search, no read, no audit, no repeated verification, no exploratory check; Phase C report in the FINAL ASSISTANT RESPONSE from evidence already collected; compact final result; STOP immediately",
+    "on_fail": "repair only the failed contract item; do not re-run already-passed work unless the repair invalidated it"
+  },
+  "protected_snapshot": {
+    "device": "87296ada",
+    "device_used": false,
+    "device_operation": "FORBIDDEN",
+    "android_verification_behaviour": "UNCHANGED",
+    "no_visual_llm_judgment": true,
+    "browser_cdp_used": false,
+    "network_access": "FORBIDDEN"
+  },
+  "contract_notes": {
+    "package_role": "EXECUTION_AUTHORIZATION_CONTRACT",
+    "package_access": "READ_ONLY_INPUT",
+    "generated_by": "specification/compiler (hash_manifest.py -> build_contract.py -> validate_package.py)",
+    "execution_sessions": 1,
+    "verification_passes": 1,
+    "executed_in_hardening_session": false,
+    "single_live_use": "the single final live sequence-4 smoke"
+  }
+}

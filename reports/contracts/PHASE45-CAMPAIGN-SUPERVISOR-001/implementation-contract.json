@@ -1,0 +1,644 @@
+{
+  "acceptance_ids": [
+    "AC-PHASE45SUP-001",
+    "AC-PHASE45SUP-002",
+    "AC-PHASE45SUP-003",
+    "AC-PHASE45SUP-004",
+    "AC-PHASE45SUP-005",
+    "AC-PHASE45SUP-006",
+    "AC-PHASE45SUP-007",
+    "AC-PHASE45SUP-008",
+    "AC-PHASE45SUP-009",
+    "AC-PHASE45SUP-010",
+    "AC-PHASE45SUP-011",
+    "AC-PHASE45SUP-012",
+    "AC-PHASE45SUP-013",
+    "AC-PHASE45SUP-014",
+    "AC-PHASE45SUP-015",
+    "AC-PHASE45SUP-016",
+    "AC-PHASE45SUP-017",
+    "AC-PHASE45SUP-018",
+    "AC-PHASE45SUP-019",
+    "AC-PHASE45SUP-020",
+    "AC-PHASE45SUP-021"
+  ],
+  "allowed_paths": [
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/supervisor/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/campaign-supervisor/"
+  ],
+  "artifact_hashes": {
+    "DESIGN.md": "3c033bde8e5e11181ae22492c5368c6ca3d354dd0111b5f2b2cd551555cdbc8b",
+    "PRODUCT.md": "f3073df721bf37137f3c26562396826fa1920e859d2e4fba80683a40b374aacc",
+    "acceptance.md": "ef0a67033330b0719ece2ccdde8416f0a2e3894a6749f7a84c590108766c533f",
+    "design.md": "3d02a13a2958a11df82213495d0f0421adc86e403d8c38296cd8a0264454ffe7",
+    "project-context.json": "dce3b62c66b9e849d9eb9fc676d346c6a7bcea06710208e674570fb0c2a48914",
+    "requirements.md": "328c931f4a2c35c53d423c7a0623c8d8a7b56796a54c95756fe75fe9b8a7e94a",
+    "tasks.md": "c7d3786171b0e417fd74994a88f87db9a47c28788dcda0ef8729886f419874bf",
+    "verification-intent.json": "a82d1c9721fd37a9a898a391a690afbc129f1819144155930d5776e6afcbd357"
+  },
+  "artifact_refs": [
+    {
+      "path": "PRODUCT.md",
+      "required": true,
+      "role": "product",
+      "source": "authored"
+    },
+    {
+      "path": "requirements.md",
+      "required": true,
+      "role": "requirements",
+      "source": "authored"
+    },
+    {
+      "path": "design.md",
+      "required": true,
+      "role": "design",
+      "source": "authored"
+    },
+    {
+      "path": "tasks.md",
+      "required": true,
+      "role": "tasks",
+      "source": "authored"
+    },
+    {
+      "path": "DESIGN.md",
+      "required": true,
+      "role": "ui_design",
+      "source": "authored"
+    },
+    {
+      "path": "acceptance.md",
+      "required": true,
+      "role": "acceptance",
+      "source": "authored"
+    },
+    {
+      "path": "project-context.json",
+      "required": true,
+      "role": "project_context",
+      "source": "authored"
+    },
+    {
+      "path": "verification-intent.json",
+      "required": true,
+      "role": "verification_intent",
+      "source": "authored"
+    }
+  ],
+  "assumptions": [
+    {
+      "id": "ASM-001",
+      "statement": "bridge_cli.py round and its bridge_state / adapter interfaces are importable and stable enough to be wrapped without modification."
+    },
+    {
+      "id": "ASM-002",
+      "statement": "The Bridge already accepts one valid task envelope per round; the Supervisor only decides WHEN to invoke that round, never WHAT it validates."
+    },
+    {
+      "id": "ASM-003",
+      "statement": "The Assistant's campaign-terminal envelope and the Bridge task envelope are mutually exclusive per response, and the campaign-terminal marker cannot be produced by the Bridge."
+    }
+  ],
+  "contract_id": "PHASE45-CAMPAIGN-SUPERVISOR-001",
+  "contract_version": "0.1.0",
+  "data_change": {
+    "migration_required": false,
+    "notes": "No persisted product schema is touched. The only durable artifacts are the private per-campaign state under the Supervisor state root and the two evidence files under the campaign evidence directory.",
+    "schema_version_current": 0,
+    "schema_version_target": 0
+  },
+  "decisions": [
+    {
+      "id": "DEC-001",
+      "rationale": "Those gates are already implemented, tested and PASS in the one-round bridge; moving any of them into a new layer would create a second authorization path and invalidate the bridge evidence.",
+      "statement": "The Supervisor is a wake-up / scheduling layer only; the Bridge remains the sole authority for task schema, nonce / sequence / in_reply_to, replay, risk, contract validation, the self-modification gate, Contract Guard execution, the durable result transaction and the browser send."
+    },
+    {
+      "id": "DEC-002",
+      "rationale": "A single writer (the Bridge) is what makes replay, chain and send semantics sound; a duplicate sender or a second contract executor would break that.",
+      "statement": "The Supervisor reuses the existing Bridge interfaces and the deterministic ChatGPT adapter READ seam read-only, wraps them, and never copies or reimplements them; it never executes a Hermes contract and never sends a ChatGPT message."
+    },
+    {
+      "id": "DEC-003",
+      "rationale": "Hashing the whole response is a cheap, deterministic way to never act twice on the same GPT turn, and it complements rather than replaces the Bridge chain.",
+      "statement": "The latest completed assistant response sha256 is the primary new-response guard, while the Bridge's sequence / nonce / replay state remains authoritative for what may be executed."
+    },
+    {
+      "id": "DEC-004",
+      "rationale": "Reusing the Bridge task protocol for milestone close would either latch the Bridge STOPPED and block the next milestone, or require a Bridge change that this contract forbids.",
+      "statement": "Campaign termination uses a separate strict envelope whose marker constants are composed at runtime from their components; a terminal campaign response never invokes bridge_cli.py round, so the Bridge stays WAITING_FOR_GPT with its next sequence available."
+    },
+    {
+      "id": "DEC-005",
+      "rationale": "An ambiguous control or a safety state means the deterministic path is unavailable; continuing would either guess or duplicate work.",
+      "statement": "The Supervisor fails closed: unknown fields, duplicate keys, multiple or mixed envelopes, and every Bridge safety state (AWAITING_APPROVAL, RECOVERY_REQUIRED, SEND_UNCERTAIN, STOPPED, ERROR) pause the campaign, journal the reason and exit non-zero, with no auto-repair and no manual Bridge-state edit."
+    },
+    {
+      "id": "DEC-006",
+      "rationale": "There must be no infinite autonomy and no while-true bridge replay; every campaign is a bounded period of autonomy for exactly one milestone.",
+      "statement": "Autonomy is bounded by max_rounds, max_wall_seconds and poll_seconds, with conservative defaults; reaching a bound persists PAUSED with outcome LIMIT_REACHED and exits."
+    },
+    {
+      "id": "DEC-007",
+      "rationale": "The seen hash, the round count and the terminal outcome must survive a restart, and the campaign lock is what prevents two scheduling workers from racing the same milestone.",
+      "statement": "Per-campaign state lives under the private root ~/.local/state/hermes-chatgpt-supervisor/<campaign-id>/ as state.json, journal.jsonl and campaign.lock, written with atomic replace plus fsync and 0700/0600 permissions, and exactly one Supervisor process may own a campaign."
+    }
+  ],
+  "experiment_id": "PHASE45-CAMPAIGN-SUPERVISOR",
+  "experiment_type": "SPEC_FIRST_BROWNFIELD",
+  "feature": {
+    "feature_id": "PHASE45-CAMPAIGN-SUPERVISOR",
+    "summary": "Authorize a compiler-owned contract for a stdlib-only Campaign Supervisor that schedules bounded, one-round-at-a-time wake-ups of the already-PASS GPT<->Hermes bridge for a single milestone: one campaign lock, a sha256 new-assistant-response guard, exactly one bridge round per new valid task envelope, a separate strict campaign-terminal envelope, fail-closed pausing on any malformed control or bridge safety state, hard round and wall limits, and durable per-campaign state; the Bridge remains the sole authority and is reused read-only.",
+    "title": "Phase-45 thin bounded Campaign Supervisor contract"
+  },
+  "forbidden_paths": [
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/HERMES-LOCK.json",
+    "Google-Android-Agent-Development-Stack/specification/",
+    "Google-Android-Agent-Development-Stack/verification/",
+    "Google-Android-Agent-Development-Stack/verification-benchmark/",
+    "Google-Android-Agent-Development-Stack/evaluation/",
+    "Google-Android-Agent-Development-Stack/references/",
+    "Google-Android-Agent-Development-Stack/probes/",
+    "Google-Android-Agent-Development-Stack/.hermes.md",
+    "Google-Android-Agent-Development-Stack/reports/contracts/",
+    "KeepLab-Relay/",
+    "KeepLab-Relay-evidence/",
+    "Testapp/",
+    "PowerAi/"
+  ],
+  "matched_control_available": false,
+  "mode": "brownfield",
+  "non_goals": [
+    "Replacing, redesigning or duplicating the Bridge or any Bridge authority",
+    "A second task-authorization, protocol or Chrome/CDP layer",
+    "Direct Hermes contract execution or any ChatGPT send from the Supervisor",
+    "Unbounded autonomy or an infinite while-true bridge replay",
+    "Modifying the Bridge, the compiler, the guard, HERMES-LOCK.json, KeepLab, Testapp or PowerAi",
+    "Device, browser or network interaction during verification"
+  ],
+  "project": "Google-Android-Agent-Development-Stack",
+  "read_first": [
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/bridge_cli.py",
+      "why": "the one-round entry point the Supervisor invokes exactly once per new valid task; read-only"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/protocol.py",
+      "why": "the HERMES_TASK_V1 / HERMES_RESULT_V1 envelope, strict JSON decoding and field validation the Supervisor reuses read-only"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/bridge_state.py",
+      "why": "chain state, replay journal, durable pending result and the single-worker lock the Supervisor reads read-only"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/chatgpt_adapter.py",
+      "why": "the deterministic READ seam for the latest completed assistant response and its sha256 the Supervisor wraps"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/bridge/contract_executor.py",
+      "why": "the contract gate and guarded execution path that remain entirely inside the Bridge"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/README.md",
+      "why": "the orchestration layer's own entry description and boundaries"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/orchestration/hermes/INTEGRATION.md",
+      "why": "how the orchestration layer integrates, confirming the Supervisor consumes existing seams only"
+    }
+  ],
+  "readiness": {
+    "gates": {
+      "acceptance": "PASS",
+      "boundaries": "PASS",
+      "hashes": "PASS",
+      "schema": "PASS",
+      "traceability": "PASS"
+    },
+    "status": "READY"
+  },
+  "requirements": [
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-001",
+        "AC-PHASE45SUP-002"
+      ],
+      "id": "REQ-PHASE45SUP-001",
+      "statement": "The generated contract must list exactly `Google-Android-Agent-Development-Stack/orchestration/hermes/supervisor/` and `Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/campaign-supervisor/` in `allowed_paths` and no other project path, and its `forbidden_paths` must cover the Bridge, the evaluation adapter, `HERMES-LOCK.json`, the Specification Compiler, the Android verification layers, the evaluation core, `references/`, `probes/`, `.hermes.md`, `reports/contracts/`, KeepLab, `Testapp` and `PowerAi`, with no allowed path overlapping any forbidden path. The Supervisor must reuse the existing Bridge interfaces read-only and must not introduce a second task-authorization layer, execute a Hermes contract itself, or send any ChatGPT message itself.",
+      "task_ids": [
+        "TASK-01",
+        "TASK-08"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-003"
+      ],
+      "id": "REQ-PHASE45SUP-002",
+      "statement": "The Supervisor must acquire exactly one campaign lock per campaign before doing any work, so a second Supervisor process for the same campaign is refused rather than run concurrently.",
+      "task_ids": [
+        "TASK-03"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-004",
+        "AC-PHASE45SUP-005"
+      ],
+      "id": "REQ-PHASE45SUP-003",
+      "statement": "The Supervisor must persist per-campaign state under the private state root `~/.local/state/hermes-chatgpt-supervisor/<campaign-id>/` as `state.json`, `journal.jsonl` and `campaign.lock`, with directory permissions `0700` and state/journal file permissions `0600` where practical, using atomic replace plus fsync so that a restart resumes from the persisted seen-assistant hash without duplicating a dispatch.",
+      "task_ids": [
+        "TASK-02"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-006"
+      ],
+      "id": "REQ-PHASE45SUP-004",
+      "statement": "The Supervisor must poll the LATEST COMPLETED ChatGPT assistant response through the existing adapter READ seam, compute its sha256, and never process the same assistant response twice; an already-seen hash must be ignored without any Bridge call.",
+      "task_ids": [
+        "TASK-04"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-007",
+        "AC-PHASE45SUP-008"
+      ],
+      "id": "REQ-PHASE45SUP-005",
+      "statement": "When a NEW assistant response contains exactly one valid Bridge task envelope, the Supervisor must read the current Bridge status and challenge, require that the campaign is RUNNING and that the Bridge status permits a new round, require that the envelope's sequence, nonce and in_reply_to equal the Bridge expected values, and then invoke the existing `bridge_cli.py round` exactly once — never executing the contract itself.",
+      "task_ids": [
+        "TASK-04"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-009",
+        "AC-PHASE45SUP-010"
+      ],
+      "id": "REQ-PHASE45SUP-006",
+      "statement": "The Supervisor must define a separate strict assistant-side campaign-terminal envelope whose open marker is composed at runtime from three `<` characters joined with `HERMES_CAMPAIGN_V1` and three `>` characters, and whose close marker is composed the same way from `END_HERMES_CAMPAIGN_V1`; the envelope carries exactly the strict JSON fields `protocol`, `campaign_id`, `milestone`, `status`, `outcome` and `in_reply_to`, with `protocol` equal to `HERMES_CAMPAIGN_V1`, `status` in `CLOSED`/`PAUSED` and `outcome` in `PASS`/`BLOCKED`/`FAILED`/`HUMAN_REQUIRED`/`SAFETY_STOP`/`LIMIT_REACHED`. A validated terminal campaign envelope must persist terminal state, journal it and exit without calling `bridge_cli.py round`, leaving the Bridge in `WAITING_FOR_GPT` with its next sequence available.",
+      "task_ids": [
+        "TASK-05"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-011",
+        "AC-PHASE45SUP-013"
+      ],
+      "id": "REQ-PHASE45SUP-007",
+      "statement": "The Supervisor must reject unknown fields, duplicate JSON keys, multiple campaign envelopes, and any response containing both a campaign-terminal envelope and an executable Bridge task envelope; a response with no Bridge task and no campaign terminal must be marked seen and ignored; any malformed or ambiguous executable control must pause the campaign fail-closed without invoking the Bridge.",
+      "task_ids": [
+        "TASK-04",
+        "TASK-05"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-012",
+        "AC-PHASE45SUP-016"
+      ],
+      "id": "REQ-PHASE45SUP-008",
+      "statement": "The Supervisor may continue only from a normal `WAITING_FOR_GPT` / idle-ready Bridge state; if the Bridge reports `AWAITING_APPROVAL`, `RECOVERY_REQUIRED`, `SEND_UNCERTAIN`, `STOPPED` or `ERROR`, the Supervisor must persist `PAUSED`, journal the reason and exit non-zero, never auto-repairing and never editing Bridge state.",
+      "task_ids": [
+        "TASK-04"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-014",
+        "AC-PHASE45SUP-015"
+      ],
+      "id": "REQ-PHASE45SUP-009",
+      "statement": "The CLI must accept `--campaign-id`, `--milestone`, `--start-sequence`, `--start-nonce`, `--start-in-reply-to`, `--max-rounds`, `--max-wall-seconds` and `--poll-seconds` with conservative defaults, and when the maximum round count or the wall deadline is reached the Supervisor must persist `PAUSED`, set the outcome to `LIMIT_REACHED` and exit.",
+      "task_ids": [
+        "TASK-06"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-017"
+      ],
+      "id": "REQ-PHASE45SUP-010",
+      "statement": "The Supervisor must implement `python3 orchestration/hermes/supervisor/campaign_cli.py status --campaign-id ID` and `python3 orchestration/hermes/supervisor/campaign_cli.py run --campaign-id ID --milestone MILESTONE --start-sequence N --start-nonce NONCE --start-in-reply-to HASH --max-rounds N --max-wall-seconds N --poll-seconds N`, where `run` stays in the foreground until `CLOSED`, `PAUSED`, a safety stop or a limit, and emits compact progress lines such as `CAMPAIGN_WAITING_FOR_GPT`, `CAMPAIGN_DISPATCH sequence=N task_id=...`, `CAMPAIGN_ROUND_COMPLETE result_sha256=...` and `CAMPAIGN_CLOSED outcome=PASS`, with no giant log-streaming framework.",
+      "task_ids": [
+        "TASK-06"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-018"
+      ],
+      "id": "REQ-PHASE45SUP-011",
+      "statement": "The Supervisor package must consist of `__init__.py`, `campaign_protocol.py`, `campaign_state.py`, `campaign_supervisor.py`, `campaign_cli.py` and `tests/test_campaign_supervisor.py`, must use only the Python standard library, and must not add a framework, plugin system, scheduler abstraction or configuration language beyond this single use case.",
+      "task_ids": [
+        "TASK-01"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-019",
+        "AC-PHASE45SUP-020"
+      ],
+      "id": "REQ-PHASE45SUP-012",
+      "statement": "Every test must drive the Supervisor through injected or fake `read_latest_assistant`, `bridge_status`, `bridge_round` and clock/sleep seams, with no real Chrome, no real ChatGPT, no real Hermes and no live Bridge state, and must cover at least: same response never dispatched twice; a new exact expected task invokes the Bridge exactly once; sequence / nonce / in_reply_to mismatch pauses without invoking the Bridge; a control-free assistant response is marked seen and ignored; a malformed task pauses fail-closed; an ambiguous task pauses fail-closed; a valid campaign `PASS` closes without a Bridge call; a campaign with the wrong id is rejected; a campaign with the wrong milestone is rejected; a campaign with a stale in_reply_to is rejected; a response with both a task and a campaign terminal is rejected; `AWAITING_APPROVAL`, `RECOVERY_REQUIRED`, `SEND_UNCERTAIN` and `ERROR` each pause; `max_rounds` pauses; `max_wall_seconds` pauses; a restart uses the persisted seen hash and does not duplicate dispatch; pending-result startup reconciliation calls the Bridge once; a successful reconciliation resumes waiting; the campaign lock prevents two workers; and state/journal persistence survives a restart.",
+      "task_ids": [
+        "TASK-07"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-021"
+      ],
+      "id": "REQ-PHASE45SUP-013",
+      "statement": "After implementation the Supervisor must be verified by ONE combined deterministic verification that confirms the unit tests pass, the exact CLI help/interface exists, campaign protocol strictness passes, persistence/restart passes, duplicate prevention passes and bounded limits pass; and it must write `verification.json` and `supervisor-tests.log` under `orchestration/hermes/evidence/campaign-supervisor/`, where `verification.json` records `verdict`, `bridge_modified`, `sequence_5_consumed` and `m5_manifest_unchanged`. The verification must also prove the Bridge files are byte-identical to their pre-run hashes, the Specification Compiler files and the M5 contract manifest are unchanged, live Bridge sequence 5 is still unconsumed, and no live browser send, no Bridge round and no KeepLab write occurred.",
+      "task_ids": [
+        "TASK-08"
+      ]
+    }
+  ],
+  "scope": [
+    "Write authorization for Google-Android-Agent-Development-Stack/orchestration/hermes/supervisor/",
+    "Write authorization for Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/campaign-supervisor/",
+    "Stdlib-only Supervisor package with the exact declared module set",
+    "Read-only reuse of the existing Bridge interfaces and the ChatGPT adapter READ seam",
+    "Deterministic fake-driven tests plus one combined Supervisor verification"
+  ],
+  "selector_contract": [
+    {
+      "compose_test_tag": "campaign_supervisor_package_present",
+      "name": "campaign_supervisor_package_present",
+      "required": true,
+      "state": "Supervisor package present under orchestration/hermes/supervisor/",
+      "uiautomator": "By.res(\"campaign_supervisor_package_present\")"
+    },
+    {
+      "compose_test_tag": "campaign_state_file_present",
+      "name": "campaign_state_file_present",
+      "required": true,
+      "state": "per-campaign state.json present under the private Supervisor state root",
+      "uiautomator": "By.res(\"campaign_state_file_present\")"
+    },
+    {
+      "compose_test_tag": "campaign_lock_present",
+      "name": "campaign_lock_present",
+      "required": true,
+      "state": "per-campaign campaign.lock present under the private Supervisor state root",
+      "uiautomator": "By.res(\"campaign_lock_present\")"
+    },
+    {
+      "compose_test_tag": "campaign_evidence_dir_present",
+      "name": "campaign_evidence_dir_present",
+      "required": true,
+      "state": "campaign evidence directory present under orchestration/hermes/evidence/campaign-supervisor/",
+      "uiautomator": "By.res(\"campaign_evidence_dir_present\")"
+    }
+  ],
+  "stop_conditions": [
+    "A required write falls outside supervisor/ or the campaign evidence directory, or targets a forbidden path: STOP, CONTRACT_DEVIATION.",
+    "Satisfying the Supervisor would require modifying bridge/, evaluation_adapter/, specification/, HERMES-LOCK.json, .hermes.md, KeepLab, Testapp or PowerAi: STOP, ABSOLUTE_BLOCK_VIOLATION.",
+    "Satisfying the Supervisor would require a second task-authorization layer, a duplicate protocol implementation or a second Chrome/CDP stack: STOP, DUPLICATE_AUTHORITY_FORBIDDEN.",
+    "The Supervisor would have to execute a Hermes contract directly or send a ChatGPT message itself: STOP, BRIDGE_BYPASS_FORBIDDEN.",
+    "The design would need an unbounded loop or autonomy without max-rounds / wall limits: STOP, UNBOUNDED_AUTONOMY_FORBIDDEN.",
+    "A campaign-terminal response would require calling bridge_cli.py round: STOP, CAMPAIGN_TERMINAL_MUST_NOT_ROUND."
+  ],
+  "tasks": [
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-001",
+        "AC-PHASE45SUP-002",
+        "AC-PHASE45SUP-018"
+      ],
+      "allowed_paths": [
+        "Google-Android-Agent-Development-Stack/orchestration/hermes/supervisor/"
+      ],
+      "boundary": "The Supervisor package directory only. No Bridge module is edited, copied or vendored, and no framework, plugin system or scheduler abstraction is introduced.",
+      "depends": [],
+      "done_when": "the package imports cleanly stdlib-only and every declared module exists",
+      "goal": "Create `orchestration/hermes/supervisor/` with `__init__.py`, `campaign_protocol.py`, `campaign_state.py`, `campaign_supervisor.py`, `campaign_cli.py` and `tests/test_campaign_supervisor.py`, using only the Python standard library and wrapping the existing Bridge / adapter interfaces rather than copying them.",
+      "id": "TASK-01",
+      "verification": [
+        "assert the six declared files exist",
+        "assert every import resolves to the standard library or to a bridge package read-only",
+        "and assert no Bridge file hash changed"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-004",
+        "AC-PHASE45SUP-005"
+      ],
+      "allowed_paths": [
+        "Google-Android-Agent-Development-Stack/orchestration/hermes/supervisor/"
+      ],
+      "boundary": "The private Supervisor state root only. Bridge state is read, never written, and no Bridge state file is edited.",
+      "depends": [
+        "TASK-01"
+      ],
+      "done_when": "a restarted Supervisor reads the persisted state and does not duplicate a dispatch",
+      "goal": "Implement `campaign_state.py` so that each campaign persists `state.json`, `journal.jsonl` and `campaign.lock` under `~/.local/state/hermes-chatgpt-supervisor/<campaign-id>/` with directory mode 0700, state/journal file mode 0600 where practical, atomic replace plus fsync, and the fields `campaign_id`, `milestone`, `status`, `started_at`, `deadline`, `max_rounds`, `round_count`, `initial_sequence`, `last_seen_assistant_sha256`, `last_dispatched_task_id`, `last_bridge_result_sha256` and `terminal_outcome`.",
+      "id": "TASK-02",
+      "verification": [
+        "write",
+        "restart and read back the campaign state and assert every field survives and the seen-assistant hash is reused after restart"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-003"
+      ],
+      "allowed_paths": [
+        "Google-Android-Agent-Development-Stack/orchestration/hermes/supervisor/"
+      ],
+      "boundary": "The campaign lock file only. The Bridge's own lock is never taken over or replaced.",
+      "depends": [
+        "TASK-01"
+      ],
+      "done_when": "two concurrent workers for one campaign cannot both run",
+      "goal": "Implement the per-campaign exclusive lock in `campaign_state.py` so that only one Supervisor process may own a campaign and a second process is refused with a lock-busy outcome without touching Bridge or campaign state.",
+      "id": "TASK-03",
+      "verification": [
+        "hold the lock in one process and assert a second acquisition is refused and performs no dispatch"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-006",
+        "AC-PHASE45SUP-007",
+        "AC-PHASE45SUP-008",
+        "AC-PHASE45SUP-011",
+        "AC-PHASE45SUP-012",
+        "AC-PHASE45SUP-016"
+      ],
+      "allowed_paths": [
+        "Google-Android-Agent-Development-Stack/orchestration/hermes/supervisor/"
+      ],
+      "boundary": "Scheduling and dispatch only. The Supervisor never executes a contract, never sends a ChatGPT message and never edits Bridge state.",
+      "depends": [
+        "TASK-01",
+        "TASK-02",
+        "TASK-03"
+      ],
+      "done_when": "every dispatch decision is driven by the injected seams and no live Bridge call is made in a test",
+      "goal": "Implement `campaign_supervisor.py` with the new-response sha256 guard, the classification of each new response (no control / one candidate bridge task / campaign terminal / malformed or ambiguous), the requirement that the campaign is RUNNING and the Bridge status permits a round, the sequence / nonce / in_reply_to match against the Bridge expected values, exactly one `bridge_cli.py round` invocation per valid new task, the read-back of Bridge status after each round, the startup reconciliation of a durable Bridge pending result, and the fail-closed pause on any Bridge safety state.",
+      "id": "TASK-04",
+      "verification": [
+        "with injected fake `read_latest_assistant",
+        "bridge_status` and `bridge_round",
+        "assert exactly one round for a new valid task",
+        "no round for a repeated or mismatched response",
+        "and a PAUSED fail-closed outcome for every malformed or safety-state input"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-009",
+        "AC-PHASE45SUP-010",
+        "AC-PHASE45SUP-011",
+        "AC-PHASE45SUP-013"
+      ],
+      "allowed_paths": [
+        "Google-Android-Agent-Development-Stack/orchestration/hermes/supervisor/"
+      ],
+      "boundary": "Campaign protocol only. The Bridge task protocol is reused as-is and is never extended for milestone close.",
+      "depends": [
+        "TASK-01"
+      ],
+      "done_when": "a validated terminal campaign envelope persists terminal state and exits without invoking a Bridge round",
+      "goal": "Implement `campaign_protocol.py` with the campaign-terminal envelope whose open and close markers are composed at runtime from their components, strict JSON decoding that rejects duplicate keys and unknown fields, rejection of multiple campaign envelopes and of any response containing both a campaign-terminal envelope and an executable Bridge task envelope, and validation that `campaign_id`, `milestone` and `in_reply_to` equal the current campaign, the current milestone and the Bridge `state.last_result_sha256`.",
+      "id": "TASK-05",
+      "verification": [
+        "assert a valid campaign envelope is accepted",
+        "and that wrong id / wrong milestone / stale in_reply_to / unknown field / duplicate key / multiple envelopes / mixed envelope responses are each rejected"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-014",
+        "AC-PHASE45SUP-015",
+        "AC-PHASE45SUP-017"
+      ],
+      "allowed_paths": [
+        "Google-Android-Agent-Development-Stack/orchestration/hermes/supervisor/"
+      ],
+      "boundary": "The CLI surface only. No log-streaming framework, no background daemon and no unbounded loop.",
+      "depends": [
+        "TASK-04"
+      ],
+      "done_when": "the exact CLI interface exists and no run exceeds its bounds",
+      "goal": "Implement `campaign_cli.py` with `status --campaign-id ID` and `run` accepting `--campaign-id`, `--milestone`, `--start-sequence`, `--start-nonce`, `--start-in-reply-to`, `--max-rounds`, `--max-wall-seconds` and `--poll-seconds` with conservative defaults, run to completion in the foreground until CLOSED / PAUSED / safety stop / limit, enforce `max_rounds` and `max_wall_seconds` by persisting PAUSED with outcome LIMIT_REACHED, and emit compact progress lines only.",
+      "id": "TASK-06",
+      "verification": [
+        "assert `--help` exposes both subcommands and all run flags",
+        "and assert a run stops at the round or wall limit with LIMIT_REACHED"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-019",
+        "AC-PHASE45SUP-020"
+      ],
+      "allowed_paths": [
+        "Google-Android-Agent-Development-Stack/orchestration/hermes/supervisor/"
+      ],
+      "boundary": "Test source only. No production module is modified to make a test pass, and no live transport is contacted.",
+      "depends": [
+        "TASK-01"
+      ],
+      "done_when": "every enumerated case passes offline and deterministically",
+      "goal": "Implement `tests/test_campaign_supervisor.py` covering the enumerated cases using injected fake `read_latest_assistant`, `bridge_status`, `bridge_round` and clock / sleep seams, with no real Chrome, no real ChatGPT, no real Hermes and no live Bridge state.",
+      "id": "TASK-07",
+      "verification": [
+        "python3 -m unittest discover -s tests -p \"test_*.py\"` from the Supervisor directory exits 0 with zero failures and zero errors"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-021"
+      ],
+      "allowed_paths": [
+        "Google-Android-Agent-Development-Stack/orchestration/hermes/supervisor/",
+        "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/campaign-supervisor/"
+      ],
+      "boundary": "The campaign evidence directory and read-only comparison only. No Bridge round, no browser send, no KeepLab write and no contract-package write occur during the verification.",
+      "depends": [
+        "TASK-02",
+        "TASK-04",
+        "TASK-05",
+        "TASK-06",
+        "TASK-07"
+      ],
+      "done_when": "the two evidence files exist and report the required verdict, with PASS followed by an immediate stop",
+      "goal": "After the package and its tests exist, run ONE combined deterministic verification that confirms the unit tests pass, the exact CLI help/interface exists, campaign protocol strictness passes, persistence/restart passes, duplicate prevention passes and bounded limits pass, and write `verification.json` and `supervisor-tests.log` under `orchestration/hermes/evidence/campaign-supervisor/`, where `verification.json` records `verdict`, `bridge_modified`, `sequence_5_consumed` and `m5_manifest_unchanged`.",
+      "id": "TASK-08",
+      "verification": [
+        "recompute the Bridge file hashes and compare against their pre-run values",
+        "confirm the Specification Compiler files and the M5 contract manifest are unchanged",
+        "confirm live Bridge sequence 5 is still unconsumed",
+        "and assert the evidence JSON reports verdict PASS with bridge_modified false and sequence_5_consumed false"
+      ]
+    }
+  ],
+  "ui_change": {
+    "selectors_added": [
+      "campaign_supervisor_package_present",
+      "campaign_state_file_present",
+      "campaign_lock_present",
+      "campaign_evidence_dir_present"
+    ],
+    "surfaces": []
+  },
+  "unresolved_questions": [],
+  "verification_intent": {
+    "acceptance_ids": [
+      "AC-PHASE45SUP-001",
+      "AC-PHASE45SUP-002",
+      "AC-PHASE45SUP-003",
+      "AC-PHASE45SUP-004",
+      "AC-PHASE45SUP-005",
+      "AC-PHASE45SUP-006",
+      "AC-PHASE45SUP-007",
+      "AC-PHASE45SUP-008",
+      "AC-PHASE45SUP-009",
+      "AC-PHASE45SUP-010",
+      "AC-PHASE45SUP-011",
+      "AC-PHASE45SUP-012",
+      "AC-PHASE45SUP-013",
+      "AC-PHASE45SUP-014",
+      "AC-PHASE45SUP-015",
+      "AC-PHASE45SUP-016",
+      "AC-PHASE45SUP-017",
+      "AC-PHASE45SUP-018",
+      "AC-PHASE45SUP-019",
+      "AC-PHASE45SUP-020",
+      "AC-PHASE45SUP-021"
+    ],
+    "engine": "maestro",
+    "feature_id": "PHASE45-CAMPAIGN-SUPERVISOR",
+    "fixture_intent": "No Android fixture and no device. The fixtures are injected fakes for read_latest_assistant, bridge_status, bridge_round and the clock/sleep seams, plus a temporary private Supervisor state root. Verification opens no real Chrome, no real ChatGPT, no real Hermes and no live Bridge state.",
+    "journey_id": "PHASE45-CAMPAIGN-SUPERVISOR-LOCAL",
+    "oracle_intent": "Deterministic only: unit-test pass/fail counts from the fake-driven Supervisor suite, exact CLI help membership, strict campaign-protocol accept/reject decisions, persistence/restart equality, duplicate-prevention dispatch counts and bounded-limit outcomes, plus read-only sha256 comparisons proving the Bridge is byte-identical, sequence 5 is unconsumed and the M5 manifest is unchanged. Zero LLM judgment, zero visual judgment, zero device interaction, no browser, no network. The engine field records the stack's selector-driven replay family; the actual oracle for the Supervisor is byte and count equality. Verification is performed once; PASS = STOP.",
+    "persistence_checks": [
+      "the per-campaign state.json, journal.jsonl and campaign.lock persist under the private Supervisor state root across a restart",
+      "the campaign seen-assistant hash and round count survive a restart and prevent a duplicate dispatch",
+      "the two evidence files verification.json and supervisor-tests.log persist under orchestration/hermes/evidence/campaign-supervisor/"
+    ],
+    "required_selectors": [
+      "campaign_supervisor_package_present",
+      "campaign_state_file_present",
+      "campaign_lock_present",
+      "campaign_evidence_dir_present"
+    ],
+    "rotation_checks": [],
+    "search_checks": [
+      "no Bridge file changed: every file under orchestration/hermes/bridge/ has the same sha256 before and after",
+      "the Specification Compiler files and the M5 contract manifest are unchanged",
+      "live Bridge sequence 5 is still unconsumed and the Bridge status is WAITING_FOR_GPT"
+    ]
+  }
+}

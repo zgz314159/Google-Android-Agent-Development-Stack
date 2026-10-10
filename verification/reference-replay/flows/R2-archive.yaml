@@ -1,0 +1,39 @@
+appId: com.google.android.keep
+name: R2-HOME-DRAWER-ARCHIVE
+tags:
+  - reference-replay
+  - non-destructive
+---
+# Flow R2 - HOME -> DRAWER -> ARCHIVE (non-destructive: read-only navigation).
+# Selectors are locale-independent resource IDs (device UI locale: zh-Hans-CN).
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible:
+      id: com.google.android.keep:id/menu_button
+    timeout: 20000
+- tapOn:
+    id: com.google.android.keep:id/menu_button
+- extendedWaitUntil:
+    visible:
+      id: com.google.android.keep:id/drawer_navigation_archive
+    timeout: 10000
+- assertVisible:
+    id: com.google.android.keep:id/drawer_navigation_archive
+- takeScreenshot: R2-drawer
+- tapOn:
+    id: com.google.android.keep:id/drawer_navigation_archive
+- extendedWaitUntil:
+    visible:
+      id: com.google.android.keep:id/search
+    timeout: 10000
+- assertVisible:
+    id: com.google.android.keep:id/search
+- takeScreenshot: R2-archive
+- back
+- extendedWaitUntil:
+    visible:
+      id: com.google.android.keep:id/menu_button
+    timeout: 10000
+- assertVisible:
+    id: com.google.android.keep:id/menu_button

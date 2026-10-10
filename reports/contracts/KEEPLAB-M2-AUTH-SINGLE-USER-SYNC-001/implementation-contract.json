@@ -1,0 +1,1553 @@
+{
+  "contract_id": "KEEPLAB-M2-AUTH-SINGLE-USER-SYNC-001",
+  "contract_version": "0.1.0",
+  "experiment_id": "KEEPLAB-M2-AUTH-SINGLE-USER-SYNC",
+  "experiment_type": "HUMAN_AUTHORIZED_MILESTONE_IMPLEMENTATION",
+  "mode": "brownfield",
+  "project": "KeepLab-Google-Keep-Parity",
+  "feature": {
+    "feature_id": "M2-AUTH-SINGLE-USER-SYNC",
+    "title": "Milestone M2 — KeepLab email/password auth + single-user note sync",
+    "summary": "One milestone contract covering sequential A3 (email/password registration, email verification, password login, password reset, JWT access token, opaque retry-safe rotating refresh token, logout, per-session revoke, Android Keystore-backed session store, minimal account/auth UI) followed by A4 (Room outbox + client checkpoint, stable UUIDs for independently synced children, backend sync tables, POST /v1/sync/mutations + GET /v1/sync/changes with atomic mutation-id dedupe, server revision authority with 409 REVISION_CONFLICT, tombstone != Trash, failed-delta checkpoint rule, non-destructive 404 rule, explicit accountId invariant, and one unique WorkManager note_sync pipeline). One contract, one execution session, one final verification pass. No device, no cloud, no attachments, no collaboration, no account deletion, no automatic Trash purge, no conflict-resolution UI, no A5 hardening."
+  },
+  "purpose": "This package is a TEMPORARY EXECUTION CONTRACT covering the whole M2 milestone (A3 + A4). It exists so that a later fresh session can implement A3 and then A4 through the SAME unmodified Contract Guard, under an explicit and bounded write surface, with A3 and A4 kept as logically separate checkpoints inside ONE session and ONE final verification pass. This contract-creation task performed targeted discovery and authored the package; it does not implement M2.",
+  "milestone": {
+    "id": "M2",
+    "components": [
+      "A3_AUTH_SESSION",
+      "A4_SINGLE_USER_SYNC"
+    ],
+    "execution_model": "MILESTONE_EXECUTION",
+    "flow": "PLAN ONCE -> A3 EXECUTE -> A3 LIGHT CHECKPOINT -> CONTINUE DIRECTLY TO A4 -> A4 EXECUTE -> VERIFY M2 ONCE -> PASS = STOP",
+    "a3_is_not_a_stop": "A3_CHECKPOINT is a checkpoint, not a Review. The session must not stop at it, must not create an A3 contract, must not create an A3 review.",
+    "a4_begins_only_after": "A3_CHECKPOINT = READY_FOR_A4",
+    "logical_boundary": "A3 code belongs to A3; note sync is never described as part of A3. A4 code begins only after the A3 checkpoint. The phase boundary is preserved without stopping the session.",
+    "forbidden_inside_m2": [
+      "creating an A3 contract",
+      "stopping after A3",
+      "creating an A4 contract",
+      "creating an A3 review",
+      "creating an A4 review",
+      "a post-PASS audit",
+      "starting A5 or A6"
+    ]
+  },
+  "human_authorization_source": {
+    "authorizing_task": "KEEPLAB-M2-AUTH-SINGLE-USER-SYNC-CONTRACT",
+    "date": "2026-10-06",
+    "timezone": "CST (UTC+08:00)",
+    "approval_kind": "HUMAN_PROJECT_OWNER_APPROVAL_ALREADY_RECORDED",
+    "primary_decisions": {
+      "D-01": "EMAIL_PASSWORD_VERIFIED",
+      "D-04": "PRESERVE_LOCAL_CACHE",
+      "D-10": "JWT_ACCESS_OPAQUE_ROTATING_REFRESH"
+    },
+    "decision_effect": "The three M2-blocking human decisions are explicitly approved by the human project owner on 2026-10-06. D-01 fixes the auth method (email + password, email verification required, password login, password reset; passkey may come later; phone deferred; Google login and Firebase Auth forbidden). D-04 fixes the sign-out policy as PRESERVE_LOCAL_CACHE (non-destructive: local Room data, account-scoped cached notes, the outbox and LOCAL_ONLY notes all survive sign-out; no full Room database encryption is claimed or authorized). D-10 fixes the token model (short-lived JWT access token plus an opaque high-entropy rotating refresh token with a retry-safe refresh_request_id replay window, refresh secrets never stored plaintext).",
+    "reinterpreted": false,
+    "reasked": false,
+    "substituted_with_model_preference": false,
+    "recorded_in": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M2-HUMAN-DECISIONS.md",
+    "governance_files_not_modified_to_record_them": [
+      "KeepLab-Relay/MISSION.md",
+      "KeepLab-Relay/FACTORY_RULES.md",
+      "any parity ROADMAP"
+    ],
+    "stale_wording_elsewhere": "MINOR_BACKLOG, not a blocker (for example reports/KEEPLAB-AUTH-SYNC-HUMAN-DECISIONS.md and reports/KEEPLAB-AUTH-SYNC-ARCHITECTURE-SPEC.md §23.1 still list D-01/D-04/D-10 as pending).",
+    "phase_state_at_authoring": {
+      "A0": "READY",
+      "A1": "PASS",
+      "A2": "PASS",
+      "M2": "AUTHORIZED_BY_HUMAN",
+      "M2_covers": [
+        "A3",
+        "A4"
+      ],
+      "A5_plus": "NOT_STARTED",
+      "do_not_reopen": [
+        "A0",
+        "A1",
+        "A2"
+      ]
+    },
+    "pending_decisions_not_blocking_m2": {
+      "D-05": "account deletion retention — account deletion is NOT implemented",
+      "D-06": "Trash automatic retention — no automatic Trash expiration/purge is implemented",
+      "D-11": "push provider — no push provider in M2",
+      "D-12": "collaboration — out of scope",
+      "D-13": "attachment limits — attachments out of scope",
+      "D-14": "formal spec package location — still pending, does not block M2"
+    }
+  },
+  "authorization_semantics": {
+    "phase": "M2_AUTH_SINGLE_USER_SYNC",
+    "human_authorization": true,
+    "human_decisions": [
+      "D-01 EMAIL_PASSWORD_VERIFIED",
+      "D-04 PRESERVE_LOCAL_CACHE",
+      "D-10 JWT_ACCESS_OPAQUE_ROTATING_REFRESH"
+    ],
+    "human_decision_date": "2026-10-06",
+    "mutation_scope": "KeepLab backend auth+sync (KeepLab-Relay/backend/**), the enumerated Android auth/sync/persistence surface listed in allowed_paths, and the reporting/evidence locations named in allowed_paths",
+    "implementation_authorization_model": "PHASE_GATED_MILESTONE",
+    "implementation_authorization": "GRANTED_TO_M2_EXECUTION_TASK_ONLY",
+    "root_android_gradle_change": "FORBIDDEN",
+    "android_gradle_module_change": "ALLOWED_ONLY_FOR_M2_DEPENDENCIES (app/build.gradle.kts + gradle/libs.versions.toml)",
+    "google_identity": "FORBIDDEN",
+    "firebase_auth": "FORBIDDEN",
+    "phone_auth": "FORBIDDEN",
+    "oauth_social_login": "FORBIDDEN",
+    "passkey": "OUT_OF_SCOPE_FOR_M2",
+    "account_deletion": "FORBIDDEN",
+    "attachments": "FORBIDDEN",
+    "collaboration": "FORBIDDEN",
+    "multi_account": "FORBIDDEN",
+    "cloud_provisioning": "FORBIDDEN",
+    "device_operation": "FORBIDDEN",
+    "push_provider": "FORBIDDEN",
+    "room_database_encryption_claim": "FORBIDDEN",
+    "historical_evidence_mutation": "FORBIDDEN",
+    "guard_mutation": "FORBIDDEN",
+    "contract_mutation": "FORBIDDEN",
+    "requires_human_approval": true
+  },
+  "project_data_stage": {
+    "stage": "EXPERIMENTAL",
+    "android_data_stage": "DISPOSABLE_TEST_DATA",
+    "backend_data_stage": "DISPOSABLE_TEST_DATA",
+    "test_data_disposable": true,
+    "old_test_db_compatibility": "NOT_REQUIRED",
+    "production_users": false,
+    "production_backend_data": false,
+    "policy": "CLEAN_TARGET_ARCHITECTURE > OLD_TEST_DATA_COMPATIBILITY",
+    "allowed_consequences": [
+      "M2 may change the Room schema",
+      "M2 may increase the Room DB version",
+      "M2 may recreate the development database",
+      "M2 may add tables and indexes",
+      "M2 may change the development backend schema"
+    ],
+    "room_schema_rule": "Current version after A1 is 3. Because the data is experimental, M2 may move directly to the next clean schema version by a direct experimental schema bump. No production migration chain and no old-development-data migration is required.",
+    "dev_database_reset_required": "YES",
+    "backend_migration_rule": "Flyway continues naturally from the existing A2 V1 with new development migrations (V2, V3, ...). No rollback scripts and no compatibility migrations are required.",
+    "forbidden_consequences": [
+      "no data-preservation work spent on disposable experimental data",
+      "no legacy v1->v2->v3->v4 upgrade chain authored",
+      "no backfill of pre-existing LOCAL_ONLY notes into an account"
+    ]
+  },
+  "discovered_state": {
+    "repository_root": "/mnt/AndroidDev/Projects/KeepLab-Relay",
+    "backend_path": "/mnt/AndroidDev/Projects/KeepLab-Relay/backend/",
+    "backend_path_state": "PRESENT (created by A2)",
+    "backend_build_model": "INDEPENDENT_GRADLE_PROJECT",
+    "backend_invocation": "cd /mnt/AndroidDev/Projects/KeepLab-Relay && ./gradlew -p backend <tasks>",
+    "backend_existing_surface": [
+      "backend/settings.gradle.kts",
+      "backend/build.gradle.kts",
+      "backend/Dockerfile",
+      "backend/docker-compose.yml",
+      "backend/.dockerignore",
+      "backend/.env.example",
+      "backend/src/main/kotlin/com/keeplab/backend/Application.kt",
+      "backend/src/main/kotlin/com/keeplab/backend/config/AppConfig.kt",
+      "backend/src/main/kotlin/com/keeplab/backend/db/DatabaseReadiness.kt",
+      "backend/src/main/kotlin/com/keeplab/backend/db/FlywayMigrations.kt",
+      "backend/src/main/kotlin/com/keeplab/backend/db/PostgresDatabase.kt",
+      "backend/src/main/kotlin/com/keeplab/backend/routes/ApiModels.kt",
+      "backend/src/main/kotlin/com/keeplab/backend/routes/Routes.kt",
+      "backend/src/main/resources/application.conf",
+      "backend/src/main/resources/logback.xml",
+      "backend/src/main/resources/db/migration/V1__create_keeplab_foundation_schema.sql",
+      "backend/src/test/kotlin/com/keeplab/backend/ (5 files, 7 tests)"
+    ],
+    "backend_stack_observed": {
+      "language": "Kotlin 2.4.20 (JVM toolchain 21)",
+      "server": "Ktor 3.6.0 on Netty",
+      "serialization": "kotlinx.serialization 1.11.0",
+      "pool": "HikariCP 7.1.0 + PostgreSQL JDBC 42.7.13",
+      "migrations": "Flyway 13.9.0 (migrate-on-start through FlywayMigrations.migrate)",
+      "logging": "logback-classic 1.6.5",
+      "tests": "ktor-server-test-host + JUnit Jupiter 6.1.3",
+      "existing_endpoints": [
+        "GET /health (no auth, no database touch)",
+        "GET /ready (readiness through the injectable DatabaseReadiness probe)"
+      ],
+      "existing_error_handling": "StatusPages with a generic INTERNAL_ERROR body and a NOT_FOUND handler; raw exceptions never leak",
+      "existing_configuration": "AppConfig.fromEnvironment() reads KEEPLAB_HTTP_PORT / KEEPLAB_DB_URL / KEEPLAB_DB_USER / KEEPLAB_DB_PASSWORD with non-secret defaults; application.conf mirrors the same keys with ${?KEEPLAB_*} substitution",
+      "existing_testability": "DatabaseReadiness is a fun interface and the /ready path is injectable — the established pattern M2 must extend for auth/sync service boundaries"
+    },
+    "android_app_root": "/mnt/AndroidDev/Projects/KeepLab-Relay/app/",
+    "android_targeted_surfaces_observed": {
+      "room_entities": [
+        "app/src/main/java/com/keeplab/app/data/local/NoteEntity.kt (NoteEntity, ChecklistItemEntity, NoteWithDetails)",
+        "app/src/main/java/com/keeplab/app/data/local/LabelEntity.kt (LabelEntity, NoteLabelEntity, LabelWithCount)"
+      ],
+      "room_database": "app/src/main/java/com/keeplab/app/data/local/KeepLabDatabase.kt — version 3, entities [NoteEntity, ChecklistItemEntity, LabelEntity, NoteLabelEntity], exportSchema = false, only noteDao() exposed",
+      "daos": "app/src/main/java/com/keeplab/app/data/local/NoteDao.kt — observeAll/observeById/observeNotesForLabel, insertNote, updateNoteContent (targeted content-only UPDATE), deleteNote, setPinned/For, setArchived/For, setColor, setTrashed/For, checklist item ops, label ops, note_labels ops",
+      "migrations": "app/src/main/java/com/keeplab/app/data/local/Migrations.kt — MIGRATION_1_2 only (dead after the v3 bump; see MB-A1-001)",
+      "sync_state": "app/src/main/java/com/keeplab/app/data/local/SyncState.kt — LOCAL_ONLY, SYNC_PENDING, SYNCING, SYNCED, SYNC_FAILED, CONFLICT, DELETE_PENDING",
+      "repositories": "app/src/main/java/com/keeplab/app/data/NoteRepository.kt — NoteRepository interface + DefaultNoteRepository; createNote is the single creation boundary (clientUuid, accountId = null, syncState = LOCAL_ONLY, serverRevision = null, deletedAt = null); saveNote writes content columns only",
+      "session_like_storage": "app/src/main/java/com/keeplab/app/data/UserPreferences.kt — SharedPreferences ('keeplab_prefs') holding ONLY the home layout. There is NO DataStore, NO token store, NO account store and NO Keystore wrapper today.",
+      "di": [
+        "app/src/main/java/com/keeplab/app/di/AppModule.kt (Room database + MIGRATION_1_2, NoteDao, TimeSource, NoteRepository, UserPreferences)",
+        "app/src/main/java/com/keeplab/app/di/CoroutineModule.kt (ApplicationScope)"
+      ],
+      "navigation": [
+        "app/src/main/java/com/keeplab/app/ui/navigation/NavigationKeys.kt — Home, Archive, Trash, Labels, LabelNotes(labelId), Editor(noteId)",
+        "app/src/main/java/com/keeplab/app/ui/navigation/KeepLabNavigation.kt — Navigation 3 NavDisplay over rememberNavBackStack(Home)"
+      ],
+      "settings_account_entry_point": "ABSENT — there is no settings screen and no account surface anywhere in the app. The only secondary entries are the Home overflow menu items Labels / Archive / Trash in ui/home/HomeScreen.kt.",
+      "note_creation_edit_paths": [
+        "ui/home/HomeViewModel.kt createNote(kind, onCreated) -> repository.createNote",
+        "ui/editor/EditorViewModel.kt persist() -> repository.saveNote; togglePinned/toggleArchived/moveToTrash -> repository.setPinned/setArchived/setTrashed",
+        "ui/home/HomeViewModel.kt archiveSelected/trashSelected/pinSelected -> repository.archiveNotes/trashNotes/pinNotes",
+        "ui/trash/TrashViewModel.kt",
+        "ui/archive/ArchiveViewModel.kt"
+      ],
+      "checklist_paths": "ui/editor/EditorViewModel.kt addItem/onItemChecked/onItemTextChange/deleteItem -> repository.addChecklistItem/setItemChecked/updateItemText/deleteItem",
+      "label_paths": "ui/editor/EditorViewModel.kt toggleLabel/createLabelAndAssign -> repository.addLabelToNote/removeLabelFromNote/createLabel; ui/labels/LabelsViewModel.kt, ui/labels/LabelNotesViewModel.kt",
+      "application_class": "app/src/main/java/com/keeplab/app/KeepLabApplication.kt — @HiltAndroidApp, empty body",
+      "activity": "app/src/main/java/com/keeplab/app/MainActivity.kt — single activity, sets KeepLabTheme + KeepLabNavigation",
+      "android_manifest": "app/src/main/AndroidManifest.xml — no <uses-permission> element at all; INTERNET permission is ABSENT",
+      "app_build_gradle": "app/build.gradle.kts — namespace com.keeplab.app, compileSdk 36, minSdk 24, targetSdk 36, Kotlin/Compose/Hilt/KSP/Room/Serialization plugin already applied, Navigation 3 present, testImplementation junit + kotlinx-coroutines-test; there is no testOptions unitTests config and no module-level repository declaration",
+      "versions_catalog": "gradle/libs.versions.toml — AGP 9.2.1, Kotlin 2.3.21, KSP 2.3.9, Hilt 2.59.2, Room 2.8.4, Compose BOM 2026.05.01, Navigation3 1.1.2, coroutines 1.11.0, junit 4.13.2, benchmark 1.5.0",
+      "jvm_tests": [
+        "app/src/test/java/com/keeplab/app/Fakes.kt (FakeNoteDao implements NoteDao in memory, FakeUserPreferences, FakeTimeSource)",
+        "data/DefaultNoteRepositoryTest.kt (17 tests)",
+        "data/NoteSyncMetadataTest.kt (5 tests)",
+        "model/NoteTest.kt",
+        "ui/home/HomeViewModelTest.kt, ui/home/HomeUiStateTest.kt, ui/archive/ArchiveViewModelTest.kt, ui/editor/EditorViewModelTest.kt, ui/labels/LabelNotesViewModelTest.kt",
+        "MainDispatcherRule.kt"
+      ]
+    },
+    "dependency_presence_probe": {
+      "ktor_client": "ABSENT",
+      "workmanager": "ABSENT",
+      "credential_manager": "ABSENT",
+      "datastore": "ABSENT",
+      "android_keystore_wrapper": "ABSENT",
+      "androidx_security_crypto": "ABSENT",
+      "network_permission": "ABSENT (no <uses-permission> in AndroidManifest.xml)"
+    },
+    "environment_facts": {
+      "jdk": "OpenJDK 21.0.12.1 available",
+      "docker_available": false,
+      "podman_available": false,
+      "psql_available": false,
+      "gradle_on_path": false,
+      "gradle_wrapper": "KeepLab-Relay/gradlew @ Gradle 9.5.1",
+      "android_sdk": "present (local.properties sdk.dir=/home/zhong/Android/Sdk)",
+      "device_used": false,
+      "git_baseline": "UNAVAILABLE — KeepLab-Relay is a git repository with no commits, so git diff cannot prove the change set; verification uses sha256 before/after plus a scope scan"
+    },
+    "explicitly_not_scanned": [
+      "unrelated Compose screens beyond the enumerated ones",
+      "app/src/main/java/com/keeplab/app/ui/theme/**",
+      "app/src/main/res/** except AndroidManifest.android:name references",
+      "app/src/androidTest/**, app/src/benchmark/**",
+      "benchmarks and P0B measurement material",
+      "Google Keep reference data",
+      "Testapp",
+      "PowerAi"
+    ],
+    "discovery_scope_note": "Only the named architecture reports, the A1/A2 execution reports, the backend tree, and the enumerated Android persistence/DI/navigation/UI/test/manifest/Gradle files were inspected. Nothing was executed and nothing was modified."
+  },
+  "frozen_human_decisions": {
+    "D-01": {
+      "value": "EMAIL_PASSWORD_VERIFIED",
+      "required": [
+        "email + password registration",
+        "email verification required before the account can log in",
+        "password login",
+        "forgot/reset password supported"
+      ],
+      "allowed_later": [
+        "passkey"
+      ],
+      "deferred": [
+        "phone login"
+      ],
+      "forbidden": [
+        "Google login",
+        "Google Identity",
+        "Firebase Auth",
+        "Google private API",
+        "OAuth social login"
+      ]
+    },
+    "D-04": {
+      "value": "PRESERVE_LOCAL_CACHE",
+      "on_sign_out": [
+        "revoke/clear the current session credentials",
+        "remove active-account state",
+        "stop account sync",
+        "preserve Room data",
+        "preserve account-scoped cached notes",
+        "preserve outbox",
+        "preserve LOCAL_ONLY notes"
+      ],
+      "signed_out_ui": "must continue showing LOCAL_ONLY data",
+      "previous_account_rows": "remain stored but are not treated as another account's data and must not sync; re-login to the same account may resume them",
+      "forbidden_claim": "full Room database encryption — no database-encryption feature is authorized"
+    },
+    "D-10": {
+      "value": "JWT_ACCESS_OPAQUE_ROTATING_REFRESH",
+      "access_token": {
+        "format": "JWT",
+        "lifetime": "short-lived, default target ~15 minutes, configurable"
+      },
+      "refresh_token": {
+        "format": "opaque",
+        "entropy": "high-entropy",
+        "lifetime": "default target ~30 days, configurable",
+        "at_rest": "the server stores only a secure verifier/hash form; refresh secrets are never stored plaintext"
+      },
+      "rotation": {
+        "required": true,
+        "retry_safe": true,
+        "mechanism": "refresh_request_id",
+        "rule": "if a refresh rotation succeeded but the response was lost, retrying the SAME old refresh token with the SAME refresh_request_id within a bounded replay window must recover the SAME rotated result",
+        "forbidden_outcomes": [
+          "minting multiple child sessions",
+          "treating the request immediately as theft",
+          "destroying account access"
+        ]
+      },
+      "implementation_rule": "Use the smallest safe implementation. If replay state must retain a secret result, it must be encrypted at rest or safely re-derived. Never write token plaintext to reports, evidence or logs."
+    }
+  },
+  "target_architecture": {
+    "diagram": "Android (Room = local SSOT; outbox; sync worker) --HTTPS--> KeepLab Backend (Ktor) --JDBC--> PostgreSQL",
+    "android_side": "Room stays the local SSOT; the UI never reads remote state directly as canonical state; local-first remains mandatory and the app stays fully usable without login; sync is additive",
+    "backend_side": "the existing Ktor backend gains an auth/session module (A3) and a sync module (A4) with new Flyway migrations after V1",
+    "identity_authority": "KeepLab backend",
+    "single_active_account": "PHASE_1 = SINGLE_ACTIVE_ACCOUNT"
+  },
+  "a3_scope": {
+    "name": "A3_AUTH_SESSION",
+    "order": "FIRST",
+    "backend_schema_required": [
+      "users (server-generated UUID identity; normalized unique email; password verifier)",
+      "email verification challenges (secure verifier/hash only)",
+      "password reset challenges (secure verifier/hash only)",
+      "sessions (revocable, device-labelled)",
+      "refresh-token / refresh-rotation state (safe verifier/hash + bounded replay window state)",
+      "nothing beyond what A3 truly requires"
+    ],
+    "password_hashing": {
+      "requirement": "a modern password KDF",
+      "preferred": "Argon2id",
+      "rule": "Do NOT invent custom password hashing. Use a maintained, vetted implementation and record the library and parameters in the report.",
+      "fallback": "if Argon2id cannot be resolved as a maintained dependency, use another vetted modern KDF from a maintained library and record PASSWORD_KDF_FALLBACK with the reason; never hand-roll"
+    },
+    "email_verification": {
+      "abstraction": "a small deterministic service abstraction",
+      "recommended_defaults": {
+        "code": "6-digit random verification code",
+        "ttl": "10 minutes",
+        "max_failed_attempts": 5,
+        "resend_cooldown": "60 seconds"
+      },
+      "storage": "store only a secure verifier/hash for verification and reset codes",
+      "delivery": "no production email provider is chosen in M2. Provide a delivery abstraction. Tests use a fake sender. A development-only console sender is allowed, but production/default mode must never rely on it and must never silently print verification secrets. Do not start a cloud email service."
+    },
+    "api_namespace": "one consistent versioned API namespace: /v1",
+    "api_routes": [
+      "POST /v1/auth/register",
+      "POST /v1/auth/verify-email",
+      "POST /v1/auth/login",
+      "POST /v1/auth/refresh",
+      "POST /v1/auth/logout",
+      "POST /v1/auth/password-reset/request",
+      "POST /v1/auth/password-reset/confirm",
+      "GET /v1/auth/sessions",
+      "DELETE or POST revoke for /v1/auth/sessions/{sessionId}"
+    ],
+    "route_note": "The final exact HTTP method may follow the existing Ktor style if it is equivalent in behaviour.",
+    "required_behaviours": [
+      "register",
+      "verify email",
+      "login",
+      "refresh",
+      "logout",
+      "list sessions",
+      "per-session revoke",
+      "request password reset",
+      "complete password reset"
+    ],
+    "password_reset_rule": "password reset should revoke existing sessions unless a clearly safer minimal design is already present",
+    "explicitly_not_implemented": [
+      "account deletion"
+    ],
+    "access_token": {
+      "format": "JWT",
+      "identity": "server-derived only",
+      "minimum_claims": [
+        "sub = user/account UUID",
+        "sid = session UUID",
+        "iat",
+        "exp",
+        "iss",
+        "aud"
+      ],
+      "rule": "Do NOT trust a client-supplied accountId as authorization authority. The server uses the authenticated subject.",
+      "signing_key": "from environment/config; no source-code secret"
+    },
+    "refresh_token": {
+      "format": "opaque, high-entropy",
+      "storage": "server stores only a safe verifier/hash form",
+      "rotation": "required and retry-safe using refresh_request_id",
+      "required_deterministic_tests": [
+        "normal refresh",
+        "same request retry (same old token + same refresh_request_id -> same rotated result)",
+        "old token + same request id",
+        "old token + different request id after rotation",
+        "revoked session",
+        "expired refresh token"
+      ],
+      "forbidden": "a retry system that can accidentally create multiple simultaneously-valid child rotations"
+    },
+    "android_session": {
+      "required": [
+        "register",
+        "verify",
+        "login",
+        "refresh",
+        "logout",
+        "session state"
+      ],
+      "storage_rule": "access/refresh tokens MUST NOT be stored as ordinary plaintext preference values. Use an app-private, Android Keystore-backed secure session store. Keep the implementation small.",
+      "forbidden_claim": "do not claim the Room database is encrypted",
+      "credential_manager": "password credential UX only; no Google ID credential; no Firebase"
+    },
+    "android_auth_ux": {
+      "rule": "KeepLab must remain usable without login. Add the smallest sensible account/auth surface, integrated through the existing settings/account area rather than redesigning the whole UI. Do not refactor unrelated navigation.",
+      "minimum_reachable_surfaces": [
+        "Sign in",
+        "Register",
+        "Verify email",
+        "Forgot/reset password",
+        "Signed-in account state",
+        "Sign out"
+      ],
+      "auth_required_rule": "AUTH_REQUIRED must NOT delete local data"
+    },
+    "sign_out_behaviour_d04": {
+      "on_sign_out": [
+        "backend session revoked when possible",
+        "local tokens cleared",
+        "active account cleared",
+        "sync stops",
+        "Room rows remain",
+        "outbox remains"
+      ],
+      "signed_out": "LOCAL_ONLY notes remain usable",
+      "previous_account_rows": [
+        "remain cached",
+        "must not sync",
+        "must not be reassigned",
+        "must not be treated as another account's rows"
+      ],
+      "ui_filtering_if_needed": {
+        "signed_out": "show LOCAL_ONLY only",
+        "signed_in": "show LOCAL_ONLY + rows matching activeAccountId",
+        "rows_from_another_old_account": "retain locally but hide from the active data surface"
+      },
+      "phase": "SINGLE_ACTIVE_ACCOUNT"
+    },
+    "local_only_safety": {
+      "rule": "Pre-existing notes with accountId = NULL and syncState = LOCAL_ONLY must NEVER be silently assigned, uploaded, deleted or merged into the signed-in account.",
+      "bulk_link_feature": "NOT_REQUIRED_FOR_M2",
+      "for_speed": "leave old LOCAL_ONLY notes LOCAL_ONLY",
+      "new_note_signed_out": "LOCAL_ONLY",
+      "new_note_signed_in": "accountId = active account, syncState = SYNC_PENDING, enqueued for sync",
+      "rationale": "this provides M2 sync functionality without unsafe automatic adoption of pre-login notes"
+    },
+    "light_checkpoint": {
+      "is_a_review": false,
+      "must_not_stop_the_session": true,
+      "must_not_create_another_contract": true,
+      "records_only": [
+        "A3 backend auth structures authored",
+        "Android auth/session structures authored",
+        "human D-01/D-04/D-10 honoured",
+        "no Google/Firebase auth",
+        "local data still non-destructive"
+      ],
+      "emits": "A3_CHECKPOINT: READY_FOR_A4",
+      "then": "immediately continue A4",
+      "must_not_run": "the full Milestone gate at this point"
+    },
+    "security_boundaries": [
+      "never add Google login",
+      "never add Google Identity",
+      "never add Firebase Auth",
+      "never add a Google private API",
+      "never add phone auth",
+      "never add OAuth social login",
+      "Credential Manager is allowed only as Android credential UX for password credentials and is NOT the identity authority",
+      "KeepLab backend remains the IDENTITY_AUTHORITY",
+      "never log password, access token, refresh token, email verification secret, password-reset secret, JWT signing secret or refresh pepper",
+      "no real credentials in source or evidence"
+    ]
+  },
+  "a4_scope": {
+    "name": "A4_SINGLE_USER_SYNC",
+    "order": "SECOND",
+    "begins_only_after": "A3_CHECKPOINT = READY_FOR_A4",
+    "local_room_model": {
+      "current_version": 3,
+      "rule": "M2 may move directly to the next clean schema version. No old development-data migration is required.",
+      "expected_concepts": [
+        "stable UUID for independently synced checklist items",
+        "stable UUID for labels if independently synced",
+        "outbox table",
+        "client sync checkpoint table",
+        "any minimum indexing required"
+      ],
+      "primary_key_rule": "Keep local Long PKs where they remain useful. Stable UUIDs are sync identities. Do not replace good local PKs merely because UUIDs exist.",
+      "dev_database_reset_required": "YES"
+    },
+    "outbox": {
+      "storage": "a persistent Room outbox",
+      "each_mutation_must_have": [
+        "mutationId",
+        "accountId",
+        "target client UUID",
+        "mutation kind",
+        "baseRevision",
+        "payload or deterministic mutation data",
+        "createdAt"
+      ],
+      "plus": "only minimal status fields needed for A4",
+      "must_not_overbuild": "Do NOT build A5 retry/coalescing machinery. A5 owns advanced bounded retry, manual retry UX, coalescing, process-death hardening and lost-wakeup hardening. A4 only needs a sound durable core.",
+      "auth_required_rule": "AUTH_REQUIRED must leave the outbox intact"
+    },
+    "backend_sync_data": {
+      "required": [
+        "single account notes",
+        "checklist items",
+        "labels",
+        "note-label relations",
+        "server revision",
+        "sync tombstone",
+        "server change log / cursor",
+        "mutation-id dedupe"
+      ],
+      "migrations": "new Flyway migrations after the existing A2 V1",
+      "forbidden": [
+        "attachments",
+        "collaboration",
+        "multi-account",
+        "CRDT",
+        "automatic conflict resolution"
+      ]
+    },
+    "sync_api": {
+      "conceptual_routes": [
+        "POST /v1/sync/mutations",
+        "GET /v1/sync/changes?since=<cursor>",
+        "GET /v1/sync/checkpoint"
+      ],
+      "route_note": "Exact small route details may follow the architecture API contract.",
+      "authentication": "only from the access JWT; never trust a request accountId as authority"
+    },
+    "atomic_mutation_apply": {
+      "rule": "A duplicate mutation_id must not apply twice. The dedupe claim and the mutation application must be atomic in the same transaction.",
+      "first_mutation": "apply once, record the result, append the change log",
+      "duplicate_mutation": "return/recover the already-applied result without applying twice",
+      "test": "provide a deterministic test",
+      "if_no_live_postgres": "test the transaction/service boundary as strongly as available and record LIVE_POSTGRES_CRASH_INJECTION = SKIPPED_TOOL_UNAVAILABLE; do not block M2 solely because a Docker/PostgreSQL runtime is absent"
+    },
+    "revision_rule": {
+      "authority": "the server is the revision authority",
+      "each_accepted_mutation": "advances the server revision",
+      "client_sends": "baseRevision",
+      "stale": "HTTP 409 REVISION_CONFLICT",
+      "in_m2": "the client marks the entity CONFLICT and stops destructive overwrite",
+      "forbidden": "an A6 conflict-resolution UI"
+    },
+    "server_clock_rule": "Client wall clock must NOT be conflict authority. updatedAt may remain product metadata. Ordering/conflict authority is the server revision and the server-accepted change order.",
+    "trash_vs_tombstone": {
+      "rule": "Keep trashed as reversible product Trash. Sync it as ordinary note state. Final deletion uses deletedAt / tombstone.",
+      "no_automatic_trash_retention": true,
+      "no_automatic_tombstone_purge": true,
+      "d06_remains_pending": true,
+      "deleted_remote_notes_must_not_resurrect": true
+    },
+    "cursor_checkpoint": {
+      "server_cursor": "represents the server change-log position",
+      "client_checkpoint": "represents the last fully-applied server cursor",
+      "not_the_same_authority": true,
+      "pull_flow": [
+        "request changes after the client checkpoint",
+        "apply the full returned page transactionally",
+        "only after a successful apply, advance the local checkpoint"
+      ],
+      "failure_rule": "if delta application fails, the checkpoint must remain unchanged",
+      "test": "provide a deterministic test"
+    },
+    "not_found_rule": {
+      "rule": "A server 404 must NOT silently delete a live local note. Map it to a non-destructive sync/error state.",
+      "test": "provide a test"
+    },
+    "account_id_invariant": {
+      "local_only": "accountId may be NULL",
+      "any_remote_sync_state": "SYNC_PENDING, SYNCING, SYNCED, SYNC_FAILED, CONFLICT, DELETE_PENDING must have accountId != NULL",
+      "enforcement": "enforce at creation/update boundaries and with deterministic tests"
+    },
+    "workmanager": {
+      "pipeline": "one unique note_sync pipeline",
+      "engine": "WorkManager",
+      "existing_work_policy": "A4_IMPLEMENTATION_DECISION — do NOT freeze it blindly. Choose the simplest policy supported by the actual WorkManager version that deterministic tests show does not create parallel duplicate pipelines.",
+      "a5_later": "A5 handles lost-wakeup and reconnect hardening; M2 does not need full A5 resilience"
+    },
+    "sync_triggers": [
+      "after an account-scoped local mutation",
+      "after a successful login",
+      "on app start or a suitable foreground entry",
+      "a manual/requested synchronization entry"
+    ],
+    "sync_triggers_forbidden": [
+      "push provider",
+      "FCM",
+      "background push architecture"
+    ],
+    "worker_flow": [
+      "ensure a valid session",
+      "refresh if necessary",
+      "push pending mutations",
+      "handle mutation responses",
+      "pull changes after the checkpoint",
+      "apply remote changes into Room",
+      "advance the checkpoint only after success",
+      "finish"
+    ],
+    "local_ssot_rule": "Room remains the LOCAL SSOT. The UI must never read remote state directly as canonical state.",
+    "coverage": [
+      "note create",
+      "title/body edit",
+      "archive",
+      "pin",
+      "colour",
+      "Trash state",
+      "checklist changes",
+      "label changes"
+    ],
+    "coverage_forbidden": [
+      "attachments",
+      "collaboration"
+    ],
+    "error_mapping": {
+      "401_expired": "attempt a session refresh if valid",
+      "refresh_unavailable": "AUTH_REQUIRED",
+      "409_stale_revision": "CONFLICT",
+      "404": "do not delete the local note",
+      "network_or_server_temporary": "retain the outbox and local data",
+      "generic_5xx": "do NOT mark permanent by default",
+      "invariant": "no local data loss from auth failure, network failure or server temporary failure"
+    }
+  },
+  "email_delivery_boundary": {
+    "production_vendor": "NOT_CHOSEN_IN_M2",
+    "required": [
+      "EmailSender / VerificationSender abstraction",
+      "tests use a fake sender",
+      "a ConsoleDevelopmentEmailSender is allowed only when explicitly configured as development"
+    ],
+    "rules": [
+      "production/default mode must not silently print verification secrets",
+      "do not deploy SMTP or a cloud mail service"
+    ]
+  },
+  "secrets_config": {
+    "expected_backend_variables": [
+      "KEEPLAB_JWT_SIGNING_KEY",
+      "KEEPLAB_REFRESH_TOKEN_PEPPER",
+      "KEEPLAB_AUTH_CODE_PEPPER",
+      "KEEPLAB_ACCESS_TOKEN_TTL_SECONDS",
+      "KEEPLAB_REFRESH_TOKEN_TTL_SECONDS",
+      "KEEPLAB_REFRESH_REPLAY_WINDOW_SECONDS"
+    ],
+    "rules": [
+      "do not hard-code real values",
+      "update backend/.env.example with placeholders only",
+      "do NOT create backend/.env with real secrets",
+      "no secret may be logged or written into evidence",
+      "the backend must still build and start with no secret present: an absent signing key may fall back to an ephemeral in-memory development-only key with a clear startup warning, never a committed value and never a persisted one"
+    ]
+  },
+  "device_policy": {
+    "decision": "NO_DEVICE_ACCESS",
+    "m2_is_device_free": true,
+    "forbidden": [
+      "adb commands of any kind",
+      "device lock acquisition (verification/core/device_lock.sh)",
+      "Maestro or UiAutomator",
+      "APK installation or launch",
+      "connectedAndroidTest / instrumentation run",
+      "screenshot -> LLM -> tap loops of any kind"
+    ],
+    "reason": "M2 is a host-side backend + Android build/unit-test milestone. The physical device 87296ada is an exclusive capacity-1 resource and is not used at all."
+  },
+  "cloud_policy": {
+    "decision": "NO_LIVE_CLOUD",
+    "forbidden": [
+      "provisioning Tencent Cloud, managed PostgreSQL, a load balancer, object storage or an email service",
+      "any production deployment",
+      "any cloud credential"
+    ],
+    "reason": "M2 is local and experimental. The existing portable Docker assets stay as they are and are not executed."
+  },
+  "allowed_paths": [
+    "KeepLab-Relay/backend/",
+    "KeepLab-Relay/app/build.gradle.kts",
+    "KeepLab-Relay/gradle/libs.versions.toml",
+    "KeepLab-Relay/app/src/main/AndroidManifest.xml",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/KeepLabApplication.kt",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/MainActivity.kt",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/model/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/auth/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/settings/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/navigation/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/home/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/editor/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/archive/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/labels/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/trash/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/note/",
+    "KeepLab-Relay/app/src/test/",
+    "Google-Android-Agent-Development-Stack/reports/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-m2-auth-single-user-sync/"
+  ],
+  "forbidden_paths": [
+    "KeepLab-Relay/app/src/main/res/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/theme/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/common/",
+    "KeepLab-Relay/app/src/androidTest/",
+    "KeepLab-Relay/app/src/benchmark/",
+    "KeepLab-Relay/app/src/debug/",
+    "KeepLab-Relay/app/src/release/",
+    "KeepLab-Relay/app/schemas/",
+    "KeepLab-Relay/app/proguard-rules.pro",
+    "KeepLab-Relay/benchmark/",
+    "KeepLab-Relay/build.gradle.kts",
+    "KeepLab-Relay/settings.gradle.kts",
+    "KeepLab-Relay/gradle/wrapper/",
+    "KeepLab-Relay/gradle.properties",
+    "KeepLab-Relay/gradlew",
+    "KeepLab-Relay/gradlew.bat",
+    "KeepLab-Relay/local.properties",
+    "KeepLab-Relay/specs/",
+    "KeepLab-Relay/verification/",
+    "KeepLab-Relay/harness/",
+    "KeepLab-Relay/docs/",
+    "KeepLab-Relay/factory/",
+    "KeepLab-Relay/.factory/",
+    "KeepLab-Relay/.agents/",
+    "KeepLab-Relay/.commandcode/",
+    "KeepLab-Relay/MISSION.md",
+    "KeepLab-Relay/FACTORY.md",
+    "KeepLab-Relay/FACTORY_RULES.md",
+    "KeepLab-Relay/AGENTS.md",
+    "KeepLab-Relay/HANDOFF.md",
+    "KeepLab-Relay/PHASE-A-RESULT.md",
+    "KeepLab-Relay/PHASE-B-RESULT.md",
+    "KeepLab-Relay/ANDROID-STACK-GAPS.md",
+    "KeepLab-Relay/Dockerfile",
+    "KeepLab-Relay/docker-compose.yml",
+    "KeepLab-Relay/docker/",
+    "KeepLab-Relay/server/",
+    "KeepLab-Relay/infra/",
+    "KeepLab-Relay/cloud/",
+    "KeepLab-Relay/firebase/",
+    "Testapp/",
+    "PowerAi/",
+    "KeepLab-Relay-evidence/",
+    "Google-Android-Agent-Development-Stack/.hermes.md",
+    "Google-Android-Agent-Development-Stack/specification/",
+    "Google-Android-Agent-Development-Stack/verification/",
+    "Google-Android-Agent-Development-Stack/verification-benchmark/",
+    "Google-Android-Agent-Development-Stack/references/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/HERMES-LOCK.json",
+    "Google-Android-Agent-Development-Stack/evaluation/",
+    "Google-Android-Agent-Development-Stack/reports/contracts/",
+    "KeepLab-Relay/specs/p0b-close-benchmarkability/",
+    "KeepLab-Relay/specs/p0b-performance-reliability/",
+    "KeepLab-Relay/specs/phase-c-pin-notes-b1/"
+  ],
+  "boundary_notes": {
+    "source_root": "/mnt/AndroidDev/Projects",
+    "resolution": "allowed_paths / forbidden_paths are project-relative to the Contract Guard's project-context source_root, exactly as the frozen P0B-CLOSE contract and the A0/A1/A2 contracts are. Entries may be exact files or directory prefixes.",
+    "precedence": "The guard tests forbidden_paths first; a path matching both lists is BLOCKED. reports/ is allowed while reports/contracts/ (which contains this package and every earlier package) is forbidden, so an executor cannot write its own contract or any historical package.",
+    "unlisted_is_blocked": "Any path inside the project root that matches neither list is BLOCKED (UNCLASSIFIED_FAIL_CLOSED).",
+    "android_surface_is_enumerated_not_whole_app": "KeepLab-Relay/app/** is NOT authorized as a whole. The authorized Android surface is the enumerated persistence/data package, the DI package, the model package, the named UI packages that carry auth/account state and the note/label/checklist read-write paths, the application and activity entry points, AndroidManifest.xml, app/build.gradle.kts, gradle/libs.versions.toml and app/src/test/**. Everything else under app/ — themes, shared UI widgets, resources, androidTest, benchmark, schemas, proguard rules — is BLOCKED.",
+    "android_surface_rationale": "A3/A4 genuinely need new packages (data/auth, data/remote, data/sync, a Keystore-backed session store, ui/auth, ui/settings) plus edits to the single repository/creation boundary, the DAOs, the database, the DI wiring, the navigation graph and the note/label/checklist UI that calls those boundaries. A whole-app authorization is therefore not required and is not granted.",
+    "root_gradle_blocked": "settings.gradle.kts, build.gradle.kts, gradle.properties, gradle/wrapper/** and gradlew are forbidden. Only app/build.gradle.kts and gradle/libs.versions.toml may change, and only to add the dependencies M2 needs without removing or gratuitously bumping unrelated entries. A needed root Gradle change is a STOP with M2_ROOT_GRADLE_CHANGE_REQUIRED.",
+    "backend_surface_is_whole_directory": "The whole KeepLab-Relay/backend/ prefix is authorized, so ordinary compile fixes, added source files, backend-local Gradle files, resources and new Flyway migrations never require another contract.",
+    "cloud_blocked": "No cloud, infra, server or firebase path is authorized; the existing backend Docker assets stay untouched in content and are never executed.",
+    "device_blocked": "No Android device access and no adb. androidTest and benchmark source are read-only and are never executed.",
+    "out_of_project": "Paths outside /mnt/AndroidDev/Projects remain OUT_OF_CONTRACT_SCOPE/ALLOW as the guard is written today; this contract does not change that guard property and must never be read as authorizing writes outside the project.",
+    "guard_scope_note": "The frozen guard classifies WRITE targets, not tool choice: it has no path rule that blocks an `adb` binary, `./gradlew`, `docker compose` or a container run, and it cannot classify Hermes config/core paths outside the project root. The device prohibition, the cloud prohibitions, the Google/Firebase prohibition and the Hermes-core prohibition are enforced by this contract's declarations and the execution prompt's stop conditions, not by the path list. Violating one is a CONTRACT_DEVIATION. This limitation is stated rather than hidden.",
+    "hermes_config_core_limitation": "Hermes configuration and core live OUTSIDE the guard's source_root (/home/zhong/.hermes/...), so the guard's path lists cannot classify them. They are protected here by an explicit hard prohibition and stop condition, enforced by fail-closed operator discipline — not by the path list."
+  },
+  "frozen_inputs": {
+    "algorithm": "sha256",
+    "captured_at": "2026-10-06",
+    "captured_by": "KEEPLAB-M2-AUTH-SINGLE-USER-SYNC-CONTRACT (live filesystem read)",
+    "state": "FROZEN",
+    "verified_live": true,
+    "note": "These files are READ-ONLY inputs. The M2 execution session must re-hash them BEFORE its first write and STOP with STALE_M2_INPUT on any drift.",
+    "files": {
+      "KeepLab-Relay/settings.gradle.kts": "6513bf224002bb5691e72e7a933ee766d2dab58c47b3d075a9fc77cd913a0ae7",
+      "KeepLab-Relay/build.gradle.kts": "ba09d5f46d33a5feff2236f53f482d87f2608e7153950695bd7e1333d7c6fae8",
+      "KeepLab-Relay/gradle/libs.versions.toml": "5555dcff52e661a0ed9481aa349822b5972f9e305eadf941479c4b111a1b8b43",
+      "KeepLab-Relay/gradle/wrapper/gradle-wrapper.properties": "e0846bd420bf1543f500e0c9b35c01d84611b0f1afe01e24a82d0eca53c33ccb",
+      "KeepLab-Relay/gradle.properties": "0a3448fbcc780cc608e0adaa28c10cfe77cc7ba6592da689c15ab34b70c76680",
+      "KeepLab-Relay/gradlew": "ab5c0cad16305af2e619c159c1f58dd68d07fab9c11e36701e109c0277407f7a",
+      "KeepLab-Relay/MISSION.md": "f857295dd502ee64736fac04bc5e076874bcdb06a468ca1edad1eb7152d128cd",
+      "KeepLab-Relay/FACTORY_RULES.md": "7e6c489751a9f4ebbeb2d91005e56aa5ee06eb80fab65b7b623218f49ea268d1",
+      "KeepLab-Relay/app/build.gradle.kts": "20dd51e5d8bb8cababcac06fecad3e9d8b5771418eb88b0ba132409c5014e298",
+      "KeepLab-Relay/app/src/main/AndroidManifest.xml": "1cf869c440cabe6c70e259db89693168cd7709c04ff1e34838bef9238959ddbd",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/KeepLabApplication.kt": "48cb3974ba7be36e5709edb8028854b962ecd00e9fbd133e3aa735e33fea67a4",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/MainActivity.kt": "6735b290c19d121e04b425d65a8d8e2b4e2e58efef3d11eb01e310666aad4f13",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/NoteRepository.kt": "080b9b813b9788db588d9fb1e6b5d8df78a0ca8428366c4caae27b179aa519fc",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/UserPreferences.kt": "fea40bc367c01fd07da6a2e66c3dca74a9a0d30cbd47d89538f40d8bf59a5b27",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/KeepLabDatabase.kt": "28e8e302094abde8fb08137a3d88f4c22b5264f2de3aad0dc21d36990c75eab5",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/NoteEntity.kt": "1c53b5821735aead3ebbb0647838f9bdebbf8303dae79dfb4c37d5d6f3e90c32",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/LabelEntity.kt": "b636b8d4a4cdf0498411a57630dbe34393737a43aa4fc8bf21bb4f814b9a207b",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/NoteDao.kt": "16427f633ca970f42627fd8b5a58cc88d428b8397a8907574db74fdc1f9ae151",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/SyncState.kt": "d330440fe5c3c8359cd0fd85e8a1ed12464f35b071980fd05d2554c03f30aeed",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/Migrations.kt": "86acb6192262f14e5db58370a888ca5a86f6f24b756eda60c7ab6d5807200fca",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/AppModule.kt": "c3be961973e877e0b30134d25c41ee4c85cb62cde41097261ab24978102e0fd5",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/navigation/KeepLabNavigation.kt": "e035b46c1ff5a1db5b92607d09423729a8dc1318588e8ff74f6416f6d9ef7e6e",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/navigation/NavigationKeys.kt": "bc846565295815ca3fd767a44cb16c6a3fe9c763854b4fc5ff8e65164d568674",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/home/HomeScreen.kt": "7787f94d6fb555ba29ed6bd2a2d7c3eb35d4e4a4058dfa3787cc5619b53ba0fd",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/home/HomeViewModel.kt": "d47c9e21dac325e53ae2e48c46b2e818cb939ec0dcc337bd650e25e159ca1a82",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/editor/EditorViewModel.kt": "9549708b535cb40cddfa2b39a527dd4e167cfb9cad356b387f2decc1bd6eff61",
+      "KeepLab-Relay/app/src/test/java/com/keeplab/app/Fakes.kt": "5fac3250689699e237efc993b244d83e15473fea7896436f479575458f324ddf",
+      "KeepLab-Relay/backend/build.gradle.kts": "29746dddaec3786e8ba6a1f7077643b2d2396fafef73039336aa6c36e45f4495",
+      "KeepLab-Relay/backend/settings.gradle.kts": "80e885f40fcca8730b8210033c9d8381a8696facb4d9cfd4fbc6348f02e52be0",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/Application.kt": "3379eb98548a3628504b4a5012016955d0733c1f4444ce0cbb95a9c763b40610",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/config/AppConfig.kt": "f50f9eb305d3a0929f54301c7b9560024b2c31bada1cfc363c0cf6ec5a0b8487",
+      "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/db/PostgresDatabase.kt": "1fc7f817ec62711e140bda2937b5d51dfdeb954a6aa5aa5a1de3d0560c8c5654",
+      "KeepLab-Relay/backend/src/main/resources/db/migration/V1__create_keeplab_foundation_schema.sql": "31ff54592d4bdccf10e67bb16389773fe90b246556c6a4522614679609ee3148",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/contract_guard.py": "e418fc28b08ac7afe4fdd42ec44d572ddaa2f23f6200de300ecac211404b3746",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-ARCHITECTURE-SPEC.md": "434280dbe7e04104bb912f8406d1cedbd21bd92c937c6fbb988b531c460dc489",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-IMPLEMENTATION-ROADMAP.md": "f2eed270b4f6744be01e162291f92b596023fa4aefdd46760c846c65e1057460",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-API-CONTRACT.md": "8fec6c43a8673792e5c08419c94aba59d14a8ab9db181d7df1675a2d7e080563",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-STATE-MODEL.md": "a75cfe84c38aa12482a7d251570fc54e90d36b70aa6eb7c7c49f7bbe4fd41970",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-DATA-MODEL.md": "ba618fa0e43cfa3186557c250749705f616ed28755bfc6cb397bdb6305ad24b1",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL-EXECUTION.md": "ebde7eba49a486b88ed5d48475847b77305d6a3b3a224b310ae49e3b5705c00c",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-A2-BACKEND-FOUNDATION-EXECUTION.md": "11792fbf886d383ef728df611aa757577d2ca32dacb2e460f42cd47a0f2ac8a8"
+    },
+    "authored_by_this_phase_not_frozen_as_input": [
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M2-HUMAN-DECISIONS.md",
+      "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-M2-AUTH-SINGLE-USER-SYNC-001/**"
+    ],
+    "hook_and_core": {
+      "note": "Outside the guard source_root; recorded for the execution session's stop conditions, not enforceable by the guard's path lists.",
+      "/home/zhong/.hermes/profiles/android-stack/config.yaml": "recorded, not hashed here; the execution session re-reads it and STOPs if the hook wiring changed",
+      "/home/zhong/.hermes/profiles/android-stack/shell-hooks-allowlist.json": "recorded, not hashed here; the execution session re-reads it and STOPs if the hook wiring changed"
+    }
+  },
+  "protected_snapshot": {
+    "note": "The pre-existing Android product outside the enumerated M2 surface and the historical contract packages must be provably untouched.",
+    "method": "Because KeepLab-Relay has no commits (MB-A1-002 / MB-A2-002), non-touch is proven by a scope scan asserting every created/modified file lies inside allowed_paths and that no forbidden path changed, plus re-hashing the frozen_inputs files.",
+    "must_remain_byte_identical": [
+      "KeepLab-Relay/app/src/main/res/**",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/theme/**",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/common/**",
+      "KeepLab-Relay/app/src/androidTest/**",
+      "KeepLab-Relay/app/src/benchmark/**",
+      "KeepLab-Relay/app/schemas/** (does not exist; exportSchema stays false)",
+      "KeepLab-Relay/settings.gradle.kts",
+      "KeepLab-Relay/build.gradle.kts",
+      "KeepLab-Relay/gradle.properties",
+      "KeepLab-Relay/gradle/wrapper/**",
+      "KeepLab-Relay/gradlew",
+      "Google-Android-Agent-Development-Stack/reports/KEEPLAB-A0-*, KEEPLAB-A1-*, KEEPLAB-A2-* execution and contract reports"
+    ],
+    "contract_packages": {
+      "note": "Every earlier package is READ_ONLY and must stay byte-identical; their own manifests are the integrity source. All of them sit inside the forbidden reports/contracts/ prefix.",
+      "paths": [
+        "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-WRITE-001/",
+        "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-TEXT-CLEANUP-001/",
+        "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL-001/",
+        "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A2-BACKEND-FOUNDATION-001/"
+      ]
+    },
+    "p0b_contracts": [
+      "KeepLab-Relay/specs/p0b-close-benchmarkability/",
+      "KeepLab-Relay/specs/p0b-performance-reliability/",
+      "KeepLab-Relay/specs/phase-c-pin-notes-b1/"
+    ]
+  },
+  "verification_proof_mechanism": {
+    "git_baseline": "UNAVAILABLE — KeepLab-Relay is a git repository with no commits",
+    "used_instead": [
+      "the backend build/test result and the Android build/unit-test result themselves (the mandatory gates)",
+      "sha256 before/after of every frozen_inputs file",
+      "a scope scan asserting every created/modified file lies inside allowed_paths and that no forbidden path changed",
+      "a secret scan over the created/modified trees asserting no real credential and no token plaintext was committed or written into evidence"
+    ]
+  },
+  "contract_package_self_protection": {
+    "package": "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-M2-AUTH-SINGLE-USER-SYNC-001/",
+    "declaration": "CONTRACT_PACKAGE: READ_ONLY_INPUT",
+    "enforcement": "The package path is inside the forbidden reports/contracts/ prefix, so the same guard blocks any write into it while this contract is active.",
+    "execution_rules": [
+      "The M2 session verifies the package sha256 manifest BEFORE its first write.",
+      "The M2 session must not rewrite, re-hash or extend its own contract package.",
+      "The M2 session must not broaden its own allowed paths; a needed broadening is a STOP and a new human-approved contract (except the declared STOP codes).",
+      "FROZEN_HUMAN_DECISIONS and PROJECT_DATA_STAGE are recorded in this package and may not be re-decided at execution time."
+    ]
+  },
+  "executor_prompt": {
+    "path": "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-M2-AUTH-SINGLE-USER-SYNC-001/KEEPLAB-M2-AUTH-SINGLE-USER-SYNC-EXECUTE.md",
+    "pointer": "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-M2-AUTH-SINGLE-USER-SYNC-001/EXECUTOR-PROMPT.md",
+    "executed_in_this_phase": false,
+    "loop": "PLAN ONCE -> A3 EXECUTE -> A3 LIGHT CHECKPOINT -> A4 EXECUTE -> VERIFY M2 ONCE -> PASS = STOP",
+    "must_stop_after": "M2 (A3 + A4 verified once)",
+    "must_not_start": [
+      "A5",
+      "A6"
+    ],
+    "forbidden_behaviour": [
+      "no A3 contract",
+      "no A3 review",
+      "no A4 contract",
+      "no A4 review",
+      "no post-PASS review",
+      "no second audit",
+      "no full repository scan",
+      "no re-run of a passing task",
+      "no re-opening A0, A1 or A2"
+    ]
+  },
+  "acceptance_ids": [
+    "AC-M2-001",
+    "AC-M2-002",
+    "AC-M2-003",
+    "AC-M2-004",
+    "AC-M2-005",
+    "AC-M2-006",
+    "AC-M2-007",
+    "AC-M2-008",
+    "AC-M2-009",
+    "AC-M2-010",
+    "AC-M2-011",
+    "AC-M2-012",
+    "AC-M2-013",
+    "AC-M2-014",
+    "AC-M2-015",
+    "AC-M2-016",
+    "AC-M2-017",
+    "AC-M2-018",
+    "AC-M2-019",
+    "AC-M2-020",
+    "AC-M2-021",
+    "AC-M2-022",
+    "AC-M2-023",
+    "AC-M2-024",
+    "AC-M2-025"
+  ],
+  "requirements": [
+    {
+      "id": "REQ-M2-001",
+      "statement": "D-01 is honoured: email+password registration with required email verification, password login, and password reset; no Google/Firebase/phone/OAuth-social identity exists anywhere.",
+      "acceptance_ids": ["AC-M2-001"],
+      "task_ids": ["TASK-A3-01", "TASK-A3-02"]
+    },
+    {
+      "id": "REQ-M2-002",
+      "statement": "The backend gains a development PostgreSQL/Flyway schema for users, email verification challenges, password reset challenges, sessions and refresh-rotation state, and nothing beyond what A3 requires.",
+      "acceptance_ids": ["AC-M2-002"],
+      "task_ids": ["TASK-A3-01"]
+    },
+    {
+      "id": "REQ-M2-003",
+      "statement": "A modern password KDF (Argon2id preferred, never hand-rolled) protects passwords, and verification/reset codes are stored only in a secure verifier/hash form with a delivery abstraction (fake sender in tests, development-only console sender).",
+      "acceptance_ids": ["AC-M2-003"],
+      "task_ids": ["TASK-A3-01"]
+    },
+    {
+      "id": "REQ-M2-004",
+      "statement": "The versioned A3 auth API works end to end: register, verify-email, login, refresh, logout, list sessions, per-session revoke, password-reset request and confirm.",
+      "acceptance_ids": ["AC-M2-004"],
+      "task_ids": ["TASK-A3-01", "TASK-A3-02"]
+    },
+    {
+      "id": "REQ-M2-005",
+      "statement": "The access token is a short-lived JWT whose identity is server-derived (sub/sid/iat/exp/iss/aud), signed with a key from environment/config and never from source code.",
+      "acceptance_ids": ["AC-M2-005"],
+      "task_ids": ["TASK-A3-01"]
+    },
+    {
+      "id": "REQ-M2-006",
+      "statement": "The refresh token is opaque and high-entropy, stored server-side only as a safe verifier/hash, rotated on use, and retry-safe by refresh_request_id within a bounded replay window with no plaintext secret result retained.",
+      "acceptance_ids": ["AC-M2-006"],
+      "task_ids": ["TASK-A3-01", "TASK-A3-02"]
+    },
+    {
+      "id": "REQ-M2-007",
+      "statement": "The Android client implements register/verify/login/refresh/logout/session state and stores access and refresh material only in an app-private Android Keystore-backed secure store, without claiming Room database encryption.",
+      "acceptance_ids": ["AC-M2-007"],
+      "task_ids": ["TASK-A3-03"]
+    },
+    {
+      "id": "REQ-M2-008",
+      "statement": "A minimal account/auth UI is reachable (sign in, register, verify email, forgot/reset password, signed-in account state, sign out) through a settings/account area, and the app remains fully usable without login.",
+      "acceptance_ids": ["AC-M2-008"],
+      "task_ids": ["TASK-A3-03"]
+    },
+    {
+      "id": "REQ-M2-009",
+      "statement": "D-04 is honoured: sign-out clears session credentials and active-account state, stops sync, and preserves Room data, account-scoped cached notes, the outbox and LOCAL_ONLY notes; AUTH_REQUIRED never deletes local data.",
+      "acceptance_ids": ["AC-M2-009"],
+      "task_ids": ["TASK-A3-03", "TASK-A4-02"]
+    },
+    {
+      "id": "REQ-M2-010",
+      "statement": "Pre-existing LOCAL_ONLY notes are never silently assigned, uploaded, deleted or merged into an account; a new signed-out note stays LOCAL_ONLY and a new signed-in note becomes account-scoped SYNC_PENDING.",
+      "acceptance_ids": ["AC-M2-010"],
+      "task_ids": ["TASK-A4-02"]
+    },
+    {
+      "id": "REQ-M2-011",
+      "statement": "The Room model supports single-account sync: stable UUIDs for independently synced checklist items and labels, an outbox table, a client checkpoint table and the minimum indexing required, with a direct experimental schema bump and local Long PKs kept where useful.",
+      "acceptance_ids": ["AC-M2-011"],
+      "task_ids": ["TASK-A4-01"]
+    },
+    {
+      "id": "REQ-M2-012",
+      "statement": "A persistent Room outbox records mutationId, accountId, target client UUID, mutation kind, baseRevision, payload and createdAt plus only the minimal A4 status fields, written in the same local transaction as the entity mutation.",
+      "acceptance_ids": ["AC-M2-012"],
+      "task_ids": ["TASK-A4-01", "TASK-A4-02"]
+    },
+    {
+      "id": "REQ-M2-013",
+      "statement": "The backend gains new Flyway migrations after V1 for notes, checklist items, labels, note-label relations, server revision, sync tombstones, the server change log/cursor and mutation-id dedupe — with no attachments, no collaboration, no multi-account and no CRDT.",
+      "acceptance_ids": ["AC-M2-013"],
+      "task_ids": ["TASK-A4-04"]
+    },
+    {
+      "id": "REQ-M2-014",
+      "statement": "The sync API exists at /v1/sync/mutations, /v1/sync/changes?since=<cursor> and /v1/sync/checkpoint, authenticated only by the access JWT, never trusting a request accountId as authority.",
+      "acceptance_ids": ["AC-M2-014"],
+      "task_ids": ["TASK-A4-04"]
+    },
+    {
+      "id": "REQ-M2-015",
+      "statement": "A duplicate mutation_id never applies twice: the dedupe claim and the mutation application are atomic in one transaction, and a duplicate returns the already-applied result.",
+      "acceptance_ids": ["AC-M2-015"],
+      "task_ids": ["TASK-A4-04"]
+    },
+    {
+      "id": "REQ-M2-016",
+      "statement": "The server is the revision authority: an accepted mutation advances the server revision, a stale baseRevision yields 409 REVISION_CONFLICT, and the client marks the entity CONFLICT and stops destructive overwrite without any conflict-resolution UI.",
+      "acceptance_ids": ["AC-M2-016"],
+      "task_ids": ["TASK-A4-04", "TASK-A4-03"]
+    },
+    {
+      "id": "REQ-M2-017",
+      "statement": "Client wall clock is never conflict authority; ordering and conflict authority are the server revision and the server-accepted change order.",
+      "acceptance_ids": ["AC-M2-016"],
+      "task_ids": ["TASK-A4-04"]
+    },
+    {
+      "id": "REQ-M2-018",
+      "statement": "Trash stays reversible product Trash and is synced as ordinary note state; a final deletion is a tombstone; M2 does not auto-purge tombstones or Trash, and a deleted remote note does not resurrect.",
+      "acceptance_ids": ["AC-M2-017"],
+      "task_ids": ["TASK-A4-03", "TASK-A4-04"]
+    },
+    {
+      "id": "REQ-M2-019",
+      "statement": "The server change cursor and the client checkpoint are distinct; the checkpoint advances only after a clean transactional apply of the returned page, and a failed delta leaves the checkpoint unchanged.",
+      "acceptance_ids": ["AC-M2-018"],
+      "task_ids": ["TASK-A4-03", "TASK-A4-04"]
+    },
+    {
+      "id": "REQ-M2-020",
+      "statement": "A server 404 never deletes a live local note; it maps to a non-destructive sync/error state.",
+      "acceptance_ids": ["AC-M2-019"],
+      "task_ids": ["TASK-A4-03"]
+    },
+    {
+      "id": "REQ-M2-021",
+      "statement": "Any entity in a remote-sync state has a non-null accountId; LOCAL_ONLY is the only state that may have a null accountId, enforced at creation/update boundaries and by deterministic tests.",
+      "acceptance_ids": ["AC-M2-020"],
+      "task_ids": ["TASK-A4-01", "TASK-A4-03"]
+    },
+    {
+      "id": "REQ-M2-022",
+      "statement": "Exactly one unique WorkManager note_sync pipeline exists, with an ExistingWorkPolicy chosen as an A4 implementation decision and shown by deterministic tests not to create parallel duplicate pipelines; triggers fire after an account-scoped mutation, after login, on a foreground/app-start entry and from a manual entry; no push provider or FCM exists.",
+      "acceptance_ids": ["AC-M2-021"],
+      "task_ids": ["TASK-A4-03"]
+    },
+    {
+      "id": "REQ-M2-023",
+      "statement": "The worker flow ensures a valid session, refreshes when necessary, pushes pending mutations, handles responses, pulls changes after the checkpoint, applies them into Room, advances the checkpoint only after success, and is mapped so that auth, network and temporary server failures never lose local data and a generic 5xx is not treated as permanent by default.",
+      "acceptance_ids": ["AC-M2-022"],
+      "task_ids": ["TASK-A4-03"]
+    },
+    {
+      "id": "REQ-M2-024",
+      "statement": "A4 syncs note create, title/body edit, archive, pin, colour, Trash state, checklist changes and label changes, both directions, with Room remaining the local SSOT that the UI reads.",
+      "acceptance_ids": ["AC-M2-023"],
+      "task_ids": ["TASK-A4-03"]
+    },
+    {
+      "id": "REQ-M2-025",
+      "statement": "The milestone is verified in exactly one pass with both frozen gates run once; a failure is fixed on the failed path only and only the failed task re-runs; the Android app builds and the backend builds with their relevant tests passing.",
+      "acceptance_ids": ["AC-M2-024", "AC-M2-025"],
+      "task_ids": ["TASK-A3-04", "TASK-VERIFY-01"]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "TASK-A3-01",
+      "goal": "A3 backend: auth data schema, password KDF, email/verification/reset service abstractions and the auth/session API.",
+      "boundary": "Only KeepLab-Relay/backend/**. No Android file. No sync code.",
+      "depends": [],
+      "allowed_paths": ["KeepLab-Relay/backend/"],
+      "acceptance_ids": ["AC-M2-001", "AC-M2-002", "AC-M2-003", "AC-M2-004", "AC-M2-005", "AC-M2-006"],
+      "verification": "Backend deterministic tests cover register, verify-email, unverified login rejection, verified login, wrong password, password reset, access token validation, refresh rotation, retry-safe same refresh_request_id, logout and per-session revoke.",
+      "done_when": "New Flyway migrations exist after V1; password hashing uses a vetted modern KDF; codes are stored only as verifiers; the delivery abstraction has a fake sender and a development-only console sender; the /v1 auth routes behave as specified; tokens match D-10."
+    },
+    {
+      "id": "TASK-A3-02",
+      "goal": "A3 backend: refresh rotation hardening — retry-safe refresh_request_id with a bounded replay window and no stored plaintext result.",
+      "boundary": "Only KeepLab-Relay/backend/**.",
+      "depends": ["TASK-A3-01"],
+      "allowed_paths": ["KeepLab-Relay/backend/"],
+      "acceptance_ids": ["AC-M2-006", "AC-M2-004"],
+      "verification": "Deterministic tests: normal refresh; same old token + same refresh_request_id returns the same rotated result; old token + different request id after rotation is handled as reuse without minting a second simultaneously-valid child; revoked session; expired refresh token.",
+      "done_when": "Refresh secrets are never stored plaintext; the replay window is bounded by configuration; no path can create multiple simultaneously-valid child rotations or destroy account access."
+    },
+    {
+      "id": "TASK-A3-03",
+      "goal": "A3 Android: Keystore-backed session store, auth/session client repository, auth API client, and the minimal account/auth UI plus navigation/settings entry.",
+      "boundary": "Only the enumerated Android surface in allowed_paths. Room entity/DAO changes required by A3 only. No sync worker.",
+      "depends": ["TASK-A3-01"],
+      "allowed_paths": [
+        "KeepLab-Relay/app/build.gradle.kts",
+        "KeepLab-Relay/gradle/libs.versions.toml",
+        "KeepLab-Relay/app/src/main/AndroidManifest.xml",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/model/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/auth/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/settings/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/navigation/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/home/",
+        "KeepLab-Relay/app/src/test/"
+      ],
+      "acceptance_ids": ["AC-M2-007", "AC-M2-008", "AC-M2-009"],
+      "verification": "Android JVM tests cover refresh/session repository behaviour, sign-out preserving local data and outbox, and LOCAL_ONLY filtering. The app compiles with :app:assembleDebug semantics preserved for the final gate.",
+      "done_when": "Tokens live only in an app-private Keystore-backed store; the INTERNET permission is present; register/verify/login/refresh/logout/session state are implemented; sign-in, register, verify email, forgot/reset password, signed-in state and sign-out are reachable from the account/settings area; the app is still usable without login; no Google/Firebase path exists."
+    },
+    {
+      "id": "TASK-A3-04",
+      "goal": "A3 light checkpoint — record the checkpoint state and continue directly to A4.",
+      "boundary": "Reporting only. No new contract, no review, no session stop.",
+      "depends": ["TASK-A3-01", "TASK-A3-02", "TASK-A3-03"],
+      "allowed_paths": [
+        "Google-Android-Agent-Development-Stack/reports/",
+        "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-m2-auth-single-user-sync/"
+      ],
+      "acceptance_ids": ["AC-M2-024"],
+      "verification": "A short checkpoint record states: A3 backend auth structures authored; Android auth/session structures authored; human D-01/D-04/D-10 honoured; no Google/Firebase auth; local data still non-destructive.",
+      "done_when": "A3_CHECKPOINT: READY_FOR_A4 is recorded and the session continues into A4 without running the Milestone gate."
+    },
+    {
+      "id": "TASK-A4-01",
+      "goal": "A4 local Room model: schema bump with client UUIDs for checklist items and labels, outbox table, client checkpoint table, minimum indexes, and the DAO/database wiring.",
+      "boundary": "Only the enumerated Android persistence surface plus DI. No backend file. No SyncManager yet.",
+      "depends": ["TASK-A3-04"],
+      "allowed_paths": [
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/",
+        "KeepLab-Relay/app/src/test/"
+      ],
+      "acceptance_ids": ["AC-M2-011", "AC-M2-012", "AC-M2-020"],
+      "verification": "Deterministic JVM tests assert the fresh-row defaults, outbox record creation, the checkpoint table shape and the accountId invariant. The direct experimental schema bump is recorded with DEV_DATABASE_RESET_REQUIRED = YES.",
+      "done_when": "ChecklistItemEntity and LabelEntity carry stable unique client UUIDs; an outbox table and a client checkpoint table exist with the required fields; local Long PKs are kept where useful; the schema version is bumped directly with no migration chain authored."
+    },
+    {
+      "id": "TASK-A4-02",
+      "goal": "A4 write path: enqueue outbox rows in the same transaction as each account-scoped mutation, account-scoped filtering, and LOCAL_ONLY safety.",
+      "boundary": "Only the enumerated Android surface.",
+      "depends": ["TASK-A4-01"],
+      "allowed_paths": [
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/",
+        "KeepLab-Relay/app/src/test/"
+      ],
+      "acceptance_ids": ["AC-M2-009", "AC-M2-010", "AC-M2-012", "AC-M2-020"],
+      "verification": "Deterministic JVM tests: LOCAL_ONLY before login; sign-out preserves Room data and the outbox; inactive-account rows are not reassigned; a signed-in new note becomes account scoped; outbox creation; remote-sync rows always carry a non-null accountId.",
+      "done_when": "Every note/label/checklist mutation from the repository boundary creates the matching outbox row in one local transaction; signed-out UI shows LOCAL_ONLY only; signed-in UI shows LOCAL_ONLY plus the active account's rows; pre-login notes are never adopted."
+    },
+    {
+      "id": "TASK-A4-03",
+      "goal": "A4 Android sync engine: one unique WorkManager note_sync pipeline, push/pull worker, error mapping, checkpoint discipline and the manual/foreground/login triggers.",
+      "boundary": "Only the enumerated Android surface.",
+      "depends": ["TASK-A4-02"],
+      "allowed_paths": [
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/KeepLabApplication.kt",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/MainActivity.kt",
+        "KeepLab-Relay/app/src/main/AndroidManifest.xml",
+        "KeepLab-Relay/app/build.gradle.kts",
+        "KeepLab-Relay/gradle/libs.versions.toml",
+        "KeepLab-Relay/app/src/test/"
+      ],
+      "acceptance_ids": ["AC-M2-016", "AC-M2-018", "AC-M2-019", "AC-M2-021", "AC-M2-022", "AC-M2-023"],
+      "verification": "Deterministic JVM tests with a fake backend/MockEngine: push success; pull success; 409 -> CONFLICT; 404 does not delete; a failed delta leaves the checkpoint unchanged; generic 5xx is not permanent; the ExistingWorkPolicy choice is exercised and shown not to create duplicate parallel pipelines.",
+      "done_when": "One unique note_sync pipeline exists; the worker performs the specified flow; Room stays the local SSOT for the UI; triggers are wired; no push provider or FCM exists; no A5 retry/coalescing machinery was built."
+    },
+    {
+      "id": "TASK-A4-04",
+      "goal": "A4 backend: sync tables, revision authority, change log/cursor and the /v1/sync endpoints with atomic mutation-id dedupe.",
+      "boundary": "Only KeepLab-Relay/backend/**.",
+      "depends": ["TASK-A3-04"],
+      "allowed_paths": ["KeepLab-Relay/backend/"],
+      "acceptance_ids": ["AC-M2-013", "AC-M2-014", "AC-M2-015", "AC-M2-016", "AC-M2-017", "AC-M2-018"],
+      "verification": "Deterministic backend tests: authenticated mutation; atomic duplicate mutation dedupe; stale baseRevision -> 409; change cursor ordering; tombstone; account isolation; failed apply does not advance the checkpoint where applicable.",
+      "done_when": "New migrations after V1 create only the A4 sync structures; mutation dedupe and apply share one transaction; the server is the revision authority; the cursor is monotonic and account-scoped; tombstones are not auto-purged; no attachments/collaboration/CRDT/multi-account code exists."
+    },
+    {
+      "id": "TASK-VERIFY-01",
+      "goal": "The single Milestone verification pass, the scope/secret scans and the M2 report.",
+      "boundary": "Run both frozen gates once each, write the evidence and the report. No further review, no second audit, no post-PASS cleanup, no device, no A5.",
+      "depends": ["TASK-A3-04", "TASK-A4-04"],
+      "allowed_paths": [
+        "Google-Android-Agent-Development-Stack/reports/",
+        "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-m2-auth-single-user-sync/"
+      ],
+      "acceptance_ids": ["AC-M2-024", "AC-M2-025"],
+      "verification": "Backend: cd /mnt/AndroidDev/Projects/KeepLab-Relay && ./gradlew -p backend test build (ONCE). Android: cd /mnt/AndroidDev/Projects/KeepLab-Relay && ./gradlew :app:testDebugUnitTest :app:assembleDebug (ONCE). On failure, read the failure once, fix the failed path only and rerun only the failed task.",
+      "done_when": "Both gates PASS, the frozen inputs re-hash byte-identical, the scope scan shows changes only inside allowed_paths, the secret scan is clean and no token plaintext was written, and the M2 report records the result. PASS means STOP."
+    }
+  ],
+  "verification_intent": {
+    "feature_id": "M2-AUTH-SINGLE-USER-SYNC",
+    "engine": "gradle_jvm_backend + gradle_android_jvm_unit",
+    "device_required": false,
+    "acceptance_ids": [
+      "AC-M2-001", "AC-M2-002", "AC-M2-003", "AC-M2-004", "AC-M2-005", "AC-M2-006", "AC-M2-007",
+      "AC-M2-008", "AC-M2-009", "AC-M2-010", "AC-M2-011", "AC-M2-012", "AC-M2-013", "AC-M2-014",
+      "AC-M2-015", "AC-M2-016", "AC-M2-017", "AC-M2-018", "AC-M2-019", "AC-M2-020", "AC-M2-021",
+      "AC-M2-022", "AC-M2-023", "AC-M2-024", "AC-M2-025"
+    ],
+    "mandatory_gates": [
+      {
+        "name": "BACKEND",
+        "command": "cd /mnt/AndroidDev/Projects/KeepLab-Relay && ./gradlew -p backend test build",
+        "runs": "ONCE",
+        "note": "Run once, after A3 and A4 are complete. Do not re-run after PASS. Do not re-run the Android side because the backend side passed, or vice versa."
+      },
+      {
+        "name": "ANDROID",
+        "command": "cd /mnt/AndroidDev/Projects/KeepLab-Relay && ./gradlew :app:testDebugUnitTest :app:assembleDebug",
+        "runs": "ONCE",
+        "note": "Device-free. No connectedAndroidTest, no benchmark module, no APK install."
+      }
+    ],
+    "optional_checks": [
+      {
+        "check": "live PostgreSQL integration / crash injection",
+        "runs": "at most ONCE, only if a container runtime or a local PostgreSQL is genuinely available and the check is cheap",
+        "unavailable_result": "LIVE_POSTGRES_INTEGRATION = SKIPPED_TOOL_UNAVAILABLE and LIVE_POSTGRES_CRASH_INJECTION = SKIPPED_TOOL_UNAVAILABLE",
+        "note": "Absence never blocks M2 and must never be replaced by an infrastructure installation effort. The transaction design must not be weakened because the runtime is unavailable."
+      }
+    ],
+    "oracle_intent": "Assert on deterministic, machine-readable evidence only: the backend Gradle build/test result, the Android unit-test and assembleDebug result, HTTP status and body of the auth and sync routes under the in-process test host, the presence/content of the migrations and the Room outbox/checkpoint structures, the sha256 identity of the frozen inputs, the scope scan and the secret scan. No visual judgement, no LLM judgement, no screenshot, no device.",
+    "required_selectors": [],
+    "fixture_intent": "Fakes and in-process doubles only: a fake email/verification sender, an injectable session/refresh service boundary, a fake database readiness probe, a fake backend or Ktor MockEngine for the Android sync client, and deterministic time. No live PostgreSQL, no live server, no device, no network.",
+    "required_checks": [
+      "backend build PASS",
+      "backend tests PASS",
+      "Android unit tests PASS",
+      "Android assembleDebug PASS",
+      "registration works",
+      "email verification works deterministically",
+      "unverified login rejected",
+      "login works",
+      "wrong password rejected",
+      "password reset works",
+      "JWT access token validates (sub/sid/iat/exp/iss/aud)",
+      "opaque refresh token works and is stored only as a verifier",
+      "retry-safe refresh rotation works (same token + same refresh_request_id -> same result)",
+      "logout works",
+      "per-session revoke works",
+      "AUTH_REQUIRED does not delete local data",
+      "pre-login LOCAL_ONLY data is not silently adopted",
+      "Room remains the local SSOT",
+      "outbox exists",
+      "single-account sync core exists",
+      "create/edit/archive/pin/colour/trash sync covered",
+      "checklist sync covered",
+      "label sync covered",
+      "atomic mutation dedupe proven",
+      "stale baseRevision -> 409",
+      "failed delta does not advance the checkpoint",
+      "deleted note does not resurrect",
+      "404 does not delete a live local row",
+      "remote-sync accountId is non-null",
+      "unique note_sync pipeline exists",
+      "no Google/Firebase auth",
+      "no cloud deployment",
+      "no device work",
+      "no token plaintext in reports, evidence or logs",
+      "no real credential committed"
+    ],
+    "not_verified_here": [
+      "any production deployment",
+      "any live PostgreSQL behaviour beyond the optional single check",
+      "push notifications",
+      "attachments",
+      "collaboration",
+      "multi-device convergence",
+      "conflict-resolution UX",
+      "Android device behaviour of any kind"
+    ]
+  },
+  "stop_conditions": [
+    "Any required write falls outside allowed_paths or targets a forbidden path: STOP and emit CONTRACT_DEVIATION.",
+    "Any frozen_inputs file has drifted: STOP and emit STALE_M2_INPUT.",
+    "The independent backend project cannot work without changing a repository-root Gradle file, or the Android side needs a change to settings.gradle.kts / build.gradle.kts / gradle.properties / the wrapper: STOP and emit M2_ROOT_GRADLE_CHANGE_REQUIRED with the exact file and change; do not make the change.",
+    "A needed Android change falls outside the enumerated surface (for example a theme, a shared UI widget, a resource file, androidTest, benchmark or a Room schema export): STOP and emit M2_SURFACE_BROADENING_REQUIRED with the exact file and reason; do not broaden silently.",
+    "Any Google login, Google Identity, Firebase Auth, Google private API, phone auth or OAuth social login is needed or appears: STOP.",
+    "Credential Manager would be used as an identity authority or with a Google ID credential: STOP — it is password credential UX only.",
+    "A real secret would have to be written, committed or echoed into evidence, or a token/password/OTP/refresh secret would be logged: STOP.",
+    "account deletion would have to be implemented: STOP — D-05 is pending and account deletion is out of scope.",
+    "automatic Trash expiration/purge or automatic tombstone purge would have to be implemented: STOP — D-06 is pending and out of scope.",
+    "A push provider, FCM or a background push architecture would be needed: STOP.",
+    "An attachment, object-storage or collaboration feature would be needed: STOP.",
+    "A6 conflict-resolution UI, A5 retry/coalescing machinery, manual-retry UX, process-death hardening or lost-wakeup hardening would be needed: STOP — those belong to A5/A6.",
+    "Full Room database encryption (or an SQLCipher-style dependency) would be introduced or claimed: STOP — no database-encryption feature is authorized.",
+    "A passkey would be implemented: STOP — deferred.",
+    "The Android device would have to be touched, or adb, Maestro, UiAutomator, an instrumentation run or an APK install used: STOP; M2 is device-free.",
+    "Any Tencent Cloud resource would have to be provisioned, any cloud credential used, or any production deployment performed: STOP.",
+    "Hermes configuration, the hook allowlist, Hermes core, contract_guard.py, the frozen P0B-CLOSE contract, an A0/A1/A2 package or this package would have to be modified: STOP.",
+    "The contract package manifest does not verify: STOP.",
+    "The M2 session would have to broaden its own allowed paths: STOP; a new human-approved contract is required.",
+    "The session is about to stop after A3: STOP — A3 is a checkpoint, not a stop; continue directly to A4.",
+    "An A3 contract, an A4 contract, an A3/A4 review or a post-PASS audit is being created: STOP — one milestone contract, one session, one verification pass.",
+    "A gate fails and the fix would reach outside allowed_paths: STOP.",
+    "The same failure survives two genuine fixes: STOP and perform ONE root-cause analysis; do not restart M2 from zero.",
+    "More than roughly 30 tool calls have occurred before meaningful product writes without a real blocker: STOP overhead work and execute (PROCESS_OVERHEAD_TOO_HIGH).",
+    "A minor wording, naming or warning issue is being turned into a new contract: STOP — append it compactly to reports/KEEPLAB-MINOR-BACKLOG.md instead."
+  ],
+  "failure_rule": {
+    "rule": "Read the failure once, fix the failed path only, rerun only the failed task. Do not restart M2 and do not re-run tasks that already passed.",
+    "repeated_failure": "If the same failure survives two genuine fixes: emit REPEATED_FAILURE and perform one root-cause analysis.",
+    "allowed_patch_surface": "Only files inside allowed_paths may be edited to fix a failure. A fix that would need a root Gradle change, a forbidden Android file or a new dependency outside the backend/Android dependency surface is a STOP, not a workaround.",
+    "gate_rule": "Do not re-run the already-passed gate side. A backend failure never justifies re-running the Android gate, and an Android failure never justifies re-running the backend gate."
+  },
+  "overhead_rule": {
+    "statement": "M2 is a large milestone and implementation may naturally take time, but process overhead must not dominate.",
+    "forbidden": [
+      "long periods rewriting governance docs",
+      "reviewing old phases",
+      "re-validating PASS work",
+      "creating evidence before product work",
+      "re-reading the same architecture files"
+    ],
+    "rule": "After contract activation and the stale-input check, begin implementation immediately. If more than ~30 tool calls occur before meaningful product writes without a real blocker: PROCESS_OVERHEAD_TOO_HIGH — simplify and execute."
+  },
+  "non_goals": [
+    "A5 offline hardening (bounded retry, manual retry UX, coalescing, process-death hardening, lost-wakeup hardening)",
+    "A6 conflict-resolution UI",
+    "attachments and object storage",
+    "push provider, FCM and background push architecture",
+    "multi-device hardening",
+    "multi-account",
+    "collaboration and sharing",
+    "account deletion",
+    "automatic Trash retention or purge",
+    "CRDT or automatic conflict resolution",
+    "Google login, Google Identity, Firebase Auth, Google private API",
+    "phone login",
+    "passkey",
+    "full Room database encryption",
+    "cloud provisioning or production deployment",
+    "any device operation",
+    "changing the root Android Gradle surface",
+    "Google Keep work of any kind",
+    "Testapp and PowerAi",
+    "editing the frozen P0B-CLOSE contract, an A0/A1/A2 package or this package",
+    "editing contract_guard.py, the hook configuration or Hermes core",
+    "A0/A1/A2 re-opened",
+    "re-writing D-01/D-04/D-10 in stale reports outside this milestone"
+  ],
+  "decisions": [
+    {
+      "id": "M2-001",
+      "statement": "M2 is executed as ONE milestone with ONE contract, ONE execution session and ONE final verification pass: A3 -> A3 light checkpoint -> A4 -> verify once.",
+      "rationale": "Phases are checkpoints, not bureaucratic stops. Separate A3/A4 contracts, reviews and post-PASS audits add overhead without adding a verifiable outcome."
+    },
+    {
+      "id": "M2-002",
+      "statement": "The Android write surface is enumerated, not the whole app: the data/di/model packages, the auth- and note/label/checklist-relevant UI packages, the application/activity entry points, AndroidManifest.xml, app/build.gradle.kts, gradle/libs.versions.toml and app/src/test/**.",
+      "rationale": "A3/A4 genuinely need new packages plus edits to the single repository/creation boundary, DAOs, database, DI, navigation and the UI that calls them — which justifies a real Android surface — while themes, shared widgets, resources, androidTest, benchmark and schemas are provably unrelated to M2 and stay blocked."
+    },
+    {
+      "id": "M2-003",
+      "statement": "The root Android Gradle surface is unchanged; only app/build.gradle.kts and gradle/libs.versions.toml may change, and only to add M2 dependencies.",
+      "rationale": "A dependency addition is an ordinary module-level change. Nothing M2 needs justifies touching settings.gradle.kts, the root build file, gradle.properties or the wrapper."
+    },
+    {
+      "id": "M2-004",
+      "statement": "The backend extends the existing independent Gradle project and the frozen Kotlin/Ktor/PostgreSQL stack; new domain tables arrive as new Flyway migrations after V1.",
+      "rationale": "A2 is PASS and re-opening it would be a regression. Flyway is already wired with migrate-on-start, so A3/A4 only add migrations and services."
+    },
+    {
+      "id": "M2-005",
+      "statement": "Passwords use a vetted modern password KDF (Argon2id preferred). Verification and reset codes are stored only as secure verifiers with fixed TTL/attempt/cooldown limits, and a delivery abstraction with a fake sender keeps the flow deterministic.",
+      "rationale": "D-01 requires email verification without choosing a production email vendor. Storing only verifiers and using a fake sender keeps A3 deterministic and secret-free."
+    },
+    {
+      "id": "M2-006",
+      "statement": "Refresh rotation is retry-safe through refresh_request_id with a bounded replay window, implemented with the smallest safe design: either deterministic re-derivation of the child credential from server-side secret material plus the presented parent credential and the request id, or an encrypted-at-rest retained result. No plaintext token is ever stored or logged.",
+      "rationale": "D-10 requires a lost response to recover the same rotated result without minting multiple valid child sessions or destroying account access, and forbids plaintext refresh secrets at rest."
+    },
+    {
+      "id": "M2-007",
+      "statement": "Android session material lives only in an app-private, Android Keystore-backed secure store; Room is not encrypted and no encrypted-database claim is made.",
+      "rationale": "D-10 plus §9 of the architecture spec require secure app-private storage with Keystore where appropriate; D-04 explicitly forbids claiming full Room encryption."
+    },
+    {
+      "id": "M2-008",
+      "statement": "D-04 is implemented as a non-destructive sign-out with account-scoped filtering: signed-out shows LOCAL_ONLY only; signed-in shows LOCAL_ONLY plus the active account's rows; another account's rows stay cached but hidden and never sync.",
+      "rationale": "It is the literal D-04 decision and it keeps single-active-account phase-1 semantics without deleting anything."
+    },
+    {
+      "id": "M2-009",
+      "statement": "Pre-login LOCAL_ONLY notes are never adopted automatically; new notes created while signed out stay LOCAL_ONLY and new notes created while signed in become account-scoped SYNC_PENDING. No bulk-link feature is built.",
+      "rationale": "MISSION.md invariant 1 forbids silently assigning, uploading, deleting or merging an existing local note into an account. Leaving them LOCAL_ONLY is the fastest safe behaviour."
+    },
+    {
+      "id": "M2-010",
+      "statement": "Room moves directly to the next clean schema version by an experimental schema bump with DEV_DATABASE_RESET_REQUIRED = YES; no migration chain is authored and local Long primary keys are kept where they remain useful.",
+      "rationale": "Project data is disposable experimental data (CLEAN_TARGET_ARCHITECTURE > OLD_TEST_DATA_COMPATIBILITY), and MIG-1/MIG-2 allow the local PK to remain an implementation-local identity."
+    },
+    {
+      "id": "M2-011",
+      "statement": "The outbox is a persistent Room table written in the same transaction as the entity mutation, carrying mutationId, accountId, target client UUID, mutation kind, baseRevision, a captured payload and createdAt plus only the minimal A4 status fields.",
+      "rationale": "OUT-1 and the architecture data model require one local transaction; anything more (coalescing, bounded retry, manual retry) belongs to A5."
+    },
+    {
+      "id": "M2-012",
+      "statement": "The dedupe claim, the mutation apply, the revision increment and the change-log append share one server-side transaction, and a duplicate mutation_id returns the already-applied result.",
+      "rationale": "This is the FROZEN §4.1 consistency boundary; anything narrower would allow a double-apply or a lost delta."
+    },
+    {
+      "id": "M2-013",
+      "statement": "The server is the revision authority and the only conflict clock: stale baseRevision yields 409 REVISION_CONFLICT, the client marks CONFLICT and stops destructive overwrite, and no client wall clock is ever used for ordering.",
+      "rationale": "REV-1 plus the server-clock rule; A6 owns any resolution UI, so M2 stops at the CONFLICT state."
+    },
+    {
+      "id": "M2-014",
+      "statement": "Trash and tombstone stay distinct; M2 never auto-purges Trash or tombstones.",
+      "rationale": "TRASH-1/TRASH-2 and D-06 being pending; automatic retention would pre-empt an unmade human decision."
+    },
+    {
+      "id": "M2-015",
+      "statement": "The client checkpoint advances only after a clean transactional apply of the returned delta page; a failed delta leaves it unchanged.",
+      "rationale": "INVARIANT CUR-1; advancing early would silently drop a delta."
+    },
+    {
+      "id": "M2-016",
+      "statement": "A 404 from the server never deletes a live local row; it maps to a non-destructive sync/error state.",
+      "rationale": "INVARIANT ERR-3: a 404 may mean a stale id, an authorization mismatch, compaction or a protocol mismatch."
+    },
+    {
+      "id": "M2-017",
+      "statement": "Any entity in a remote-sync state has a non-null accountId; LOCAL_ONLY is the only state that permits a null accountId.",
+      "rationale": "INVARIANT ISO-1b, enforced at creation/update boundaries and by deterministic tests."
+    },
+    {
+      "id": "M2-018",
+      "statement": "One unique WorkManager note_sync pipeline with NetworkType.CONNECTED; the exact ExistingWorkPolicy is an A4 implementation decision proven by deterministic tests against the actual WorkManager version.",
+      "rationale": "The architecture spec deliberately does not freeze KEEP vs APPEND_OR_REPLACE, and forbids multiple simultaneous sync workers."
+    },
+    {
+      "id": "M2-019",
+      "statement": "Verification is ONE pass with both gates run once each; a failure fixes the failed path and re-runs only the failed task; PASS means STOP.",
+      "rationale": "Milestone execution: no review of review, no post-PASS audit, no re-run of a passing task."
+    }
+  ],
+  "read_first": [
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-M2-AUTH-SINGLE-USER-SYNC-001/KEEPLAB-M2-AUTH-SINGLE-USER-SYNC-EXECUTE.md",
+      "why": "the execution prompt for this milestone contract"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-M2-HUMAN-DECISIONS.md",
+      "why": "D-01 / D-04 / D-10 exactly as frozen, plus the pending-but-not-blocking decisions"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-ARCHITECTURE-SPEC.md",
+      "why": "§5 local SSOT, §8 Credential Manager boundary, §9 session architecture, §13-§18 outbox/ids/revision/delta/topology/WorkManager, §21 delete/trash/tombstone, §23-§26 backend model and server invariants, §29 sign-out, §31 security invariants"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-API-CONTRACT.md",
+      "why": "endpoint semantics, the mutation result statuses, §3.1 RETRY_SAFE_ROTATION and §4 the full error taxonomy with ERR-1/ERR-2/ERR-3 and AUTHZ-1"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-STATE-MODEL.md",
+      "why": "the auth UX state set, the per-entity sync states, INVARIANT ISO-1b and INVARIANT SESS-2"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-DATA-MODEL.md",
+      "why": "the local tables, §2.7-§2.8 outbox and checkpoint, §3 outbox fields and OUT-1..OUT-6, §4.1 the single consistency boundary"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL-EXECUTION.md",
+      "why": "exactly what A1 already established locally (version 3, the five sync columns, the single creation boundary, the removed full-row update path)"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-A2-BACKEND-FOUNDATION-EXECUTION.md",
+      "why": "exactly what A2 already established in the backend (independent Gradle project, Ktor/Netty, HikariCP, Flyway V1, the injectable readiness pattern, the 7-test suite)"
+    },
+    {
+      "path": "KeepLab-Relay/MISSION.md",
+      "why": "hard invariant 1 (local-first mandatory, account/network optional and phase-gated, Room is the local SSOT, no local note may be silently assigned/uploaded/deleted/merged into an account, network or auth failure must never delete local data)"
+    },
+    {
+      "path": "KeepLab-Relay/backend/src/main/kotlin/com/keeplab/backend/config/AppConfig.kt",
+      "why": "the established environment-resolution pattern the new KEEPLAB_* secrets must follow"
+    }
+  ],
+  "unresolved_questions": [],
+  "does_not_resolve": {
+    "D-05": "HUMAN_DECISION_PENDING — account deletion is not implemented, therefore not blocking M2",
+    "D-06": "HUMAN_DECISION_PENDING — no automatic Trash retention/purge is implemented, therefore not blocking M2",
+    "D-11": "HUMAN_DECISION_PENDING — no push provider in M2",
+    "D-12": "HUMAN_DECISION_PENDING — collaboration out of scope",
+    "D-13": "HUMAN_DECISION_PENDING — attachments out of scope",
+    "D-14": "HUMAN_DECISION_PENDING — formal spec package location, does not block M2",
+    "A5": "NOT_STARTED",
+    "A6": "NOT_STARTED",
+    "passkey": "DEFERRED"
+  },
+  "readiness": {
+    "status": "READY",
+    "gates": {
+      "acceptance": "PASS",
+      "boundaries": "PASS",
+      "hashes": "PASS",
+      "backend_path": "PASS (present, independent Gradle project, owned by M2)",
+      "android_surface": "PASS (enumerated, not whole-app)",
+      "traceability": "PASS"
+    }
+  }
+}

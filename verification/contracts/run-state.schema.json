@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://android-agent-stack/verification/contracts/run-state.schema.json",
+  "title": "Run State",
+  "description": "Watchdog trail written through the bounded stage machine. Records where a run is (or got stuck) so a hang/timeout is attributable to a stage.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["stage", "started_at", "last_progress_at"],
+  "properties": {
+    "verification_id": {"type": ["string", "null"]},
+    "project": {"type": ["string", "null"]},
+    "engine": {"type": ["string", "null"]},
+    "journey": {"type": ["string", "null"]},
+    "run_id": {"type": ["string", "null"]},
+    "stage": {"type": "string", "minLength": 1},
+    "started_at": {"type": "string", "minLength": 1},
+    "last_progress_at": {"type": "string", "minLength": 1},
+    "cleanup_at": {"type": ["string", "null"]}
+  }
+}

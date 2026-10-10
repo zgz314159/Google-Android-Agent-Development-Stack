@@ -1,0 +1,189 @@
+{
+  "contract_sha256": "692e238e7a70083d4231927b9cd4c44923a6acf2669e01b0b7bb17d24ad3b54d",
+  "errors": [],
+  "gates": {
+    "acceptance": "PASS",
+    "boundaries": "PASS",
+    "hashes": "PASS",
+    "schema": "PASS",
+    "traceability": "PASS"
+  },
+  "manifest_sha256": "cb33ab5a61e54f9d91b3b07ecaca32aeebaea4c7c80785e569c51f5f22939e7f",
+  "status": "READY",
+  "traceability": [
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-001",
+        "AC-PHASE45SUP-002"
+      ],
+      "pc1_steps": [
+        "PC1-S01",
+        "PC1-S02"
+      ],
+      "requirement": "REQ-PHASE45SUP-001",
+      "task_ids": [
+        "TASK-01",
+        "TASK-08"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-003"
+      ],
+      "pc1_steps": [
+        "PC1-S03"
+      ],
+      "requirement": "REQ-PHASE45SUP-002",
+      "task_ids": [
+        "TASK-03"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-004",
+        "AC-PHASE45SUP-005"
+      ],
+      "pc1_steps": [
+        "PC1-S04",
+        "PC1-S05"
+      ],
+      "requirement": "REQ-PHASE45SUP-003",
+      "task_ids": [
+        "TASK-02"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-006"
+      ],
+      "pc1_steps": [
+        "PC1-S06"
+      ],
+      "requirement": "REQ-PHASE45SUP-004",
+      "task_ids": [
+        "TASK-04"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-007",
+        "AC-PHASE45SUP-008"
+      ],
+      "pc1_steps": [
+        "PC1-S07",
+        "PC1-S08"
+      ],
+      "requirement": "REQ-PHASE45SUP-005",
+      "task_ids": [
+        "TASK-04"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-009",
+        "AC-PHASE45SUP-010"
+      ],
+      "pc1_steps": [
+        "PC1-S09",
+        "PC1-S10"
+      ],
+      "requirement": "REQ-PHASE45SUP-006",
+      "task_ids": [
+        "TASK-05"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-011",
+        "AC-PHASE45SUP-013"
+      ],
+      "pc1_steps": [
+        "PC1-S11",
+        "PC1-S13"
+      ],
+      "requirement": "REQ-PHASE45SUP-007",
+      "task_ids": [
+        "TASK-04",
+        "TASK-05"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-012",
+        "AC-PHASE45SUP-016"
+      ],
+      "pc1_steps": [
+        "PC1-S12",
+        "PC1-S16"
+      ],
+      "requirement": "REQ-PHASE45SUP-008",
+      "task_ids": [
+        "TASK-04"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-014",
+        "AC-PHASE45SUP-015"
+      ],
+      "pc1_steps": [
+        "PC1-S14",
+        "PC1-S15"
+      ],
+      "requirement": "REQ-PHASE45SUP-009",
+      "task_ids": [
+        "TASK-06"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-017"
+      ],
+      "pc1_steps": [
+        "PC1-S17"
+      ],
+      "requirement": "REQ-PHASE45SUP-010",
+      "task_ids": [
+        "TASK-06"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-018"
+      ],
+      "pc1_steps": [
+        "PC1-S18"
+      ],
+      "requirement": "REQ-PHASE45SUP-011",
+      "task_ids": [
+        "TASK-01"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-019",
+        "AC-PHASE45SUP-020"
+      ],
+      "pc1_steps": [
+        "PC1-S19",
+        "PC1-S20"
+      ],
+      "requirement": "REQ-PHASE45SUP-012",
+      "task_ids": [
+        "TASK-07"
+      ]
+    },
+    {
+      "acceptance_ids": [
+        "AC-PHASE45SUP-021"
+      ],
+      "pc1_steps": [
+        "PC1-S21"
+      ],
+      "requirement": "REQ-PHASE45SUP-013",
+      "task_ids": [
+        "TASK-08"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+# android-stack Hermes profile template (non-secret).
+#
+# Rendered by scripts/bootstrap-host.sh into
+#   $STACK_CONFIG_ROOT/profiles/android-stack/config.yaml
+# with __STACK_ROOT__ / __HERMES_HOME__ / __STACK_STATE_ROOT__ substituted.
+# The provider credential is NOT here: COMMANDCODE_API_KEY lives in $HERMES_HOME/.env.
+model:
+  default: deepseek/deepseek-v4.1-flash
+  provider: commandcode
+terminal:
+  backend: local
+  cwd: __STACK_ROOT__
+delegation:
+  oneshot_max_children: 4
+  max_concurrent_children: 4
+hooks:
+  on_session_finalize:
+    - command: __STACK_ROOT__/orchestration/hermes/evaluation_adapter/hooks/hermes-autofinalizer-hook.sh
+      timeout: 15
+  pre_tool_call:
+    - command: __STACK_ROOT__/orchestration/hermes/evaluation_adapter/contract_guard.py
+      matcher: write_file|patch|terminal
+      fail_closed: true
+      timeout: 20
+  post_tool_call:
+    - command: 'HERMES_OBSERVER_LOG=__STACK_STATE_ROOT__/telemetry/transient-hook-events.jsonl /usr/bin/python3 __STACK_ROOT__/orchestration/hermes/evaluation_adapter/hooks/hermes-transient-observer.py'
+      timeout: 10
+  pre_api_request:
+    - command: 'HERMES_OBSERVER_LOG=__STACK_STATE_ROOT__/telemetry/transient-hook-events.jsonl /usr/bin/python3 __STACK_ROOT__/orchestration/hermes/evaluation_adapter/hooks/hermes-transient-observer.py'
+      timeout: 10
+  post_api_request:
+    - command: 'HERMES_OBSERVER_LOG=__STACK_STATE_ROOT__/telemetry/transient-hook-events.jsonl /usr/bin/python3 __STACK_ROOT__/orchestration/hermes/evaluation_adapter/hooks/hermes-transient-observer.py'
+      timeout: 10
+  api_request_error:
+    - command: 'HERMES_OBSERVER_LOG=__STACK_STATE_ROOT__/telemetry/transient-hook-events.jsonl /usr/bin/python3 __STACK_ROOT__/orchestration/hermes/evaluation_adapter/hooks/hermes-transient-observer.py'
+      timeout: 10

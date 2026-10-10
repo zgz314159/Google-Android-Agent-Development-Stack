@@ -1,0 +1,21 @@
+{
+  "version": "0.2",
+  "comment": "Applied to every derived artifact (CSV / analysis.md / run.json evidence strings). The raw JSONL is never modified or copied.",
+  "sensitive_key_regex": "(?i)(token|api[_-]?key|secret|password|passwd|credential|authorization|auth[_-]?token|bearer)",
+  "text_patterns": [
+    { "name": "bearer", "regex": "(?i)bearer\\s+[A-Za-z0-9._\\-]+", "replace": "Bearer <REDACTED>" },
+    { "name": "authorization_header", "regex": "(?i)(authorization\\s*[:=]\\s*)\\S+", "replace": "\\1<REDACTED>" },
+    { "name": "env_secret_assign", "regex": "(?i)\\b([A-Z0-9_]*(?:TOKEN|API[_-]?KEY|SECRET|PASSWORD|PASSWD|CREDENTIAL)[A-Z0-9_]*)\\s*=\\s*\\S+", "replace": "\\1=<REDACTED>" },
+    { "name": "json_secret", "regex": "(?i)(\"(?:[a-z0-9_]*)(?:token|api[_-]?key|secret|password|authorization)(?:[a-z0-9_]*)\"\\s*:\\s*\")([^\"]*)(\")", "replace": "\\1<REDACTED>\\3" },
+    { "name": "sk_key", "regex": "\\bsk-[A-Za-z0-9]{12,}", "replace": "sk-<REDACTED>" },
+    { "name": "gh_token", "regex": "\\bgh[pousr]_[A-Za-z0-9]{20,}", "replace": "gh_<REDACTED>" },
+    { "name": "long_hex_token", "regex": "\\b[A-Fa-f0-9]{40,}\\b", "replace": "<REDACTED_HEX>" }
+  ],
+  "forbidden": [
+    "API keys",
+    "tokens",
+    "passwords",
+    "Authorization headers",
+    "Bearer tokens"
+  ]
+}

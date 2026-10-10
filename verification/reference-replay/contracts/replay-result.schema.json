@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://android-agent-stack/verification/reference-replay/contracts/replay-result.schema.json",
+  "title": "Reference Replay Result",
+  "description": "Compact per-run result of one external-app replay flow. Values that cannot be proven are null, never estimated.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "flow_id", "device_serial", "app_package", "start_time", "end_time", "wall_ms",
+    "exit_code", "assertions_total", "assertions_passed", "screenshot_path",
+    "screenshot_sha256", "visual_llm_calls", "model_requests_during_device_steps",
+    "direct_adb_ui_inputs", "result"
+  ],
+  "properties": {
+    "flow_id": {"type": "string", "minLength": 1},
+    "device_serial": {"type": "string"},
+    "app_package": {"type": "string"},
+    "start_time": {"type": "string", "minLength": 1},
+    "end_time": {"type": "string", "minLength": 1},
+    "wall_ms": {"type": ["integer", "null"]},
+    "exit_code": {"type": ["integer", "null"]},
+    "assertions_total": {"type": "integer", "minimum": 0},
+    "assertions_passed": {"type": "integer", "minimum": 0},
+    "screenshot_path": {"type": ["string", "null"]},
+    "screenshot_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "visual_llm_calls": {"type": "integer", "minimum": 0},
+    "model_requests_during_device_steps": {"type": "integer", "minimum": 0},
+    "direct_adb_ui_inputs": {"type": "integer", "minimum": 0},
+    "result": {"enum": ["PASS", "FAIL", "BLOCKED"]},
+    "run_index": {"type": "integer", "minimum": 1},
+    "assertions_source": {"enum": ["maestro_commands", "junit", "yaml"]},
+    "failure": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "reason": {"type": ["string", "null"]},
+        "marker": {"type": ["string", "null"]},
+        "step": {"type": ["string", "null"]},
+        "evidence_dir": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

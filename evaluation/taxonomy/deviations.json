@@ -1,0 +1,13 @@
+{
+  "version": "0.2",
+  "comment": "Execution deviations are recorded separately from human interventions and must never change the automation rate.",
+  "deviations": [
+    "PROVIDER_FALLBACK",
+    "DEVICE_FALLBACK",
+    "NO_REMOTE",
+    "NO_WORKTREE",
+    "IME_SWITCH",
+    "TOOL_WORKAROUND",
+    "OPTIONAL_CHECK_PENDING"
+  ]
+}

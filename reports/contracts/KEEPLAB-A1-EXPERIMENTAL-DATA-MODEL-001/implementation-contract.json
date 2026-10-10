@@ -1,0 +1,775 @@
+{
+  "contract_id": "KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL-001",
+  "contract_version": "0.1.0",
+  "experiment_id": "KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL",
+  "experiment_type": "HUMAN_AUTHORIZED_EXPERIMENTAL_DATA_MODEL_PREPARATION",
+  "mode": "brownfield",
+  "project": "KeepLab-Google-Keep-Parity",
+  "feature": {
+    "feature_id": "A1-EXPERIMENTAL-DATA-MODEL",
+    "title": "Prepare the local persisted note model for a future sync architecture",
+    "summary": "Give the existing local Room note model a stable client-generated sync identity, nullable account ownership, a type-safe local sync state, a nullable server revision and a nullable final-delete tombstone timestamp, on a schema whose data is experimental and disposable. No sync, no network, no auth and no backend is implemented."
+  },
+  "purpose": "This package is a TEMPORARY EXECUTION CONTRACT. It exists so that a later fresh session can perform the A1 experimental data-model change through the SAME Contract Guard, under an explicit and bounded persistence path surface. This contract-creation task performs targeted discovery and authors the package; it does not implement A1.",
+  "human_authorization_source": {
+    "authorizing_task": "KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL-CONTRACT",
+    "date": "2026-10-06",
+    "timezone": "CST (UTC+08:00)",
+    "approval_kind": "HUMAN_PROJECT_OWNER_DECISION_ALREADY_RECORDED",
+    "primary_decision": "D-15 = YES_BOUNDED_ACCOUNT_NETWORK_UNLOCK",
+    "decision_effect": "Account/network architecture phases are allowed only inside explicit human-approved, phase-gated contracts; local-first stays mandatory, account and network stay optional for local use, Room stays the local SSOT, and Google/Firebase identity stays forbidden. A1 is the LOCAL-ONLY data-model preparation of that gated sequence and introduces no remote capability.",
+    "phase_state_at_authoring": {
+      "A0": "READY",
+      "A1": "READY_FOR_SEPARATE_CONTRACT",
+      "A2": "READY_FOR_SEPARATE_CONTRACT",
+      "A3": "BLOCKED_BY_HUMAN_DECISIONS",
+      "D_14": "HUMAN_DECISION_PENDING",
+      "OBS_1": "NON_BLOCKING MINOR_BACKLOG (A0 is not reopened for it)"
+    },
+    "reinterpreted": false,
+    "reasked": false,
+    "substituted_with_model_preference": false
+  },
+  "authorization_semantics": {
+    "phase": "A1_EXPERIMENTAL_DATA_MODEL",
+    "human_authorization": true,
+    "human_decision": "D-15 YES_BOUNDED_ACCOUNT_NETWORK_UNLOCK",
+    "human_decision_date": "2026-10-06",
+    "mutation_scope": "KeepLab local persistence model only (Room entities, database class, DAO writes, repository creation/update boundary, relevant tests)",
+    "implementation_authorization_model": "PHASE_GATED",
+    "implementation_authorization": "GRANTED_TO_A1_EXECUTION_TASK_ONLY",
+    "product_behaviour_change": "FORBIDDEN",
+    "ui_change": "FORBIDDEN",
+    "network_change": "FORBIDDEN",
+    "auth_change": "FORBIDDEN",
+    "backend_change": "FORBIDDEN",
+    "gradle_change": "FORBIDDEN",
+    "device_operation": "FORBIDDEN",
+    "historical_evidence_mutation": "FORBIDDEN",
+    "guard_mutation": "FORBIDDEN",
+    "contract_mutation": "FORBIDDEN",
+    "requires_human_approval": true
+  },
+  "project_data_stage": {
+    "stage": "EXPERIMENTAL",
+    "test_data_disposable": true,
+    "old_test_db_compatibility": "NOT_REQUIRED",
+    "current_data_nature": "development/test data; not production user data; not irreplaceable user data",
+    "policy": "CLEAN_TARGET_ARCHITECTURE > PRESERVE_TEST_DATA",
+    "consequence_accepted": "DEV_DATABASE_RESET_REQUIRED = YES — an installed development database from the previous schema version may need app-data clearing or a reinstall; that is acceptable for this phase",
+    "forbidden_consequences": [
+      "no multi-version migration chain is authored",
+      "no old-development-DB upgrade support is built",
+      "no production rollback logic is built",
+      "no compatibility field is retained for the sake of old test rows",
+      "fallbackToDestructiveMigration() is NOT added"
+    ]
+  },
+  "current_model": {
+    "CURRENT_DB_VERSION": 2,
+    "CURRENT_ENTITIES": [
+      "notes (NoteEntity)",
+      "checklist_items (ChecklistItemEntity)",
+      "labels (LabelEntity)",
+      "note_labels (NoteLabelEntity, composite PK noteId+labelId)"
+    ],
+    "NOTE_ENTITY": "id: Long, kind: String, title: String, body: String, color: String, pinned: Boolean, archived: Boolean, trashed: Boolean, createdAt: Long, updatedAt: Long",
+    "CURRENT_NOTE_PRIMARY_KEY": "Long @PrimaryKey(autoGenerate = true) (rowid alias), referenced by checklist_items.noteId and note_labels.noteId",
+    "CURRENT_TRASH_MODEL": "trashed: Boolean on notes (product-level, reversible); no trashedAt column; no hard-delete tombstone exists anywhere",
+    "CURRENT_CHECKLIST_MODEL": "checklist_items: id Long autoGenerate PK, noteId Long FK (CASCADE), text, checked, position",
+    "CURRENT_LABEL_MODEL": "labels: id Long autoGenerate PK, name, createdAt; note_labels: composite PK (noteId, labelId) with CASCADE on both sides",
+    "CURRENT_DB_CREATION_STRATEGY": "Room.databaseBuilder(context, KeepLabDatabase::class.java, \"keeplab.db\").addMigrations(MIGRATION_1_2).build() in AppModule; exportSchema = false; no fallbackToDestructiveMigration; ksp arg room.schemaLocation points at app/schemas but generates nothing while exportSchema is false",
+    "CURRENT_SCHEMA_EXPORT": "absent (exportSchema = false, no app/schemas/ directory, no tracked schema JSON)",
+    "CURRENT_RELEVANT_TESTS": [
+      "app/src/test/java/com/keeplab/app/data/DefaultNoteRepositoryTest.kt (16 JVM unit tests over FakeNoteDao)",
+      "app/src/test/java/com/keeplab/app/Fakes.kt (FakeNoteDao implements NoteDao — must follow any DAO interface change)",
+      "app/src/androidTest/java/com/keeplab/app/data/local/NoteDaoRoomTest.kt (real in-memory Room; device-only)",
+      "app/src/androidTest/java/com/keeplab/app/data/local/MigrationTest.kt (real v1->v2 migration; device-only)"
+    ],
+    "CURRENT_NOTE_CREATION_BOUNDARY": "DefaultNoteRepository.createNote() constructs NoteEntity with explicit literals; DefaultNoteRepository.saveNote() reconstructs a full NoteEntity from the domain model and writes it with @Update updateNote"
+  },
+  "target_model": {
+    "table": "notes",
+    "required_columns": [
+      {
+        "kotlin_name": "clientUuid",
+        "type": "String",
+        "nullability": "NOT NULL",
+        "index": "UNIQUE",
+        "fresh_row_default": "generated stable UUID string",
+        "semantics": "stable sync identity of the entity; distinct from the local Long primary key; never regenerated for an existing row"
+      },
+      {
+        "kotlin_name": "accountId",
+        "type": "String?",
+        "nullability": "NULLABLE",
+        "fresh_row_default": "null",
+        "semantics": "account ownership; null is legal ONLY while the entity is LOCAL_ONLY (INVARIANT ISO-1b, carried from KEEPLAB-AUTH-SYNC-DATA-MODEL)"
+      },
+      {
+        "kotlin_name": "syncState",
+        "type": "SyncState",
+        "nullability": "NOT NULL",
+        "fresh_row_default": "SyncState.LOCAL_ONLY",
+        "semantics": "type-safe local sync state; persisted as text; A1 stores the state and implements no transition machine"
+      },
+      {
+        "kotlin_name": "serverRevision",
+        "type": "Long?",
+        "nullability": "NULLABLE",
+        "fresh_row_default": "null",
+        "semantics": "server-assigned revision; null until a server acknowledges a mutation; no server exists in A1"
+      },
+      {
+        "kotlin_name": "deletedAt",
+        "type": "Long?",
+        "nullability": "NULLABLE",
+        "fresh_row_default": "null",
+        "semantics": "FINAL-DELETION TOMBSTONE ONLY (protocol-level, for future convergence/anti-resurrection). It is NOT the product Trash state and MUST NOT be set by trashing"
+      }
+    ],
+    "exact_kotlin_names": "The five names above are required because the architecture documents (KEEPLAB-AUTH-SYNC-DATA-MODEL §2.2, KEEPLAB-AUTH-SYNC-STATE-MODEL §2) use them; no equivalent renaming is authorized",
+    "sync_state_states": [
+      "LOCAL_ONLY",
+      "SYNC_PENDING",
+      "SYNCING",
+      "SYNCED",
+      "SYNC_FAILED",
+      "CONFLICT",
+      "DELETE_PENDING"
+    ],
+    "trash_vs_tombstone": {
+      "trash": "existing trashed: Boolean stays the user-visible, reversible product state",
+      "tombstone": "deletedAt is a separate nullable column representing FINAL deletion for future sync convergence",
+      "invariant": "TRASH != TOMBSTONE (INVARIANT TRASH-1/TRASH-2). Moving a note to Trash MUST NOT set deletedAt, and a trashed note MUST NOT be treated as a final-deletion tombstone"
+    },
+    "explicitly_not_in_target_model": [
+      "checklist_items UUID identity (deferred; child entities are unchanged in A1)",
+      "labels / note_labels UUID identity (deferred; child entities are unchanged in A1)",
+      "accounts table",
+      "attachments table",
+      "outbox table",
+      "sync_checkpoints / cursor table",
+      "conflicts table",
+      "server-only models",
+      "CRDT structures",
+      "trashedAt column"
+    ]
+  },
+  "primary_key_strategy": {
+    "decision": "KEEP_LONG_LOCAL_PK_ADD_UNIQUE_CLIENT_UUID",
+    "reason": "The existing Long autoGenerate primary key is a clean rowid identity and is already referenced by two child foreign keys (checklist_items.noteId, note_labels.noteId) and by the whole DAO/repository/UI id surface. Replacing it would force a type change across child keys, DAO parameters, the domain model, ViewModels and navigation arguments — large unrelated churn for zero A1 benefit. KEEPLAB-AUTH-SYNC-DATA-MODEL INVARIANT MIG-1/MIG-2 already freezes this: the local primary key MAY remain as the implementation-local identity, the stable client UUID is added FIRST, and replacing the local primary key is a SEPARATE later decision that MUST NOT be required for first network enablement.",
+    "explicitly_not_a_factor": [
+      "preserving the current experimental database rows (disposable)",
+      "avoiding a schema version bump (the version is bumped to 3)"
+    ],
+    "reopening": "FORBIDDEN in A1; a different primary-key decision is a new human-approved contract"
+  },
+  "required_changes": [
+    {
+      "id": "CHG-01",
+      "file": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/NoteEntity.kt",
+      "change": "add the five sync-metadata columns to NoteEntity with a UNIQUE index on clientUuid; keep every existing column, their types and their order semantics unchanged; fresh-row defaults live on the entity so the creation boundary cannot forget them",
+      "notes": "Child entities (ChecklistItemEntity, NoteWithDetails, LabelEntity, NoteLabelEntity, LabelWithCount) are NOT modified"
+    },
+    {
+      "id": "CHG-02",
+      "file": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/SyncState.kt",
+      "change": "add the type-safe local sync state (a Kotlin enum with exactly the seven states); Room 2.8.4 persists enums as text by default, so an explicit TypeConverter is allowed ONLY inside this file",
+      "notes": "new file; it is the ONLY new source file A1 may create"
+    },
+    {
+      "id": "CHG-03",
+      "file": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/KeepLabDatabase.kt",
+      "change": "raise version from 2 to 3; keep the entity list, the class name and exportSchema = false unchanged",
+      "notes": "no Migration class is authored; no destructive fallback is registered"
+    },
+    {
+      "id": "CHG-04",
+      "file": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/NoteDao.kt",
+      "change": "remove the full-row @Update updateNote(NoteEntity) write path and add a targeted content-column update (title, body, color, pinned, archived, trashed, updatedAt) so an edited note can never rewrite sync metadata; if the anti-tombstone rule is expressed as a DAO query (for example explicitly setting deletedAt = NULL nowhere), keep that explicit",
+      "notes": "only noteDao() is exposed; no other DAO file exists"
+    },
+    {
+      "id": "CHG-05",
+      "file": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/NoteRepository.kt",
+      "change": "make the creation boundary the single place the sync defaults are established and make saveNote() preserve them; do not add sync behaviour and do not change any public repository behaviour",
+      "notes": "the entity-to-domain mapper keeps reading only the pre-existing fields; the domain model is not extended in A1"
+    },
+    {
+      "id": "CHG-06",
+      "file": "KeepLab-Relay/app/src/test/java/com/keeplab/app/Fakes.kt",
+      "change": "keep FakeNoteDao implementing the changed NoteDao interface (drop the removed override, implement the targeted update)",
+      "notes": "test source only"
+    },
+    {
+      "id": "CHG-07",
+      "file": "KeepLab-Relay/app/src/test/java/com/keeplab/app/data/",
+      "change": "add the JVM unit tests that prove the target model through the repository/DAO boundary: fresh-row defaults, unique non-empty clientUuid across notes, identity preservation across a content edit, trashed flag without a tombstone, and the declared sync-state set",
+      "notes": "existing tests in this directory must keep passing"
+    }
+  ],
+  "required_behaviour": [
+    "A fresh local note gets a non-empty, unique clientUuid, accountId == null, syncState == LOCAL_ONLY, serverRevision == null, deletedAt == null.",
+    "Sync metadata is established at ONE central creation boundary (entity defaults + repository creation path), never initialized ad hoc at scattered call sites.",
+    "A content edit (title/body/color/pin/archive/trash) MUST NOT regenerate clientUuid, MUST NOT reset syncState, MUST NOT clear serverRevision and MUST NOT touch deletedAt.",
+    "setTrashed must not write deletedAt; Trash stays the reversible product state.",
+    "No A1 code path may set deletedAt (no final deletion exists in A1).",
+    "No sync transition is implemented: LOCAL_ONLY is the only state A1 code produces.",
+    "The note domain model (model/Note.kt), the UI and every user-visible behaviour are unchanged."
+  ],
+  "allowed_paths": [
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/NoteEntity.kt",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/KeepLabDatabase.kt",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/NoteDao.kt",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/SyncState.kt",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/NoteRepository.kt",
+    "KeepLab-Relay/app/src/test/java/com/keeplab/app/data/",
+    "KeepLab-Relay/app/src/test/java/com/keeplab/app/Fakes.kt",
+    "KeepLab-Relay/app/build/",
+    "KeepLab-Relay/build/",
+    "Google-Android-Agent-Development-Stack/reports/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-a1-experimental-data-model/"
+  ],
+  "forbidden_paths": [
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/LabelEntity.kt",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/Migrations.kt",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/UserPreferences.kt",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/remote/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/remote/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/network/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/sync/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/api/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/model/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/ui/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/auth/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/backend/",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/MainActivity.kt",
+    "KeepLab-Relay/app/src/main/java/com/keeplab/app/KeepLabApplication.kt",
+    "KeepLab-Relay/app/src/main/res/",
+    "KeepLab-Relay/app/src/main/AndroidManifest.xml",
+    "KeepLab-Relay/app/src/androidTest/",
+    "KeepLab-Relay/app/src/benchmark/",
+    "KeepLab-Relay/app/src/debug/",
+    "KeepLab-Relay/app/src/release/",
+    "KeepLab-Relay/app/schemas/",
+    "KeepLab-Relay/app/build.gradle.kts",
+    "KeepLab-Relay/app/proguard-rules.pro",
+    "KeepLab-Relay/build.gradle.kts",
+    "KeepLab-Relay/settings.gradle.kts",
+    "KeepLab-Relay/gradle/",
+    "KeepLab-Relay/gradle.properties",
+    "KeepLab-Relay/gradlew",
+    "KeepLab-Relay/gradlew.bat",
+    "KeepLab-Relay/local.properties",
+    "KeepLab-Relay/benchmark/",
+    "KeepLab-Relay/docs/",
+    "KeepLab-Relay/factory/",
+    "KeepLab-Relay/verification/",
+    "KeepLab-Relay/specs/",
+    "KeepLab-Relay/harness/",
+    "KeepLab-Relay/.factory/",
+    "KeepLab-Relay/MISSION.md",
+    "KeepLab-Relay/FACTORY_RULES.md",
+    "KeepLab-Relay/FACTORY.md",
+    "KeepLab-Relay/AGENTS.md",
+    "KeepLab-Relay/HANDOFF.md",
+    "KeepLab-Relay/PHASE-A-RESULT.md",
+    "KeepLab-Relay/PHASE-B-RESULT.md",
+    "KeepLab-Relay/ANDROID-STACK-GAPS.md",
+    "KeepLab-Relay/backend/",
+    "KeepLab-Relay/server/",
+    "KeepLab-Relay/infra/",
+    "KeepLab-Relay/docker/",
+    "KeepLab-Relay/Dockerfile",
+    "KeepLab-Relay/docker-compose.yml",
+    "KeepLab-Relay/cloud/",
+    "KeepLab-Relay/firebase/",
+    "Testapp/",
+    "PowerAi/",
+    "KeepLab-Relay-evidence/",
+    "Google-Android-Agent-Development-Stack/.hermes.md",
+    "Google-Android-Agent-Development-Stack/specification/",
+    "Google-Android-Agent-Development-Stack/verification/",
+    "Google-Android-Agent-Development-Stack/verification-benchmark/",
+    "Google-Android-Agent-Development-Stack/references/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/",
+    "Google-Android-Agent-Development-Stack/orchestration/hermes/HERMES-LOCK.json",
+    "Google-Android-Agent-Development-Stack/evaluation/commandcode/core.py",
+    "Google-Android-Agent-Development-Stack/evaluation/taxonomy/",
+    "Google-Android-Agent-Development-Stack/reports/contracts/",
+    "KeepLab-Relay/specs/p0b-close-benchmarkability/",
+    "KeepLab-Relay/specs/p0b-performance-reliability/",
+    "KeepLab-Relay/specs/phase-c-pin-notes-b1/"
+  ],
+  "boundary_notes": {
+    "source_root": "/mnt/AndroidDev/Projects",
+    "resolution": "allowed_paths / forbidden_paths are project-relative to the Contract Guard's project-context source_root, exactly as the frozen P0B-CLOSE contract and both A0 contracts are. allowed_paths entries may be exact files or directory prefixes.",
+    "precedence": "The guard tests forbidden_paths first; a path matching both lists is BLOCKED. reports/ is allowed while reports/contracts/ (which contains this package and both A0 packages) is forbidden, so an executor cannot write its own contract, and app/build/ is allowed while every Gradle input file is forbidden.",
+    "unlisted_is_blocked": "Any path inside the project root that matches neither list is BLOCKED (UNCLASSIFIED_FAIL_CLOSED). The persistence files, the two test locations, the two build-output directories and the two evidence locations above are the ONLY writes this contract authorizes.",
+    "narrower_than_the_whole_app": "KeepLab-Relay/app/** is deliberately NOT authorized. Production UI, the domain model, the DI module, the legacy migration chain, the child-entity files, androidTest and the benchmark source stay read-only, because the target change does not require them.",
+    "gradle_blocked": "Every Gradle input and wrapper file is forbidden. A genuinely missing dependency is a STOP with A1_GRADLE_DEPENDENCY_REQUIRED, never a silent contract broadening.",
+    "network_auth_backend_blocked": "No network, auth or backend path is authorized; the ones that do not exist yet are named explicitly so they cannot be created under this contract.",
+    "device_blocked": "No Android device access, no adb, no instrumentation run. androidTest/ is read-only and is never executed in A1.",
+    "out_of_project": "Paths outside /mnt/AndroidDev/Projects remain OUT_OF_CONTRACT_SCOPE/ALLOW as the guard is written today; this contract does not change that guard property and must never be read as authorizing writes outside the project.",
+    "guard_scope_note": "The frozen guard classifies WRITE targets, not tool choice: it has no rule that blocks the `adb` binary, running `./gradlew`, or launching an APK, and it cannot classify Hermes config/core paths outside the project root. The device prohibition, the Gradle prohibitions on execution side effects and the Hermes-core prohibition are therefore enforced by this contract's declarations and the execution prompt's stop conditions, not by the path list. Running adb, an instrumentation test or a build-script change is a CONTRACT_DEVIATION. This limitation is stated rather than hidden.",
+    "hermes_config_core_limitation": "Hermes configuration and core live OUTSIDE the guard's source_root (/home/zhong/.hermes/...), so the guard's path lists cannot classify them. They are therefore protected here by an explicit hard prohibition and stop condition in this contract and in the A1 execution prompt, enforced by fail-closed operator discipline — not by the path list. This limitation is stated rather than hidden."
+  },
+  "expected_before_hashes": {
+    "algorithm": "sha256",
+    "captured_at": "2026-10-06",
+    "captured_by": "KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL-CONTRACT (live filesystem read)",
+    "state": "FROZEN",
+    "verified_live": true,
+    "files": {
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/NoteEntity.kt": "d417b89a4ba1156fd5722d5435743b6f55f5fcb8c82096cba87af6011caa3c98",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/KeepLabDatabase.kt": "abe7b2e3ef73e1f7206f4dc864d9ca3f9367209d8d3c794d517023558b34fd86",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/NoteDao.kt": "3744797a7c0c169eae3fd954da9265c2245b4dd1b6ddc2e6948e6905735c059f",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/NoteRepository.kt": "9e284b91994368f8e178a32204eae10d6a3b0f811a55776eedadf24579c7e34f",
+      "KeepLab-Relay/app/src/test/java/com/keeplab/app/Fakes.kt": "56e3e96b94cc61c0ef74f1c83fa3adaeb1f8abcfecd47e85503834bdad47ecf7",
+      "KeepLab-Relay/app/src/test/java/com/keeplab/app/data/DefaultNoteRepositoryTest.kt": "3d5b31d3a7a4b568ddcdd7b64b8a85e5a1bacdffe471f912c8ae4732fa34a2b3"
+    },
+    "not_yet_existing": [
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/SyncState.kt"
+    ]
+  },
+  "protected_snapshot": {
+    "note": "Hashes of the protected files as observed at contract creation. The A1 execution session must re-hash these and assert byte-identity for the files this phase must not touch.",
+    "files": {
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/Migrations.kt": "86acb6192262f14e5db58370a888ca5a86f6f24b756eda60c7ab6d5807200fca",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/LabelEntity.kt": "b636b8d4a4cdf0498411a57630dbe34393737a43aa4fc8bf21bb4f814b9a207b",
+      "KeepLab-Relay/app/src/main/java/com/keeplab/app/di/AppModule.kt": "c3be961973e877e0b30134d25c41ee4c85cb62cde41097261ab24978102e0fd5",
+      "KeepLab-Relay/app/build.gradle.kts": "20dd51e5d8bb8cababcac06fecad3e9d8b5771418eb88b0ba132409c5014e298",
+      "KeepLab-Relay/gradle/libs.versions.toml": "5555dcff52e661a0ed9481aa349822b5972f9e305eadf941479c4b111a1b8b43",
+      "KeepLab-Relay/MISSION.md": "f857295dd502ee64736fac04bc5e076874bcdb06a468ca1edad1eb7152d128cd",
+      "Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter/contract_guard.py": "e418fc28b08ac7afe4fdd42ec44d572ddaa2f23f6200de300ecac211404b3746",
+      "KeepLab-Relay/specs/p0b-close-benchmarkability/implementation-contract.json": "b07a0388afdd257ee2185ca7d275f956d2a92e240d31db4904d85f3a57e65c50"
+    },
+    "contract_packages": {
+      "note": "Both A0 packages are READ_ONLY and must stay byte-identical; their own manifests are the integrity source. This package and they are all inside the forbidden reports/contracts/ prefix.",
+      "paths": [
+        "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-WRITE-001/",
+        "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A0-GOVERNANCE-TEXT-CLEANUP-001/",
+        "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL-001/"
+      ]
+    },
+    "hook_and_core": {
+      "note": "Outside the guard source_root; recorded for the execution session's stop conditions, not enforceable by the guard's path lists.",
+      "/home/zhong/.hermes/profiles/android-stack/config.yaml": "7ac5c4cbce7bad53147e45e35bd03d5d14accaced7929ab8a3adc5c669b74a5a",
+      "/home/zhong/.hermes/profiles/android-stack/shell-hooks-allowlist.json": "343cf57656af93f070a4361bdf07665af9b034cd4f01ab46fa4e68c5f387d248"
+    }
+  },
+  "verification_proof_mechanism": {
+    "git_baseline": "UNAVAILABLE — KeepLab-Relay is a git repository with no commits, so `git diff` cannot prove the change set",
+    "used_instead": [
+      "sha256 before/after of every allowed-path file and of every protected_snapshot file",
+      "scope scan asserting every modified file lies in allowed_paths and no protected file changed",
+      "the Room KSP generated database implementation, read after the build, as the schema evidence"
+    ]
+  },
+  "staleness_policy": {
+    "rule": "The A1 execution session MUST re-read and re-hash the expected_before_hashes.files BEFORE any mutation and fail closed if any hash differs.",
+    "on_mismatch": "STOP with STALE_DATA_MODEL_INPUT.",
+    "forbidden_behaviour": "Never silently patch a newer or different file; never re-baseline the expected hash to match the filesystem. A stale input is a STOP, never an auto-repair."
+  },
+  "contract_package_self_protection": {
+    "package": "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL-001/",
+    "declaration": "CONTRACT_PACKAGE: READ_ONLY_INPUT",
+    "enforcement": "The package path is inside the forbidden reports/contracts/ prefix, so the same guard blocks any write into it while this contract is active.",
+    "execution_rules": [
+      "The A1 session verifies the package sha256 manifest BEFORE touching any persistence file.",
+      "The A1 session must not rewrite, re-hash or extend its own contract package.",
+      "The A1 session must not broaden its own allowed paths; a needed broadening is a STOP and a new human-approved contract (except the two declared STOP codes).",
+      "PRIMARY_KEY_STRATEGY and its reason are recorded in this package and in KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL-EXECUTE.md and may not be re-decided at execution time."
+    ]
+  },
+  "executor_prompt": {
+    "path": "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL-001/KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL-EXECUTE.md",
+    "pointer": "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL-001/EXECUTOR-PROMPT.md",
+    "executed_in_this_phase": false,
+    "loop": "PLAN ONCE -> EXECUTE -> VERIFY ONCE -> PASS = STOP -> FAIL = fix the failed path only",
+    "must_stop_after": "A1_EXPERIMENTAL_DATA_MODEL",
+    "must_not_start": [
+      "A2",
+      "A3"
+    ]
+  },
+  "gradle_policy": {
+    "decision": "BLOCK",
+    "reason": "Room 2.8.4 persists Kotlin enums as text without a dependency, java.util.UUID is part of the platform, and the change adds no new API. No dependency, plugin, version-catalog, build-type or Gradle-script change is authorized.",
+    "on_genuine_need": "STOP with A1_GRADLE_DEPENDENCY_REQUIRED and report the exact dependency/change required; do not invent a workaround and do not broaden this contract."
+  },
+  "network_auth_backend_policy": {
+    "decision": "BLOCKED_FOR_A1",
+    "not_implemented_here": [
+      "Ktor or any HTTP client",
+      "backend API of any kind",
+      "registration, sign-in, Credential Manager, passkeys",
+      "session tokens, refresh rotation, secure storage",
+      "outbox table or mutation queue",
+      "WorkManager sync or any background worker",
+      "delta cursor / change stream",
+      "push notifications",
+      "Tencent Cloud, PostgreSQL, Docker or any cloud deployment",
+      "Google login, Firebase Auth or any Google private API"
+    ],
+    "note": "A1 persists only the local representation (clientUuid, accountId, syncState, serverRevision, deletedAt). D-15 authorizes the architecture phases; it does not authorize implementing them here."
+  },
+  "device_policy": {
+    "decision": "NO_DEVICE_ACCESS",
+    "forbidden": [
+      "adb commands of any kind",
+      "device lock acquisition",
+      "connectedAndroidTest / instrumentation run",
+      "Maestro or UiAutomator run",
+      "installing or launching the APK on the device 87296ada"
+    ],
+    "reason": "A1 changes no user-visible behaviour and its acceptance is a JVM unit-test plus debug-build gate. The device is an exclusive capacity-1 resource reserved for phases that need it."
+  },
+  "device_access": false,
+  "acceptance_ids": [
+    "AC-A1DM-001",
+    "AC-A1DM-002",
+    "AC-A1DM-003",
+    "AC-A1DM-004",
+    "AC-A1DM-005",
+    "AC-A1DM-006",
+    "AC-A1DM-007",
+    "AC-A1DM-008"
+  ],
+  "requirements": [
+    {
+      "id": "REQ-A1DM-001",
+      "statement": "The local note model carries a stable, non-null, unique, client-generated sync identity (clientUuid) that survives every content edit.",
+      "acceptance_ids": [
+        "AC-A1DM-001",
+        "AC-A1DM-003",
+        "AC-A1DM-004"
+      ],
+      "task_ids": [
+        "TASK-01",
+        "TASK-02",
+        "TASK-03"
+      ]
+    },
+    {
+      "id": "REQ-A1DM-002",
+      "statement": "The local note model carries nullable account ownership (accountId) that is null for every local-only note.",
+      "acceptance_ids": [
+        "AC-A1DM-001",
+        "AC-A1DM-003"
+      ],
+      "task_ids": [
+        "TASK-01",
+        "TASK-03"
+      ]
+    },
+    {
+      "id": "REQ-A1DM-003",
+      "statement": "The local note model carries a type-safe sync state whose complete state set is declared and whose fresh-row value is LOCAL_ONLY, with no sync transition implemented.",
+      "acceptance_ids": [
+        "AC-A1DM-006",
+        "AC-A1DM-003"
+      ],
+      "task_ids": [
+        "TASK-01",
+        "TASK-03"
+      ]
+    },
+    {
+      "id": "REQ-A1DM-004",
+      "statement": "The local note model carries a nullable server revision (serverRevision) that stays null while no server exists.",
+      "acceptance_ids": [
+        "AC-A1DM-001",
+        "AC-A1DM-003"
+      ],
+      "task_ids": [
+        "TASK-01",
+        "TASK-03"
+      ]
+    },
+    {
+      "id": "REQ-A1DM-005",
+      "statement": "The local note model carries a nullable final-deletion tombstone (deletedAt) that is distinct from the reversible product Trash state and is never set by trashing.",
+      "acceptance_ids": [
+        "AC-A1DM-005",
+        "AC-A1DM-003"
+      ],
+      "task_ids": [
+        "TASK-02",
+        "TASK-03"
+      ]
+    },
+    {
+      "id": "REQ-A1DM-006",
+      "statement": "The schema change is performed under the EXPERIMENTAL data-stage policy: a schema version bump with no new migration and no destructive fallback, accepting a developer database reset.",
+      "acceptance_ids": [
+        "AC-A1DM-002"
+      ],
+      "task_ids": [
+        "TASK-01"
+      ]
+    },
+    {
+      "id": "REQ-A1DM-007",
+      "statement": "The change stays inside the authorized persistence surface: no Gradle, network, auth, backend, UI, device or unrelated-feature change.",
+      "acceptance_ids": [
+        "AC-A1DM-007",
+        "AC-A1DM-009"
+      ],
+      "task_ids": [
+        "TASK-04"
+      ]
+    },
+    {
+      "id": "REQ-A1DM-008",
+      "statement": "The phase is verified in exactly one pass with the frozen gate, and a failure is fixed on the failed path only.",
+      "acceptance_ids": [
+        "AC-A1DM-008"
+      ],
+      "task_ids": [
+        "TASK-04"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "TASK-01",
+      "goal": "Change the persistence schema to the A1 target model.",
+      "boundary": "Only KeepLabDatabase.kt, NoteEntity.kt and the new SyncState.kt. No child entity, no DI module, no migration, no DAO, no repository.",
+      "depends": [],
+      "allowed_paths": [
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/NoteEntity.kt",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/KeepLabDatabase.kt",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/SyncState.kt"
+      ],
+      "acceptance_ids": [
+        "AC-A1DM-001",
+        "AC-A1DM-002",
+        "AC-A1DM-006"
+      ],
+      "verification": "KSP compiles the entity schema; the generated database implementation is read and asserted to carry clientUuid TEXT NOT NULL, a UNIQUE index on clientUuid, accountId/serverRevision/deletedAt nullable and syncState TEXT NOT NULL, at version 3.",
+      "done_when": "KeepLabDatabase reports version 3 with no Migration class added, NoteEntity declares the five columns with their fresh-row defaults, and SyncState declares exactly the seven states."
+    },
+    {
+      "id": "TASK-02",
+      "goal": "Protect the sync metadata at the write boundary and keep Trash distinct from the tombstone.",
+      "boundary": "Only NoteDao.kt and NoteRepository.kt. No UI, no domain model, no new behaviour surface.",
+      "depends": [
+        "TASK-01"
+      ],
+      "allowed_paths": [
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/NoteDao.kt",
+        "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/NoteRepository.kt"
+      ],
+      "acceptance_ids": [
+        "AC-A1DM-003",
+        "AC-A1DM-004",
+        "AC-A1DM-005"
+      ],
+      "verification": "JVM unit tests through the repository: identity and metadata survive an edit; trashing writes trashed only; no path writes deletedAt.",
+      "done_when": "The full-row overwrite write path is gone, the content update touches only content columns, and the creation boundary establishes the defaults once."
+    },
+    {
+      "id": "TASK-03",
+      "goal": "Prove the target model with JVM unit tests.",
+      "boundary": "Only app/src/test/java/com/keeplab/app/data/ and the FakeNoteDao in app/src/test/java/com/keeplab/app/Fakes.kt. No androidTest, no device.",
+      "depends": [
+        "TASK-01",
+        "TASK-02"
+      ],
+      "allowed_paths": [
+        "KeepLab-Relay/app/src/test/java/com/keeplab/app/data/",
+        "KeepLab-Relay/app/src/test/java/com/keeplab/app/Fakes.kt"
+      ],
+      "acceptance_ids": [
+        "AC-A1DM-003",
+        "AC-A1DM-004",
+        "AC-A1DM-005",
+        "AC-A1DM-006"
+      ],
+      "verification": "The new tests fail against the pre-change model and pass after it, and every pre-existing test in the module still passes.",
+      "done_when": "The fresh-row defaults, the unique non-empty identity, the identity-preserving edit and the anti-tombstone rule each have a passing deterministic test."
+    },
+    {
+      "id": "TASK-04",
+      "goal": "Run the single verification pass and write the evidence.",
+      "boundary": "Running the frozen Gradle gate once, the schema inspection, the scope scan and the report. No further review, no second audit, no device, no A2.",
+      "depends": [
+        "TASK-03"
+      ],
+      "allowed_paths": [
+        "KeepLab-Relay/app/build/",
+        "KeepLab-Relay/build/",
+        "Google-Android-Agent-Development-Stack/reports/",
+        "Google-Android-Agent-Development-Stack/orchestration/hermes/evidence/keeplab-a1-experimental-data-model/"
+      ],
+      "acceptance_ids": [
+        "AC-A1DM-007",
+        "AC-A1DM-008"
+      ],
+      "verification": "`./gradlew :app:testDebugUnitTest :app:assembleDebug` run once; on failure fix the failed path and rerun only the failed task.",
+      "done_when": "The gate passes, the protected files are re-hashed byte-identical, the scope scan shows only allowed-path files changed, and the A1 report records the result."
+    }
+  ],
+  "verification_intent": {
+    "feature_id": "A1-EXPERIMENTAL-DATA-MODEL",
+    "engine": "gradle_jvm",
+    "device_required": false,
+    "acceptance_ids": [
+      "AC-A1DM-001",
+      "AC-A1DM-002",
+      "AC-A1DM-003",
+      "AC-A1DM-004",
+      "AC-A1DM-005",
+      "AC-A1DM-006",
+      "AC-A1DM-007",
+      "AC-A1DM-008"
+    ],
+    "oracle_intent": "Assert on deterministic, machine-readable evidence only: the Room KSP generated database implementation (columns, nullability, unique index, version), JVM unit-test results through the repository/DAO boundary, and sha256 file identity for the protected files. No visual judgement, no LLM judgement, no screenshot, no device.",
+    "required_selectors": [],
+    "fixture_intent": "Fresh rows created through the production creation boundary with the existing deterministic FakeTimeSource; no new fixture mechanism on the device.",
+    "persistence_checks": [
+      "A fresh local note carries genUuid/clientUuid non-empty, accountId null, syncState LOCAL_ONLY, serverRevision null, deletedAt null.",
+      "Two freshly created notes carry different clientUuid values.",
+      "Editing an existing note leaves clientUuid, syncState, serverRevision and deletedAt unchanged.",
+      "Trashing a note sets trashed without setting deletedAt; restoring it clears trashed and still leaves deletedAt null."
+    ],
+    "not_verified_here": [
+      "a runtime fresh-database open on a device or emulator (no device access in A1; Room's KSP compile-time schema and query validation plus the generated implementation are the schema evidence)",
+      "upgrade of an existing on-disk development database (DEV_DATABASE_RESET_REQUIRED = YES)"
+    ]
+  },
+  "stop_conditions": [
+    "Any required write falls outside allowed_paths or targets a forbidden path: STOP and emit CONTRACT_DEVIATION.",
+    "Any expected_before_hashes file has drifted: STOP and emit STALE_DATA_MODEL_INPUT.",
+    "A genuinely missing Gradle dependency or build-script change is required: STOP and emit A1_GRADLE_DEPENDENCY_REQUIRED with the exact requirement; do not invent a workaround.",
+    "The change would require editing the UI, the domain model, the DI module, the legacy migration chain, a child entity file, androidTest or the benchmark source: STOP.",
+    "A network client, auth flow, backend call, outbox, worker, cursor or cloud artefact would be needed: STOP — those are later phases.",
+    "The device would have to be touched, or an instrumented test run: STOP; A1 is device-free.",
+    "PRIMARY_KEY_STRATEGY would have to be changed, or a Migration would have to be authored: STOP and report; both are separate human-approved decisions.",
+    "fallbackToDestructiveMigration() would be added to make Room accept the schema change: STOP — it is forbidden in A1.",
+    "deletedAt would have to be set by Trash, or Trash semantics would have to change: STOP — TRASH != TOMBSTONE is an invariant.",
+    "The guard source, the hook configuration, the active frozen P0B-CLOSE contract or an A0 contract package would have to be modified: STOP.",
+    "The contract package manifest does not verify: STOP.",
+    "The A1 session would have to broaden its own allowed paths: STOP; a new human-approved contract is required.",
+    "The verification gate fails and the fix would reach outside allowed_paths: STOP.",
+    "A second review, a second audit or a re-run of a passing task is being considered after PASS: STOP — PASS means stop."
+  ],
+  "non_goals": [
+    "implementing any sync, network, auth, backend, session, outbox, worker or cursor behaviour",
+    "creating an accounts table or any placeholder account row",
+    "adding stable UUID identities to checklist_items, labels or note_labels",
+    "creating attachments, collaboration, conflicts, outbox or server-only tables",
+    "introducing a CRDT, a multi-version migration chain or production rollback logic",
+    "preserving the current experimental database rows or supporting an old test database upgrade",
+    "introducing schema export or an app/schemas/ directory",
+    "changing any user-visible behaviour, UI, theming or navigation",
+    "changing Gradle files, dependencies, plugins or the version catalog",
+    "editing Migrations.kt or the DI database builder",
+    "editing the frozen P0B-CLOSE contract or either A0 contract package",
+    "editing contract_guard.py, the hook configuration or Hermes core",
+    "any device operation, adb command, instrumentation run, Maestro or UiAutomator run",
+    "starting A2 or A3, or resolving D-14",
+    "re-opening A0 or OBS-1",
+    "Testapp and PowerAi"
+  ],
+  "decisions": [
+    {
+      "id": "A1-DM-001",
+      "statement": "PRIMARY_KEY_STRATEGY = KEEP_LONG_LOCAL_PK_ADD_UNIQUE_CLIENT_UUID.",
+      "rationale": "The current Long rowid key is clean and already referenced by two child foreign keys and the whole id surface; a UUID primary key would be large unrelated churn for no A1 benefit, and the architecture documents explicitly permit keeping the local key while adding the client UUID first."
+    },
+    {
+      "id": "A1-DM-002",
+      "statement": "The schema version is bumped 2 -> 3 with no Migration authored and no destructive fallback registered; DEV_DATABASE_RESET_REQUIRED = YES.",
+      "rationale": "The project data stage is EXPERIMENTAL and the data is disposable, so CLEAN_TARGET_ARCHITECTURE outranks preserving test rows; writing an upgrade chain would be time spent proving disposable data survives, which the phase policy forbids."
+    },
+    {
+      "id": "A1-DM-003",
+      "statement": "The five sync-metadata columns are added to the notes table only; checklist_items, labels and note_labels keep their current shape.",
+      "rationale": "The child-entity stable identity is only needed when child-entity sync is implemented, and the architecture documents introduce identity additively. Deferring it keeps A1 small and keeps every A1 acceptance criterion verifiable without inventing identity that A1 cannot exercise."
+    },
+    {
+      "id": "A1-DM-004",
+      "statement": "The domain model and the UI are not extended with sync fields in A1; sync metadata is persistence-layer only and the entity-to-domain mapper keeps reading the pre-existing fields.",
+      "rationale": "No UI consumes sync state in a local-only phase. Adding it to the domain model would pull model/, ViewModels and screens into the change set for zero behaviour."
+    },
+    {
+      "id": "A1-DM-005",
+      "statement": "The full-row @Update write path is removed and replaced by a targeted content-column update.",
+      "rationale": "Because the domain model carries no sync fields, a full-row overwrite would silently regenerate the sync identity and reset the sync state on every edit, which would break the unique identity guarantee the phase exists to establish."
+    },
+    {
+      "id": "A1-DM-006",
+      "statement": "Fallback-row defaults are established by the entity defaults plus the single repository creation boundary, not at scattered call sites.",
+      "rationale": "One boundary keeps the defaults provable; the phase policy explicitly prefers entity defaults / factory / one central creation boundary over manual initialization throughout the UI."
+    },
+    {
+      "id": "A1-DM-007",
+      "statement": "The allowed surface is five persistence files, two test locations, two build-output directories and two evidence locations; KeepLab-Relay/app/** as a whole is not authorized.",
+      "rationale": "Smaller than the whole app, but wide enough that ordinary compile fixes to the authorized files never require another contract."
+    },
+    {
+      "id": "A1-DM-008",
+      "statement": "Gradle is blocked; a genuine dependency need stops the phase with A1_GRADLE_DEPENDENCY_REQUIRED.",
+      "rationale": "Room 2.8.4 persists enums natively and UUID is platform code, so no dependency is genuinely required; the escape hatch is explicit so a real need is reported rather than worked around."
+    },
+    {
+      "id": "A1-DM-009",
+      "statement": "The A1 phase runs no device work and executes no instrumented test.",
+      "rationale": "Acceptance is a JVM unit-test plus debug-build gate, the device is an exclusive capacity-1 resource, and no user-visible behaviour changes."
+    },
+    {
+      "id": "A1-DM-010",
+      "statement": "The verification gate is the single Gradle command `./gradlew :app:testDebugUnitTest :app:assembleDebug`, run once, with only the failed task re-run after a minimal fix.",
+      "rationale": "One honest pass; no review of a review, no post-PASS audit, no full-repository scan."
+    }
+  ],
+  "read_first": [
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/contracts/KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL-001/KEEPLAB-A1-EXPERIMENTAL-DATA-MODEL-EXECUTE.md",
+      "why": "the execution prompt for this contract"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/NoteEntity.kt",
+      "why": "the notes/checklist entity file the target model extends"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/KeepLabDatabase.kt",
+      "why": "the Room database declaration whose version is bumped to 3"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/local/NoteDao.kt",
+      "why": "the DAO whose write surface must stop overwriting sync metadata"
+    },
+    {
+      "path": "KeepLab-Relay/app/src/main/java/com/keeplab/app/data/NoteRepository.kt",
+      "why": "the creation boundary and the save/trash paths the target model's defaults and invariants live in"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-DATA-MODEL.md",
+      "why": "the frozen conceptual model behind clientUuid/accountId/syncState/serverRevision/deletedAt and the TRASH != TOMBSTONE invariant"
+    },
+    {
+      "path": "Google-Android-Agent-Development-Stack/reports/KEEPLAB-AUTH-SYNC-STATE-MODEL.md",
+      "why": "the authoritative sync-state set and the ISO-1b account-scope invariant"
+    },
+    {
+      "path": "KeepLab-Relay/MISSION.md",
+      "why": "the hard invariants: local-first is mandatory, account/network optional for local use, Room is the local SSOT, no silent data loss"
+    }
+  ],
+  "unresolved_questions": [],
+  "readiness": {
+    "status": "READY",
+    "gates": {
+      "acceptance": "PASS",
+      "boundaries": "PASS",
+      "hashes": "PASS",
+      "schema": "PASS",
+      "traceability": "PASS"
+    }
+  }
+}

@@ -1,0 +1,13 @@
+appId: com.keeplab.app
+name: input-smoke
+tags:
+  - reference
+---
+- launchApp:
+    clearState: false
+- tapOn: "New text note"
+- tapOn:
+    id: "editor-title"
+- inputText: "VC-SMOKE-ASCII-0123"
+- eraseText
+- tapOn: "Back"

@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# P0B-EVAL-INSPECTION-CONTEXT-FIX — verification transcript generator.
+#
+# Offline and deterministic: runs the targeted Evaluation / adapter / finalizer test suites, records
+# the live Contract Guard wiring (registered hooks + its decision log), and re-runs the isolated
+# re-evaluations / regressions. It writes ONLY into its own evidence directory. No device, no
+# benchmark battery, no product code, no Hermes CLI invocation (the live guard was already proven by
+# P0B-EVAL-GUARD-FIX; this task does not repeat the write probe).
+set -u
+HERE="$(cd "$(dirname "$0")" && pwd)"
+REPO="$(cd "$HERE/../../../.." && pwd)"
+OUT_ROOT="$REPO/orchestration/hermes/evidence/p0b-eval-inspection-context-fix"
+LOGS="$OUT_ROOT/testlogs"
+TRANSCRIPT="$OUT_ROOT/verification.txt"
+DECISIONS="$REPO/orchestration/hermes/evidence/p0b-close/contract-guard-decisions.jsonl"
+PROD_ROOT="/mnt/AndroidDev/Projects/_evaluation"
+
+mkdir -p "$LOGS"
+
+{
+  echo "P0B-EVAL-INSPECTION-CONTEXT-FIX — verification transcript"
+  date -u +"captured_utc=%Y-%m-%dT%H:%M:%SZ"
+  echo "repo=$REPO"
+  echo
+
+  echo "## 0. baseline identity (must be preserved)"
+  echo "hook config.yaml mtime         : $(stat -c %y "$HOME/.hermes/profiles/android-stack/config.yaml")"
+  echo "guard hook registered          : $(grep -c 'contract_guard.py' "$HOME/.hermes/profiles/android-stack/config.yaml")"
+  echo
+
+  echo "## 1. targeted test suites (all offline, deterministic)"
+  for f in evaluation/tests/test_evaluation_core.py evaluation/tests/test_evaluation_core_v022.py \
+           evaluation/tests/test_evaluation_core_v023.py evaluation/tests/test_finalize_session.py \
+           evaluation/tests/test_task_window_v021.py; do
+    ( cd "$REPO" && python3 "$f" ) > "$LOGS/$(basename "$f").txt" 2>&1
+    echo "  $f -> exit=$?"
+  done
+  ( cd "$REPO" && python3 evaluation/tests/test_hermes_source.py ) > "$LOGS/hermes_source.txt" 2>&1
+  echo "  evaluation/tests/test_hermes_source.py -> exit=$?"
+  ( cd "$REPO" && python3 orchestration/hermes/evaluation_adapter/tests/test_contract_guard.py ) \
+      > "$LOGS/contract_guard.txt" 2>&1
+  echo "  orchestration/.../tests/test_contract_guard.py -> exit=$?"
+  ( cd "$REPO" && python3 -m unittest discover -s orchestration/hermes/evaluation_adapter/tests ) \
+      > "$LOGS/adapter_suite.txt" 2>&1
+  echo "  orchestration/.../tests (guard + failure evidence) -> exit=$?"
+  echo
+  echo "  result lines:"
+  for f in test_evaluation_core.py.txt test_evaluation_core_v022.py.txt test_evaluation_core_v023.py.txt \
+           test_finalize_session.py.txt test_task_window_v021.py.txt contract_guard.txt adapter_suite.txt; do
+    printf "    %-34s %s\n" "$f" "$(tail -3 "$LOGS/$f" | tr -d '\n' | sed 's/  */ /g')"
+  done
+  printf "    %-34s %s\n" "hermes_source.txt" "$(tail -1 "$LOGS/hermes_source.txt")"
+  echo
+
+  echo "## 2. Contract Guard wiring (ACTIVE; live write probe NOT repeated — proven by P0B-EVAL-GUARD-FIX)"
+  echo "registered pre_tool_call hook :"
+  grep -n -A3 'pre_tool_call' "$HOME/.hermes/profiles/android-stack/config.yaml" | head -12
+  echo "registered on_session_finalize hook :"
+  grep -n -A3 'on_session_finalize' "$HOME/.hermes/profiles/android-stack/config.yaml" | head -12
+  echo
+  echo "## 3. guard decision log tail (append-only audit trail; this task's writes were evaluated live)"
+  echo "decisions log: $DECISIONS"
+  echo "line count: $(wc -l < "$DECISIONS")"
+  tail -6 "$DECISIONS"
+  echo
+
+  echo "## 4. isolated re-evaluations + regressions (switch ON/OFF, evidence tree only)"
+  ( cd "$REPO" && python3 orchestration/hermes/evaluation_adapter/tests/run_p0b_eval_inspection_context_fix_compare.py ) \
+      > "$OUT_ROOT/compare-console.txt" 2>&1
+  echo "  compare script -> exit=$?; comparison: $OUT_ROOT/evaluation-reeval-and-regression.json"
+  echo
+
+  echo "## 5. production evaluation tree untouched"
+  echo "published cb5233 run.json sha256 : $(sha256sum "$PROD_ROOT/Google-Android-Agent-Development-Stack/HERMES-20261005_075257_cb5233/run.json" | cut -d' ' -f1)"
+  echo "published 4c6c40 run.json sha256 : $(sha256sum "$PROD_ROOT/Google-Android-Agent-Development-Stack/HERMES-20261005_032302_4c6c40/run.json" | cut -d' ' -f1)"
+  echo "production index sha256          : $(sha256sum "$PROD_ROOT/.auto_finalize_index.json" | cut -d' ' -f1)"
+  echo "production index entries         : $(grep -c '": {' "$PROD_ROOT/.auto_finalize_index.json")"
+  echo "evidence-dir output in index?    : $(grep -c 'p0b-eval-inspection-context-fix' "$PROD_ROOT/.auto_finalize_index.json") (must be 0)"
+  echo "published cb5233 correction      : $(grep -A4 'failure_evidence_correction' "$PROD_ROOT/Google-Android-Agent-Development-Stack/HERMES-20261005_075257_cb5233/run.json" | tr -d ' \n' | head -c 220)"
+} > "$TRANSCRIPT" 2>&1
+
+echo "wrote $TRANSCRIPT"

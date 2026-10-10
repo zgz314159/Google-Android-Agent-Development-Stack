@@ -1,0 +1,47 @@
+{
+  "version": "0.2",
+  "comment": "Top-level phases T0-T9 + UNKNOWN. Subphases are attributes, not new top-level phases.",
+  "default_time_class": {
+    "T0": "PRODUCTIVE",
+    "T1": "NECESSARY_OVERHEAD",
+    "T2": "NECESSARY_OVERHEAD",
+    "T3": "PRODUCTIVE",
+    "T4": "PRODUCTIVE",
+    "T5": "NECESSARY_OVERHEAD",
+    "T6": "NECESSARY_OVERHEAD",
+    "T7": "NECESSARY_OVERHEAD",
+    "T8": "NECESSARY_OVERHEAD",
+    "T9": "PRODUCTIVE",
+    "UNKNOWN": "UNKNOWN"
+  },
+  "phases": {
+    "T0": {
+      "name": "Agent Intake & Requirement Normalization",
+      "starts_at": "task_prompt",
+      "note": "Pre-prompt user wait is NOT part of T0 (it is a separate clock)."
+    },
+    "T1": {
+      "name": "Workflow Routing & Readiness",
+      "subphases": {
+        "T1a": "Workflow Routing",
+        "T1b": "Bootstrap & Provider Readiness"
+      }
+    },
+    "T2": { "name": "Context Acquisition" },
+    "T3": { "name": "Planning / Architecture" },
+    "T4": { "name": "Implementation" },
+    "T5": { "name": "Build / Compile" },
+    "T6": { "name": "Tests" },
+    "T7": {
+      "name": "Device / Runtime Verification",
+      "subphases": {
+        "T7a": "Deploy & Launch",
+        "T7b": "UI Driving",
+        "T7c": "Evidence & State Inspection"
+      }
+    },
+    "T8": { "name": "Repair / Rework" },
+    "T9": { "name": "Final Verification / Handoff" },
+    "UNKNOWN": { "name": "Unmappable Wall Time" }
+  }
+}
