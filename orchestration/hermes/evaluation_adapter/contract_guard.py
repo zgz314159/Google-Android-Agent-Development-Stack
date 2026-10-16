@@ -61,23 +61,33 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 # <projects>/Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(_HERE)))
 _PROJECTS_ROOT = os.path.dirname(_REPO_ROOT)
-# KeepLab is an external business project under AppProjects (not Projects).
-_BUSINESS_ROOT = os.path.realpath(
-    os.environ.get("AEGL_BUSINESS_ROOT")
-    or os.path.join(os.path.dirname(_PROJECTS_ROOT), "AppProjects")
-)
+
+
+def _projects_root() -> str:
+    return os.path.realpath(os.environ.get("PROJECTS_ROOT") or _PROJECTS_ROOT)
+
+
+def _business_root() -> str:
+    return os.path.realpath(
+        os.environ.get("AEGL_BUSINESS_ROOT")
+        or os.path.join(os.path.dirname(_projects_root()), "AppProjects")
+    )
+
 
 def _resolve_keeplab_root() -> str:
-    for root in (_BUSINESS_ROOT, _PROJECTS_ROOT):
+    """KeepLab under AppProjects after migrate; accept pre-migrate Projects sibling."""
+    for root in (_business_root(), _projects_root()):
         cand = os.path.join(root, "KeepLab-Relay")
         if os.path.isdir(cand):
-            return cand
-    return os.path.join(_BUSINESS_ROOT, "KeepLab-Relay")
+            return os.path.realpath(cand)
+    return os.path.realpath(os.path.join(_business_root(), "KeepLab-Relay"))
 
-_KEEPLAB_ROOT = _resolve_keeplab_root()
-DEFAULT_PACKAGE = os.path.join(_KEEPLAB_ROOT, "specs", "p0b-close-benchmarkability")
-# source_root = parent that contains the KeepLab-Relay/ directory name in contract paths
-DEFAULT_SOURCE_ROOT = os.path.dirname(_KEEPLAB_ROOT)
+
+DEFAULT_PACKAGE = os.path.join(
+    _resolve_keeplab_root(), "specs", "p0b-close-benchmarkability"
+)
+# Logical source_root for Stack + Projects-sibling artifacts (expanded at load).
+DEFAULT_SOURCE_ROOT = _projects_root()
 
 CONTRACT_FILE = "implementation-contract.json"
 CONTEXT_FILE = "project-context.json"
@@ -250,9 +260,51 @@ def _rel_within(full: str, source_root: str):
     return _norm(os.path.relpath(full, root))
 
 
+def expand_source_root_token(value: str) -> str:
+    """Resolve frozen ``${PROJECTS_ROOT}`` / ``${AEGL_BUSINESS_ROOT}`` tokens."""
+    if not isinstance(value, str) or not value.strip():
+        return _projects_root()
+    token = value.strip()
+    if token in ("${PROJECTS_ROOT}", "$PROJECTS_ROOT"):
+        return _projects_root()
+    if token in ("${AEGL_BUSINESS_ROOT}", "$AEGL_BUSINESS_ROOT"):
+        return _business_root()
+    if _UNEXPANDED.search(token):
+        return _projects_root()
+    if os.path.isabs(token):
+        return os.path.realpath(token)
+    return token
+
+
+def project_rel(full: str):
+    """Map an absolute path to a contract-relative path.
+
+    ``KeepLab-Relay/…`` resolves via the business root (AppProjects); Stack and
+    other Projects siblings resolve via ``PROJECTS_ROOT``. Never expands the
+    allow root to ``$HOME``.
+    """
+    if full is None:
+        return None
+    full = os.path.normpath(full)
+    keeplab = _resolve_keeplab_root()
+    if full == keeplab or full.startswith(keeplab + os.sep):
+        inner = "" if full == keeplab else os.path.relpath(full, keeplab)
+        if inner in ("", "."):
+            return "KeepLab-Relay"
+        return _norm(os.path.join("KeepLab-Relay", inner))
+    projects = _projects_root()
+    if full == projects or full.startswith(projects + os.sep):
+        return "" if full == projects else _norm(os.path.relpath(full, projects))
+    return None
+
+
 def resolve_within(raw: str, base_cwd: str, source_root: str):
-    """Resolve ``raw`` to a project-relative posix path, or None when out of scope."""
-    return _rel_within(_resolve_full(raw, base_cwd), source_root)
+    """Resolve ``raw`` to a contract-relative posix path, or None when out of scope."""
+    full = _resolve_full(raw, base_cwd)
+    rel = project_rel(full)
+    if rel is not None:
+        return rel
+    return _rel_within(full, source_root)
 
 
 def _inside(rel_path: str, pattern: str) -> bool:
@@ -339,13 +391,14 @@ def load_contract(package_dir: str) -> dict:
         except Exception as exc:  # noqa: BLE001 - integrity failure must never raise upward
             integrity = "MANIFEST_UNREADABLE:%s" % exc
 
+    raw_root = context.get("source_root") or "${PROJECTS_ROOT}"
     return {
         "contract": contract,
         "context": context,
         "allowed": list(contract.get("allowed_paths", [])),
         "forbidden": list(contract.get("forbidden_paths", [])),
         "path_classes": dict(context.get("path_classes", {}) or {}),
-        "source_root": context.get("source_root") or DEFAULT_SOURCE_ROOT,
+        "source_root": expand_source_root_token(raw_root),
         "integrity": integrity,
         "package_dir": os.path.abspath(package_dir),
         "contract_id": contract.get("contract_id"),
