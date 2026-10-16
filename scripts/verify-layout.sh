@@ -45,7 +45,7 @@ OUTPUT_ONLY = {
     "KeepLab-Relay-evidence": ("PERSISTENT_ARTIFACT", "product run evidence for KeepLab-Relay"),
 }
 # Repositories / product trees that are NOT this stack's output.
-KNOWN_PROJECTS = {"Google-Android-Agent-Development-Stack", "KeepLab-Relay"}
+KNOWN_PROJECTS = {"Google-Android-Agent-Development-Stack"}  # KeepLab lives under AppProjects
 KNOWN_TOOLCHAINS = {"AI-Engineering-Governance-Layer", "AI-System-Bakeoff", "Archon-AI-Software-Factory",
                     "BMAD-Method-TEA", "GitHub-Spec-Kit", "Program"}
 

@@ -61,11 +61,23 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 # <projects>/Google-Android-Agent-Development-Stack/orchestration/hermes/evaluation_adapter
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(_HERE)))
 _PROJECTS_ROOT = os.path.dirname(_REPO_ROOT)
-
-DEFAULT_PACKAGE = os.path.join(
-    _PROJECTS_ROOT, "KeepLab-Relay", "specs", "p0b-close-benchmarkability"
+# KeepLab is an external business project under AppProjects (not Projects).
+_BUSINESS_ROOT = os.path.realpath(
+    os.environ.get("AEGL_BUSINESS_ROOT")
+    or os.path.join(os.path.dirname(_PROJECTS_ROOT), "AppProjects")
 )
-DEFAULT_SOURCE_ROOT = _PROJECTS_ROOT
+
+def _resolve_keeplab_root() -> str:
+    for root in (_BUSINESS_ROOT, _PROJECTS_ROOT):
+        cand = os.path.join(root, "KeepLab-Relay")
+        if os.path.isdir(cand):
+            return cand
+    return os.path.join(_BUSINESS_ROOT, "KeepLab-Relay")
+
+_KEEPLAB_ROOT = _resolve_keeplab_root()
+DEFAULT_PACKAGE = os.path.join(_KEEPLAB_ROOT, "specs", "p0b-close-benchmarkability")
+# source_root = parent that contains the KeepLab-Relay/ directory name in contract paths
+DEFAULT_SOURCE_ROOT = os.path.dirname(_KEEPLAB_ROOT)
 
 CONTRACT_FILE = "implementation-contract.json"
 CONTEXT_FILE = "project-context.json"
