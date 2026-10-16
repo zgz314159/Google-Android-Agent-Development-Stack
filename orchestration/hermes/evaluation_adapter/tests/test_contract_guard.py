@@ -244,6 +244,59 @@ class BlockTests(unittest.TestCase):
             self.assertEqual(v["decision"], "ALLOW", (cmd, v))
 
 
+class CustomSourceRootBoundaryTests(unittest.TestCase):
+    """Non-KeepLab contract with an explicit custom source_root must not regain
+    Projects-relative paths via global project_rel / KeepLab business mapping."""
+
+    def test_custom_source_root_excludes_projects_sibling(self):
+        custom_root = os.path.join(os.path.dirname(STACK), "_custom_contract_root_probe")
+        loaded = {
+            "allowed": ["src/"],
+            "forbidden": [],
+            "path_classes": {},
+            "source_root": custom_root,
+            "keeplab_business_mapping": False,
+            "integrity": "MANIFEST_OK",
+            "context": {"source_root": custom_root},
+        }
+        # Inside custom root → classified (unlisted → fail closed, but IN scope).
+        inside = os.path.join(custom_root, "src", "a.txt")
+        v_in = guard.evaluate(
+            tool_name="write_file",
+            tool_input={"path": inside},
+            cwd=custom_root,
+            loaded=loaded,
+        )
+        self.assertEqual(v_in["decision"], "ALLOW", v_in)
+        # Outside custom root but under Projects (e.g. Stack path) must stay OUT_OF_SCOPE.
+        v_out = guard.evaluate(
+            tool_name="write_file",
+            tool_input={"path": STACK + "/reports/probe.txt"},
+            cwd=custom_root,
+            loaded=loaded,
+        )
+        self.assertEqual(v_out["decision"], "BLOCK", v_out)
+        self.assertEqual(v_out["class"], "OUT_OF_CONTRACT_SCOPE", v_out)
+        # KeepLab under AppProjects must not be remapped without declared business mapping.
+        app_kl = os.path.join(os.path.dirname(PROJECTS), "AppProjects", "KeepLab-Relay", "benchmark", "x.py")
+        v_kl = guard.evaluate(
+            tool_name="write_file",
+            tool_input={"path": app_kl},
+            cwd=custom_root,
+            loaded=loaded,
+        )
+        self.assertEqual(v_kl["decision"], "BLOCK", v_kl)
+        self.assertEqual(v_kl["class"], "OUT_OF_CONTRACT_SCOPE", v_kl)
+
+    def test_keeplab_business_mapping_requires_declaration(self):
+        self.assertFalse(guard.keeplab_business_mapping_declared({"path_resolution": "Projects only"}))
+        self.assertTrue(
+            guard.keeplab_business_mapping_declared(
+                {"path_resolution": "KeepLab-Relay under AEGL_BUSINESS_ROOT; source_root stays PROJECTS_ROOT"}
+            )
+        )
+
+
 class IntegrationTests(unittest.TestCase):
     def test_contract_hash_mismatch_fails_closed(self):
         loaded = load()

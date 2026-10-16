@@ -276,13 +276,14 @@ def expand_source_root_token(value: str) -> str:
     return token
 
 
-def project_rel(full: str):
-    """Map an absolute path to a contract-relative path.
+def keeplab_business_mapping_declared(context: dict) -> bool:
+    """True only when the frozen contract explicitly declares KeepLab business-root mapping."""
+    pr = (context or {}).get("path_resolution") or ""
+    return isinstance(pr, str) and "AEGL_BUSINESS_ROOT" in pr and "KeepLab-Relay" in pr
 
-    ``KeepLab-Relay/…`` resolves via the business root (AppProjects); Stack and
-    other Projects siblings resolve via ``PROJECTS_ROOT``. Never expands the
-    allow root to ``$HOME``.
-    """
+
+def keeplab_business_rel(full: str):
+    """Map an absolute KeepLab path under the business/projects KeepLab root to KeepLab-Relay/…"""
     if full is None:
         return None
     full = os.path.normpath(full)
@@ -292,19 +293,43 @@ def project_rel(full: str):
         if inner in ("", "."):
             return "KeepLab-Relay"
         return _norm(os.path.join("KeepLab-Relay", inner))
+    return None
+
+
+def project_rel(full: str):
+    """Legacy helper: Projects-root relative path, plus KeepLab business mapping.
+
+    Prefer ``resolve_within`` with an explicit ``source_root`` and optional
+    KeepLab business mapping declared on the contract. Never expands to ``$HOME``.
+    """
+    if full is None:
+        return None
+    full = os.path.normpath(full)
+    kl = keeplab_business_rel(full)
+    if kl is not None:
+        return kl
     projects = _projects_root()
     if full == projects or full.startswith(projects + os.sep):
         return "" if full == projects else _norm(os.path.relpath(full, projects))
     return None
 
 
-def resolve_within(raw: str, base_cwd: str, source_root: str):
-    """Resolve ``raw`` to a contract-relative posix path, or None when out of scope."""
+def resolve_within(raw: str, base_cwd: str, source_root: str, *, keeplab_business: bool = False):
+    """Resolve ``raw`` to a contract-relative posix path, or None when out of scope.
+
+    ``source_root`` is the primary boundary. KeepLab cross-root mapping applies
+    only when ``keeplab_business`` is true (contract-declared). Paths outside
+    ``source_root`` are never remapped via a global Projects ``project_rel``.
+    """
     full = _resolve_full(raw, base_cwd)
-    rel = project_rel(full)
+    if full is None:
+        return None
+    rel = _rel_within(full, source_root)
     if rel is not None:
         return rel
-    return _rel_within(full, source_root)
+    if keeplab_business:
+        return keeplab_business_rel(full)
+    return None
 
 
 def _inside(rel_path: str, pattern: str) -> bool:
@@ -399,6 +424,7 @@ def load_contract(package_dir: str) -> dict:
         "forbidden": list(contract.get("forbidden_paths", [])),
         "path_classes": dict(context.get("path_classes", {}) or {}),
         "source_root": expand_source_root_token(raw_root),
+        "keeplab_business_mapping": keeplab_business_mapping_declared(context),
         "integrity": integrity,
         "package_dir": os.path.abspath(package_dir),
         "contract_id": contract.get("contract_id"),
@@ -418,6 +444,7 @@ def evaluate(*, tool_name: str, tool_input: dict, cwd: str, loaded: dict) -> dic
     forbidden = loaded["forbidden"]
     path_classes = loaded["path_classes"]
     source_root = loaded["source_root"]
+    keeplab_business = bool(loaded.get("keeplab_business_mapping"))
     tool_input = tool_input or {}
 
     if loaded["integrity"].startswith("CONTRACT_HASH_MISMATCH"):
@@ -440,7 +467,7 @@ def evaluate(*, tool_name: str, tool_input: dict, cwd: str, loaded: dict) -> dic
                 "matched": "",
                 "reason": "%s called without a resolvable %r argument; failing closed" % (tool_name, key),
             }
-        rel = resolve_within(target, cwd, source_root)
+        rel = resolve_within(target, cwd, source_root, keeplab_business=keeplab_business)
         if rel is None:
             return {"decision": "BLOCK", "class": "OUT_OF_CONTRACT_SCOPE", "target": target,
                     "matched": "", "reason": "write target is outside every declared writable root; failing closed"}
@@ -473,12 +500,11 @@ def evaluate(*, tool_name: str, tool_input: dict, cwd: str, loaded: dict) -> dic
         resolved = []
         outside = 0
         for raw in candidates:
-            full = _resolve_full(raw, base_cwd)
-            if full is None:
-                continue
-            rel = _rel_within(full, source_root)
+            rel = resolve_within(raw, base_cwd, source_root, keeplab_business=keeplab_business)
             if rel is None:
-                outside += 1
+                full = _resolve_full(raw, base_cwd)
+                if full is not None:
+                    outside += 1
                 continue
             resolved.append((raw, rel))
         if not resolved:
