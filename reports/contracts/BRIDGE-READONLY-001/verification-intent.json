@@ -1,0 +1,12 @@
+{
+  "feature_id": "BRIDGE-READONLY",
+  "journey_id": "BRIDGE-READONLY-RUN",
+  "engine": "maestro",
+  "acceptance_ids": ["AC-BRIDGE-001"],
+  "required_selectors": ["bridge_readonly_evidence"],
+  "persistence_checks": ["EVIDENCE.txt persists in the disposable worktree"],
+  "rotation_checks": [],
+  "search_checks": ["EVIDENCE.txt contains the actual read-only values"],
+  "fixture_intent": "The disposable task worktree at /var/lib/aegl-model/tasks/BRIDGE-READONLY-001/project.",
+  "oracle_intent": "Deterministic read-only: actual id -un, pwd, git HEAD and uname -s in EVIDENCE.txt; no synthesized value, no formal write, no promotion."
+}

@@ -1,0 +1,71 @@
+{
+  "algorithm": "sha256",
+  "entries": [
+    {
+      "path": "PRODUCT.md",
+      "required": true,
+      "role": "product",
+      "sha256": "c3464b30a04a2d9ef0ea8907caf0b2e18fb232a9086a185bb8ed9919925a14d4",
+      "size": 1728,
+      "source": "authored"
+    },
+    {
+      "path": "requirements.md",
+      "required": true,
+      "role": "requirements",
+      "sha256": "3e587c90c6dbb5911351406f2fd177f96a5eee7448e839c1bef01209b8429d3b",
+      "size": 633,
+      "source": "authored"
+    },
+    {
+      "path": "design.md",
+      "required": true,
+      "role": "design",
+      "sha256": "c6da141813738628eb76a7277b1064af1101411e8b6db1a4917b40cc580c38f0",
+      "size": 2287,
+      "source": "authored"
+    },
+    {
+      "path": "tasks.md",
+      "required": true,
+      "role": "tasks",
+      "sha256": "d6e0a3afcce0d2a241a9115352d072885161dfa6c0784b7c1aa01d811f1cfb01",
+      "size": 685,
+      "source": "authored"
+    },
+    {
+      "path": "DESIGN.md",
+      "required": true,
+      "role": "ui_design",
+      "sha256": "06863f73a19fb5ff3cf3a30d6bd921ce65eef5ad734b21dbcfeb1dfb7c57accc",
+      "size": 498,
+      "source": "authored"
+    },
+    {
+      "path": "acceptance.md",
+      "required": true,
+      "role": "acceptance",
+      "sha256": "cd8694c79deb6474f1ff686f082c85308b438851be92243ac4929b78073a4ec8",
+      "size": 533,
+      "source": "authored"
+    },
+    {
+      "path": "project-context.json",
+      "required": true,
+      "role": "project_context",
+      "sha256": "091f303c439d64c40ec7127ba603b2e2de34852331406a0322fcd620634357b4",
+      "size": 1046,
+      "source": "authored"
+    },
+    {
+      "path": "verification-intent.json",
+      "required": true,
+      "role": "verification_intent",
+      "sha256": "d3ea392c55ddb291a2b7bfe6e424fbce482c1d87337e439ceb64f2c0da34b82a",
+      "size": 639,
+      "source": "authored"
+    }
+  ],
+  "generated_by": "specification/compiler/hash_manifest.py",
+  "package": "BRIDGE-READONLY-001"
+}

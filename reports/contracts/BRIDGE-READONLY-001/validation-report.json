@@ -1,0 +1,27 @@
+{
+  "contract_sha256": "d3bf8386184b4339f1ef4731e93bf2bf820933226d67bc83d630ef6e20e2cae4",
+  "errors": [],
+  "gates": {
+    "acceptance": "PASS",
+    "boundaries": "PASS",
+    "hashes": "PASS",
+    "schema": "PASS",
+    "traceability": "PASS"
+  },
+  "manifest_sha256": "d0be0b3d4da1edd12e445fbd741eeba0f97a7df86ec5b7b7cae7a80f26396d7a",
+  "status": "READY",
+  "traceability": [
+    {
+      "acceptance_ids": [
+        "AC-BRIDGE-001"
+      ],
+      "pc1_steps": [
+        "PC1-01"
+      ],
+      "requirement": "REQ-BRIDGE-001",
+      "task_ids": [
+        "TASK-01"
+      ]
+    }
+  ]
+}

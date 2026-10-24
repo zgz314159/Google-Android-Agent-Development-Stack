@@ -1,0 +1,30 @@
+{
+  "project": "Google-Android-Agent-Development-Stack",
+  "project_type": "brownfield",
+  "source_root": "/var/tmp/BRIDGE-READONLY-001/project",
+  "contract_id": "BRIDGE-READONLY-001",
+  "purpose": "Authorize one disposable worktree and EVIDENCE.txt for a deterministic read-only sandbox check.",
+  "read_first": [
+    {
+      "path": "README.md",
+      "why": "confirm the disposable worktree identity without a broad scan"
+    }
+  ],
+  "allowed_paths": [
+    "."
+  ],
+  "forbidden_paths": [],
+  "boundary_notes": {
+    "source_root": "/var/tmp/BRIDGE-READONLY-001/project",
+    "unlisted_is_blocked": "No formal project or host path is authorized.",
+    "no_broad_access": "Only the disposable worktree is allowed."
+  },
+  "contract_notes": {
+    "package_role": "EXECUTION_AUTHORIZATION_CONTRACT",
+    "package_access": "READ_ONLY_INPUT",
+    "generated_by": "specification/compiler (hash_manifest.py -> build_contract.py -> validate_package.py)",
+    "execution_sessions": 1,
+    "verification_passes": 1,
+    "business_write": "NONE"
+  }
+}

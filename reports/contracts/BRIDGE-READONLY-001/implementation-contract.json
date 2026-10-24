@@ -1,0 +1,195 @@
+{
+  "acceptance_ids": [
+    "AC-BRIDGE-001"
+  ],
+  "allowed_paths": [
+    "."
+  ],
+  "artifact_hashes": {
+    "DESIGN.md": "06863f73a19fb5ff3cf3a30d6bd921ce65eef5ad734b21dbcfeb1dfb7c57accc",
+    "PRODUCT.md": "c3464b30a04a2d9ef0ea8907caf0b2e18fb232a9086a185bb8ed9919925a14d4",
+    "acceptance.md": "cd8694c79deb6474f1ff686f082c85308b438851be92243ac4929b78073a4ec8",
+    "design.md": "c6da141813738628eb76a7277b1064af1101411e8b6db1a4917b40cc580c38f0",
+    "project-context.json": "091f303c439d64c40ec7127ba603b2e2de34852331406a0322fcd620634357b4",
+    "requirements.md": "3e587c90c6dbb5911351406f2fd177f96a5eee7448e839c1bef01209b8429d3b",
+    "tasks.md": "d6e0a3afcce0d2a241a9115352d072885161dfa6c0784b7c1aa01d811f1cfb01",
+    "verification-intent.json": "d3ea392c55ddb291a2b7bfe6e424fbce482c1d87337e439ceb64f2c0da34b82a"
+  },
+  "artifact_refs": [
+    {
+      "path": "PRODUCT.md",
+      "required": true,
+      "role": "product",
+      "source": "authored"
+    },
+    {
+      "path": "requirements.md",
+      "required": true,
+      "role": "requirements",
+      "source": "authored"
+    },
+    {
+      "path": "design.md",
+      "required": true,
+      "role": "design",
+      "source": "authored"
+    },
+    {
+      "path": "tasks.md",
+      "required": true,
+      "role": "tasks",
+      "source": "authored"
+    },
+    {
+      "path": "DESIGN.md",
+      "required": true,
+      "role": "ui_design",
+      "source": "authored"
+    },
+    {
+      "path": "acceptance.md",
+      "required": true,
+      "role": "acceptance",
+      "source": "authored"
+    },
+    {
+      "path": "project-context.json",
+      "required": true,
+      "role": "project_context",
+      "source": "authored"
+    },
+    {
+      "path": "verification-intent.json",
+      "required": true,
+      "role": "verification_intent",
+      "source": "authored"
+    }
+  ],
+  "assumptions": [],
+  "contract_id": "BRIDGE-READONLY-001",
+  "contract_version": "0.1.0",
+  "data_change": {
+    "migration_required": false,
+    "notes": "No persisted schema.",
+    "schema_version_current": 0,
+    "schema_version_target": 0
+  },
+  "decisions": [
+    {
+      "id": "DEC-001",
+      "rationale": "The launcher checks the worktree against source_root/allowed_paths; a separate project-relative path would be unverified string matching.",
+      "statement": "The task worktree is the contract source_root; allowed_paths is exactly '.'."
+    }
+  ],
+  "experiment_id": "BRIDGE-READONLY",
+  "experiment_type": "SPEC_FIRST_BROWNFIELD",
+  "feature": {
+    "feature_id": "BRIDGE-READONLY",
+    "summary": "Authorize one disposable worktree and its EVIDENCE.txt for a deterministic read-only sandbox check.",
+    "title": "Bridge read-only acceptance task"
+  },
+  "forbidden_paths": [],
+  "matched_control_available": false,
+  "mode": "brownfield",
+  "non_goals": [
+    "Microcourse project",
+    "Formal source or host change",
+    "Promotion or push",
+    "Business write"
+  ],
+  "project": "Google-Android-Agent-Development-Stack",
+  "read_first": [
+    {
+      "path": "README.md",
+      "why": "confirm the disposable worktree identity without a broad scan"
+    }
+  ],
+  "readiness": {
+    "gates": {
+      "acceptance": "PASS",
+      "boundaries": "PASS",
+      "hashes": "PASS",
+      "schema": "PASS",
+      "traceability": "PASS"
+    },
+    "status": "READY"
+  },
+  "requirements": [
+    {
+      "acceptance_ids": [
+        "AC-BRIDGE-001"
+      ],
+      "id": "REQ-BRIDGE-001",
+      "statement": "The task must run only read-only identity, path, git and OS commands in the disposable worktree and write their raw output to `EVIDENCE.txt`.",
+      "task_ids": [
+        "TASK-01"
+      ]
+    }
+  ],
+  "scope": [
+    "Read-only inspection of the disposable task worktree",
+    "Write only EVIDENCE.txt inside that worktree",
+    "Return the real sandbox execution outcome"
+  ],
+  "selector_contract": [
+    {
+      "compose_test_tag": "bridge_readonly_evidence",
+      "name": "bridge_readonly_evidence",
+      "required": true,
+      "state": "EVIDENCE.txt exists in the disposable worktree",
+      "uiautomator": "By.res(\"bridge_readonly_evidence\")"
+    }
+  ],
+  "stop_conditions": [
+    "Any write outside the disposable worktree: STOP, CONTRACT_DEVIATION.",
+    "Any synthesized or missing evidence: STOP, EVIDENCE_MISSING.",
+    "Any formal source, contract, compiler, guard, launcher, profile or host change: STOP, ABSOLUTE_BLOCK_VIOLATION."
+  ],
+  "tasks": [
+    {
+      "acceptance_ids": [
+        "AC-BRIDGE-001"
+      ],
+      "allowed_paths": [
+        "."
+      ],
+      "boundary": "Read-only inspection and one evidence file only. No formal source or host change.",
+      "depends": [],
+      "done_when": "EVIDENCE.txt is present with the raw output and the sandbox reports its real execution outcome.",
+      "goal": "Run `id -un`, `pwd`, `git rev-parse HEAD` and `uname -s` in the disposable worktree; write their raw output to `EVIDENCE.txt`; do not modify any other file.",
+      "id": "TASK-01",
+      "verification": [
+        "EVIDENCE.txt` exists and contains the actual username",
+        "worktree path",
+        "git HEAD and OS name; no other file changed."
+      ]
+    }
+  ],
+  "ui_change": {
+    "selectors_added": [
+      "bridge_readonly_evidence"
+    ],
+    "surfaces": []
+  },
+  "unresolved_questions": [],
+  "verification_intent": {
+    "acceptance_ids": [
+      "AC-BRIDGE-001"
+    ],
+    "engine": "maestro",
+    "feature_id": "BRIDGE-READONLY",
+    "fixture_intent": "The disposable task worktree at /var/lib/aegl-model/tasks/BRIDGE-READONLY-001/project.",
+    "journey_id": "BRIDGE-READONLY-RUN",
+    "oracle_intent": "Deterministic read-only: actual id -un, pwd, git HEAD and uname -s in EVIDENCE.txt; no synthesized value, no formal write, no promotion.",
+    "persistence_checks": [
+      "EVIDENCE.txt persists in the disposable worktree"
+    ],
+    "required_selectors": [
+      "bridge_readonly_evidence"
+    ],
+    "rotation_checks": [],
+    "search_checks": [
+      "EVIDENCE.txt contains the actual read-only values"
+    ]
+  }
+}
