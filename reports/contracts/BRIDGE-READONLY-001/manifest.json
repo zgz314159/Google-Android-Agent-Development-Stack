@@ -21,24 +21,24 @@
       "path": "design.md",
       "required": true,
       "role": "design",
-      "sha256": "730e77f8ff0b8a4771f2caa96ad0a6d92342a2655096697ced5cca66236efac8",
-      "size": 2001,
+      "sha256": "dffd78b6f17635efcb6b2f4bf7e56f2481095ad847ef39ff36f2371e7dccfc40",
+      "size": 2520,
       "source": "authored"
     },
     {
       "path": "tasks.md",
       "required": true,
       "role": "tasks",
-      "sha256": "54fdadbd10e3737a2cf5a43ca55b6545d724fea2f37ac6e10871030e724b9d7e",
-      "size": 715,
+      "sha256": "5dc9f2d62ef22a8b16c6b6b9b3fc68e75062726a3c5153f88846839a70a1c16c",
+      "size": 788,
       "source": "authored"
     },
     {
       "path": "DESIGN.md",
       "required": true,
       "role": "ui_design",
-      "sha256": "17facb401b2689d59cf64ea46b51f30538c475607d82effe84891a6784718b98",
-      "size": 479,
+      "sha256": "d6ced035026375873bc7043eee988e0269f3656b7ca74556170e200ebd9827b1",
+      "size": 531,
       "source": "authored"
     },
     {
@@ -61,8 +61,8 @@
       "path": "verification-intent.json",
       "required": true,
       "role": "verification_intent",
-      "sha256": "618af0aa8cdb86548ac47542165ef53d29c5da4ff90218511584a60526a75f4c",
-      "size": 650,
+      "sha256": "7dbe4eb5dce674b4c8060f7335fbdadca9f47098b9c3c998faddd91edd7f4625",
+      "size": 1939,
       "source": "authored"
     }
   ],

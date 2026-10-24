@@ -11,7 +11,8 @@ No interactive affordance is added, moved or removed.
 
 ## State Indicators
 
-No UI selector is required; `project/EVIDENCE.txt` is the evidence artifact.
+No UI selector is required; `EVIDENCE.txt` in the task worktree (contract path
+`project/EVIDENCE.txt`) is the evidence artifact.
 
 ## Accessibility
 

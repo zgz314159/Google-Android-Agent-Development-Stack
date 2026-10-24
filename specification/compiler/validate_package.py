@@ -113,6 +113,36 @@ def validate(pkg: str, project_root: str | None = None) -> dict:
             if not os.path.exists(os.path.join(pkg, ref["path"])):
                 fail("E_CONTRACT_REF_MISSING", "schema", ref["path"], "artifact_ref path does not exist")
 
+        intent = contract.get("verification_intent", {})
+        engine = intent.get("engine")
+        if engine == "cli":
+            checks = intent.get("cli_checks")
+            if not isinstance(checks, list) or not checks:
+                fail("E_CLI_CHECKS_MISSING", "schema", "verification_intent.cli_checks",
+                     "cli engine requires at least one concrete check")
+            else:
+                for index, check in enumerate(checks):
+                    if not isinstance(check, dict):
+                        fail("E_CLI_CHECK_INCOMPLETE", "schema",
+                             f"verification_intent.cli_checks[{index}]", "cli check must be an object")
+                        continue
+                    for field in ("step", "command", "expected", "on_failure"):
+                        value = check.get(field)
+                        if not isinstance(value, str) or not value.strip():
+                            fail("E_CLI_CHECK_INCOMPLETE", "schema",
+                                 f"verification_intent.cli_checks[{index}].{field}",
+                                 f"cli check requires a non-empty {field}")
+        elif engine in ("uiautomator", "maestro"):
+            if not contract.get("selector_contract"):
+                fail("E_UI_SELECTOR_REQUIRED", "schema", "selector_contract",
+                     "uiautomator/maestro engine requires a non-empty selector_contract")
+            if not intent.get("required_selectors"):
+                fail("E_UI_SELECTOR_REQUIRED", "schema", "verification_intent.required_selectors",
+                     "uiautomator/maestro engine requires at least one required selector")
+        else:
+            fail("E_UNKNOWN_ENGINE", "schema", "verification_intent.engine",
+                 f"unknown verification engine {engine!r}")
+
     # --- parse markdown -----------------------------------------------------
     reqs = parse_requirements(read_text(os.path.join(pkg, "requirements.md"))) if os.path.exists(os.path.join(pkg, "requirements.md")) else []
     tasks_md = parse_tasks(read_text(os.path.join(pkg, "tasks.md"))) if os.path.exists(os.path.join(pkg, "tasks.md")) else []

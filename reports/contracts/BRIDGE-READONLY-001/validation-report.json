@@ -1,34 +1,15 @@
 {
-  "contract_sha256": "1c95a17f9f5f874fe8c938f41dc22c420c3c6c1291d6e4f5982f23d177c14076",
-  "errors": [
-    {
-      "gate": "schema",
-      "message": "$.selector_contract: fewer than minItems 1",
-      "rule_id": "E_SCHEMA_INVALID",
-      "where": "implementation-contract.json"
-    },
-    {
-      "gate": "schema",
-      "message": "$.verification_intent.engine: value 'none' not in enum ['uiautomator', 'maestro']",
-      "rule_id": "E_SCHEMA_INVALID",
-      "where": "implementation-contract.json"
-    },
-    {
-      "gate": "schema",
-      "message": "$.verification_intent.required_selectors: fewer than minItems 1",
-      "rule_id": "E_SCHEMA_INVALID",
-      "where": "implementation-contract.json"
-    }
-  ],
+  "contract_sha256": "2845b7d87cb7f0d5a787d415772ad86060c918ccb8e22ec58cc3e3aa73c679cc",
+  "errors": [],
   "gates": {
     "acceptance": "PASS",
     "boundaries": "PASS",
     "hashes": "PASS",
-    "schema": "FAIL",
+    "schema": "PASS",
     "traceability": "PASS"
   },
-  "manifest_sha256": "93bc172f23baaad47eadc31d42012ead52f0e5562a46d30503aaff47f70c3790",
-  "status": "NOT_READY",
+  "manifest_sha256": "e41355e3e8d3c02ebe8a34940e132ef01f37d327f592a4e36c13db40ae9fa16b",
+  "status": "READY",
   "traceability": [
     {
       "acceptance_ids": [

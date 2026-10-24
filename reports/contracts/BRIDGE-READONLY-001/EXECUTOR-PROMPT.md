@@ -26,7 +26,7 @@ re-plan decisions this contract has already frozen.
   (file + why) for every extension.
 
 ## 3. Execute tasks in dependency order
-  TASK-01  Run `id -un`, `pwd`, `git rev-parse HEAD` and `uname -s` in the disposable worktree; write their raw output to `project/EVIDENCE.txt`; do not modify any other file.  (depends: none)
+  TASK-01  Run `id -un`, `pwd`, `git rev-parse HEAD` and `uname -s` in `/var/tmp/BRIDGE-READONLY-001/project`; write their raw output to `EVIDENCE.txt` in that worktree; do not modify any other file.  (depends: none)
 
 ## 4. Boundaries
 Allowed paths:
@@ -41,16 +41,18 @@ wrong, an acceptance is impossible, or a boundary is unsafe:
   STOP → emit `CONTRACT_DEVIATION` with evidence. Do NOT silently redesign.
 
 ## 6. Verify and hand off
-1. Run the targeted tests named in `tasks.md`.
-2. Build the Verification Plan (engine `none`,
-   journey `BRIDGE-READONLY-RUN`).
-3. Run the deterministic Verification Layer exactly once.
-4. On PASS: make NO further tool call, search, read, audit, repeated verification or
-   exploratory check. Produce the Phase C report in the FINAL ASSISTANT RESPONSE using only
-   evidence already collected in this session, emit the compact final task result, and STOP
-   immediately.
-5. On FAIL: repair only the failed contract item and re-run only the work that repair
-   invalidated. Do not repeat unaffected PASS work.
+1. Run every CLI check below exactly as declared, in order.
+2. Record the actual command, actual output, expected result and failure condition in `EVIDENCE.txt`.
+3. A zero process exit alone is NOT a PASS; the expected result must be observed in the actual output.
+4. If any check fails: STOP, record the failure, and do not synthesize or repair evidence.
+5. On PASS: make NO further tool call, search, read, audit, repeated verification or exploratory check. Produce the Phase C report in the FINAL ASSISTANT RESPONSE using only evidence already collected in this session, emit the compact final task result, and STOP immediately.
+
+CLI checks:
+  - identity: `id -un` — expected: a non-empty user name; record the actual value; on failure: stop; record the actual command, exit code and output; do not synthesize EVIDENCE.txt
+  - worktree: `pwd` — expected: /var/tmp/BRIDGE-READONLY-001/project; on failure: stop; record the actual value; do not synthesize EVIDENCE.txt
+  - revision: `git rev-parse HEAD` — expected: the fixed task commit as a 40-character lowercase hexadecimal id; record the actual value; on failure: stop; record the actual command, exit code and output; do not synthesize EVIDENCE.txt
+  - operating-system: `uname -s` — expected: Linux; on failure: stop; record the actual value; do not synthesize EVIDENCE.txt
+  - evidence: `test -s EVIDENCE.txt && cat EVIDENCE.txt` — expected: EVIDENCE.txt exists in the worktree and contains the actual outputs of the four commands with labels; on failure: stop; record the failure; do not synthesize or repair EVIDENCE.txt
 
 After this session (POST-SESSION observers, not in-session steps):
 - `on_session_finalize` / Auto-Finalizer are POST-SESSION observers.

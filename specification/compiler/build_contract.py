@@ -37,6 +37,7 @@ VI_KEYS = [
     "engine",
     "acceptance_ids",
     "required_selectors",
+    "cli_checks",
     "persistence_checks",
     "rotation_checks",
     "search_checks",
@@ -124,6 +125,31 @@ def render_prompt(contract: dict) -> str:
     forbidden = "\n".join(f"  - {path}" for path in contract["forbidden_paths"]) or "  - (none declared)"
     stops = "\n".join(f"  - {item}" for item in contract["stop_conditions"])
     read_first = "\n".join(f"  {i + 1}. {item['path']}" for i, item in enumerate(contract["read_first"]))
+    intent = contract["verification_intent"]
+    if intent.get("engine") == "cli":
+        checks = "\n".join(
+            "  - {step}: `{command}` — expected: {expected}; on failure: {on_failure}".format(
+                step=check.get("step", "(missing step)"),
+                command=check.get("command", "(missing command)"),
+                expected=check.get("expected", "(missing expected result)"),
+                on_failure=check.get("on_failure", "(missing failure condition)"),
+            )
+            for check in intent.get("cli_checks", [])
+        ) or "  - (none declared; contract is invalid)"
+        verify_steps = f"""1. Run every CLI check below exactly as declared, in order.
+2. Record the actual command, actual output, expected result and failure condition in `EVIDENCE.txt`.
+3. A zero process exit alone is NOT a PASS; the expected result must be observed in the actual output.
+4. If any check fails: STOP, record the failure, and do not synthesize or repair evidence.
+5. On PASS: make NO further tool call, search, read, audit, repeated verification or exploratory check. Produce the Phase C report in the FINAL ASSISTANT RESPONSE using only evidence already collected in this session, emit the compact final task result, and STOP immediately.
+
+CLI checks:
+{checks}"""
+    else:
+        verify_steps = f"""1. Run the targeted tests named in `tasks.md`.
+2. Build the Verification Plan (engine `{intent['engine']}`, journey `{intent['journey_id']}`).
+3. Run the deterministic Verification Layer exactly once.
+4. On PASS: make NO further tool call, search, read, audit, repeated verification or exploratory check. Produce the Phase C report in the FINAL ASSISTANT RESPONSE using only evidence already collected in this session, emit the compact final task result, and STOP immediately.
+5. On FAIL: repair only the failed contract item and re-run only the work that repair invalidated. Do not repeat unaffected PASS work."""
     return f"""# EXECUTOR PROMPT — {contract['experiment_id']}
 
 You are the execution agent for a FROZEN Implementation Contract. Work from the contract
@@ -167,16 +193,7 @@ wrong, an acceptance is impossible, or a boundary is unsafe:
   STOP → emit `CONTRACT_DEVIATION` with evidence. Do NOT silently redesign.
 
 ## 6. Verify and hand off
-1. Run the targeted tests named in `tasks.md`.
-2. Build the Verification Plan (engine `{contract['verification_intent']['engine']}`,
-   journey `{contract['verification_intent']['journey_id']}`).
-3. Run the deterministic Verification Layer exactly once.
-4. On PASS: make NO further tool call, search, read, audit, repeated verification or
-   exploratory check. Produce the Phase C report in the FINAL ASSISTANT RESPONSE using only
-   evidence already collected in this session, emit the compact final task result, and STOP
-   immediately.
-5. On FAIL: repair only the failed contract item and re-run only the work that repair
-   invalidated. Do not repeat unaffected PASS work.
+{verify_steps}
 
 After this session (POST-SESSION observers, not in-session steps):
 - `on_session_finalize` / Auto-Finalizer are POST-SESSION observers.

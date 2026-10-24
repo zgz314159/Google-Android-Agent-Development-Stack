@@ -237,6 +237,9 @@ _SUPPORTED = {
     "$ref",
     "definitions",
     "$defs",
+    "if",
+    "then",
+    "else",
 }
 
 
@@ -294,6 +297,12 @@ def schema_errors(instance: Any, schema: dict[str, Any], root: dict[str, Any] | 
 
     if "enum" in schema and instance not in schema["enum"]:
         errors.append(f"{path}: value {instance!r} not in enum {schema['enum']!r}")
+
+    if "if" in schema:
+        condition_errors = schema_errors(instance, schema["if"], root, path)
+        branch = schema.get("else") if condition_errors else schema.get("then")
+        if branch is not None:
+            errors.extend(schema_errors(instance, branch, root, path))
 
     if isinstance(instance, str):
         if "pattern" in schema and not re.search(schema["pattern"], instance):
