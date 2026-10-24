@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Root-only fixed-argument launcher for one pre-registered Hermes task.
+# Invoked by zhong through a single narrow sudoers rule; no shell/eval/arbitrary command.
+set -euo pipefail
+[ "$(id -u)" -eq 0 ] || { printf 'BLOCKED: root required\n' >&2; exit 1; }
+
+TASK_ID=""; PROMPT=""; EXPECTED=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --task-id) TASK_ID="${2:-}"; shift 2 ;;
+    --prompt-file) PROMPT="${2:-}"; shift 2 ;;
+    --expected-manifest-sha256) EXPECTED="${2:-}"; shift 2 ;;
+    *) printf 'BLOCKED: unknown argument %s\n' "$1" >&2; exit 1 ;;
+  esac
+done
+case "$TASK_ID" in ""|*[!A-Za-z0-9._-]*) printf 'BLOCKED: invalid task id\n' >&2; exit 1 ;; esac
+[ "${#TASK_ID}" -le 64 ] || { printf 'BLOCKED: task id too long\n' >&2; exit 1; }
+[ -n "$PROMPT" ] || { printf 'BLOCKED: prompt file required\n' >&2; exit 1; }
+[ "${#EXPECTED}" -eq 64 ] || { printf 'BLOCKED: manifest sha required\n' >&2; exit 1; }
+case "$EXPECTED" in *[!0-9a-f]*) printf 'BLOCKED: manifest sha must be lowercase hex\n' >&2; exit 1 ;; esac
+
+REG=/var/lib/aegl-model/registry.json
+[ -r "$REG" ] || { printf 'BLOCKED: task registry missing\n' >&2; exit 1; }
+PY=/usr/bin/python3
+[ -x "$PY" ] || PY=python3
+CONTRACT="$("$PY" -c 'import json,sys
+try:
+    d=json.load(open(sys.argv[1], encoding="utf-8"))
+except Exception:
+    raise SystemExit(1)
+e=d.get(sys.argv[2])
+p=e.get("contract_package") if isinstance(e,dict) else None
+if not isinstance(p,str) or not p:
+    raise SystemExit(1)
+print(p)' "$REG" "$TASK_ID")" || { printf 'BLOCKED: task not registered\n' >&2; exit 1; }
+REAL_CONTRACT="$(realpath -e "$CONTRACT")" || { printf 'BLOCKED: contract path missing\n' >&2; exit 1; }
+REAL_PROMPT="$(realpath -e "$PROMPT")" || { printf 'BLOCKED: prompt file missing\n' >&2; exit 1; }
+case "$REAL_PROMPT" in "$REAL_CONTRACT"/*) ;; *) printf 'BLOCKED: prompt outside contract\n' >&2; exit 1 ;; esac
+
+for f in "$REAL_CONTRACT" "$REAL_CONTRACT/manifest.json" "$REAL_CONTRACT/implementation-contract.json" "$REAL_CONTRACT/project-context.json"; do
+  [ -e "$f" ] || { printf 'BLOCKED: contract member missing: %s\n' "$f" >&2; exit 1; }
+  [ "$(stat -c '%u' "$f")" = "0" ] || { printf 'BLOCKED: contract member not root-owned: %s\n' "$f" >&2; exit 1; }
+  mode="$(stat -c '%a' "$f")"
+  if (( (8#$mode & 8#022) != 0 )); then printf 'BLOCKED: contract member group/other writable: %s\n' "$f" >&2; exit 1; fi
+done
+GOT="$(sha256sum "$REAL_CONTRACT/manifest.json" | awk '{print $1}')"
+[ "$GOT" = "$EXPECTED" ] || { printf 'BLOCKED: contract manifest hash mismatch\n' >&2; exit 1; }
+
+exec /usr/local/lib/aegl-model/aegl-hermes-sandbox --task "$TASK_ID" -- \
+  hermes -p android-stack chat --oneshot --query-file "$REAL_PROMPT"

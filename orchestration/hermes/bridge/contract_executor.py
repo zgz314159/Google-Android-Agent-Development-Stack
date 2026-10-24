@@ -47,7 +47,7 @@ COMPILER_VALIDATOR = PROJECT_ROOT / "specification" / "compiler" / "validate_pac
 
 HERMES_BIN = "hermes"
 HERMES_PROFILE = "android-stack"
-CONTROLLED_SANDBOX = "/usr/local/lib/aegl-model/aegl-hermes-sandbox"
+CONTROLLED_WRAPPER = "/usr/local/lib/aegl-bridge/run_registered_task"
 CONTROLLED_TASK_REGISTRY = "/var/lib/aegl-model/registry.json"
 CONTROLLED_TASK_ID_ENV = "AEGL_HERMES_TASK_ID"
 
@@ -275,9 +275,9 @@ def _controlled_task_id(task_id=None) -> str:
 
 def controlled_task_check(package, *, task_id=None,
                           registry_path=CONTROLLED_TASK_REGISTRY,
-                          sandbox=CONTROLLED_SANDBOX,
-                          require_root: bool = True) -> dict:
-    """Require a root-registered task whose contract is the validated package."""
+                          wrapper=CONTROLLED_WRAPPER,
+                          require_root_owner: bool = True) -> dict:
+    """Require a root-registered task and the fixed root-owned launch wrapper."""
     task_id = _controlled_task_id(task_id)
     registry = os.fspath(registry_path)
     if not os.path.isfile(registry):
@@ -317,25 +317,32 @@ def controlled_task_check(package, *, task_id=None,
             "registered task %r contract_package does not match the validated package"
             % task_id,
         )
-    sandbox_path = os.fspath(sandbox)
-    if not os.path.isfile(sandbox_path) or not os.access(sandbox_path, os.X_OK):
+    wrapper_path = os.fspath(wrapper)
+    if not os.path.isfile(wrapper_path) or not os.access(wrapper_path, os.X_OK):
         raise ControlledLaunchError(
-            "E_CONTROLLED_SANDBOX_MISSING",
-            "controlled Hermes sandbox missing or not executable: %s" % sandbox_path,
+            "E_CONTROLLED_WRAPPER_MISSING",
+            "controlled launch wrapper missing or not executable: %s" % wrapper_path,
         )
-    if require_root and os.geteuid() != 0:
-        raise ControlledLaunchError(
-            "E_CONTROLLED_LAUNCH_REQUIRES_ROOT",
-            "the controlled Hermes launcher requires root; run the bridge round from a trusted root terminal",
-        )
-    return {"task_id": task_id, "sandbox": sandbox_path, "entry": entry}
+    if require_root_owner:
+        st = os.stat(wrapper_path)
+        if st.st_uid != 0:
+            raise ControlledLaunchError(
+                "E_CONTROLLED_WRAPPER_NOT_ROOT",
+                "controlled launch wrapper must be root-owned: %s" % wrapper_path,
+            )
+        if st.st_mode & 0o022:
+            raise ControlledLaunchError(
+                "E_CONTROLLED_WRAPPER_WRITABLE",
+                "controlled launch wrapper must not be group/other writable: %s" % wrapper_path,
+            )
+    return {"task_id": task_id, "wrapper": wrapper_path, "entry": entry}
 
 
 def gate(package_raw: str, supplied_manifest_sha256: str,
          project_root: Path = PROJECT_ROOT, *, task_id=None,
          task_registry=CONTROLLED_TASK_REGISTRY,
-         sandbox=CONTROLLED_SANDBOX,
-         require_root: bool = True) -> dict:
+         wrapper=CONTROLLED_WRAPPER,
+         require_root_owner: bool = True) -> dict:
     """Full package gate. Raises GateError on the first failure.
 
     Order matters: the manifest hash is checked against the PRISTINE package
@@ -366,7 +373,7 @@ def gate(package_raw: str, supplied_manifest_sha256: str,
 
     controlled = controlled_task_check(
         package, task_id=task_id, registry_path=task_registry,
-        sandbox=sandbox, require_root=require_root,
+        wrapper=wrapper, require_root_owner=require_root_owner,
     )
 
     return {
@@ -378,7 +385,7 @@ def gate(package_raw: str, supplied_manifest_sha256: str,
         "forbidden_paths": list(contract.get("forbidden_paths", [])),
         "validator": validation,
         "controlled_task_id": controlled["task_id"],
-        "controlled_sandbox": controlled["sandbox"],
+        "controlled_wrapper": controlled["wrapper"],
     }
 
 
@@ -397,25 +404,47 @@ def hermes_inner_argv(prompt_path: Path) -> list[str]:
     ]
 
 
-def hermes_argv(prompt_path: Path, *, task_id=None,
-                sandbox=CONTROLLED_SANDBOX) -> list[str]:
-    """The one authorized execution route: installed sandbox + pre-registered task."""
+def hermes_argv(prompt_path: Path, *, task_id=None, wrapper=CONTROLLED_WRAPPER,
+                manifest_sha256=None, require_root_owner: bool = True) -> list[str]:
+    """zhong -> narrow sudo -> fixed root wrapper -> installed sandbox."""
     task_id = _controlled_task_id(task_id)
-    sandbox_path = os.fspath(sandbox)
-    if not os.path.isfile(sandbox_path) or not os.access(sandbox_path, os.X_OK):
+    if not isinstance(manifest_sha256, str) or len(manifest_sha256) != 64:
         raise ControlledLaunchError(
-            "E_CONTROLLED_SANDBOX_MISSING",
-            "controlled Hermes sandbox missing or not executable: %s" % sandbox_path,
+            "E_CONTROLLED_MANIFEST_SHA_MISSING",
+            "expected contract manifest sha256 is required",
         )
-    return [sandbox_path, "--task", task_id, "--", *hermes_inner_argv(prompt_path)]
+    wrapper_path = os.fspath(wrapper)
+    if not os.path.isfile(wrapper_path) or not os.access(wrapper_path, os.X_OK):
+        raise ControlledLaunchError(
+            "E_CONTROLLED_WRAPPER_MISSING",
+            "controlled launch wrapper missing or not executable: %s" % wrapper_path,
+        )
+    if require_root_owner:
+        st = os.stat(wrapper_path)
+        if st.st_uid != 0:
+            raise ControlledLaunchError(
+                "E_CONTROLLED_WRAPPER_NOT_ROOT",
+                "controlled launch wrapper must be root-owned: %s" % wrapper_path,
+            )
+        if st.st_mode & 0o022:
+            raise ControlledLaunchError(
+                "E_CONTROLLED_WRAPPER_WRITABLE",
+                "controlled launch wrapper must not be group/other writable: %s" % wrapper_path,
+            )
+    return [
+        "sudo", "-n", "--", wrapper_path,
+        "--task-id", task_id,
+        "--prompt-file", str(prompt_path),
+        "--expected-manifest-sha256", manifest_sha256,
+    ]
 
 
 def execute(package: str, prompt_path: Path, max_runtime_s: int, *,
             project_root: Path = PROJECT_ROOT, runner=subprocess.run,
             base_env: dict | None = None, task_id=None,
             task_registry=CONTROLLED_TASK_REGISTRY,
-            sandbox=CONTROLLED_SANDBOX,
-            require_root: bool = True) -> dict:
+            wrapper=CONTROLLED_WRAPPER,
+            require_root_owner: bool = True) -> dict:
     """Run the validated EXECUTOR-PROMPT.md under the Contract Guard.
 
     Sets HERMES_CONTRACT_PACKAGE to the validated package (the Contract Guard's own
@@ -427,10 +456,13 @@ def execute(package: str, prompt_path: Path, max_runtime_s: int, *,
     try:
         controlled = controlled_task_check(
             package, task_id=task_id, registry_path=task_registry,
-            sandbox=sandbox, require_root=require_root,
+            wrapper=wrapper, require_root_owner=require_root_owner,
         )
+        contract_manifest = manifest_sha256(Path(package))
         argv = hermes_argv(prompt_path, task_id=controlled["task_id"],
-                           sandbox=controlled["sandbox"])
+                           wrapper=controlled["wrapper"],
+                           manifest_sha256=contract_manifest,
+                           require_root_owner=require_root_owner)
     except GateError as exc:
         return {
             "outcome": O_BLOCKED,

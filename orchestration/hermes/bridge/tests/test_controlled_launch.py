@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Focused checks for the controlled Hermes launch wiring (no network, no sandbox run)."""
+"""Focused checks for zhong -> narrow sudo wrapper -> installed sandbox wiring."""
 from __future__ import annotations
 
 import json
@@ -23,10 +23,11 @@ class ControlledLaunchTests(unittest.TestCase):
         self.root = Path(self.tmp.name)
         self.pkg = self.root / "pkg"
         self.pkg.mkdir()
+        (self.pkg / "manifest.json").write_text('{"entries":[]}', encoding="utf-8")
         (self.pkg / "EXECUTOR-PROMPT.md").write_text("prompt", encoding="utf-8")
-        self.sandbox = self.root / "sandbox"
-        self.sandbox.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-        self.sandbox.chmod(0o755)
+        self.wrapper = self.root / "run_registered_task"
+        self.wrapper.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        self.wrapper.chmod(0o755)
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -38,6 +39,9 @@ class ControlledLaunchTests(unittest.TestCase):
         }), encoding="utf-8")
         return path
 
+    def _manifest(self):
+        return ce.manifest_sha256(self.pkg)
+
     def test_missing_task_id_rejected(self):
         registry = self._registry()
         with mock.patch.dict(os.environ, {}, clear=False):
@@ -45,8 +49,8 @@ class ControlledLaunchTests(unittest.TestCase):
             with self.assertRaises(ce.ControlledLaunchError) as ctx:
                 ce.controlled_task_check(self.pkg, task_id=None,
                                          registry_path=str(registry),
-                                         sandbox=str(self.sandbox),
-                                         require_root=False)
+                                         wrapper=str(self.wrapper),
+                                         require_root_owner=False)
         self.assertEqual(ctx.exception.code, "E_CONTROLLED_TASK_ID_MISSING")
 
     def test_missing_task_rejected(self):
@@ -54,8 +58,8 @@ class ControlledLaunchTests(unittest.TestCase):
         with self.assertRaises(ce.ControlledLaunchError) as ctx:
             ce.controlled_task_check(self.pkg, task_id="task-1",
                                      registry_path=str(registry),
-                                     sandbox=str(self.sandbox),
-                                     require_root=False)
+                                     wrapper=str(self.wrapper),
+                                     require_root_owner=False)
         self.assertEqual(ctx.exception.code, "E_CONTROLLED_TASK_NOT_REGISTERED")
 
     def test_contract_mismatch_rejected(self):
@@ -65,40 +69,39 @@ class ControlledLaunchTests(unittest.TestCase):
         with self.assertRaises(ce.ControlledLaunchError) as ctx:
             ce.controlled_task_check(self.pkg, task_id="task-1",
                                      registry_path=str(registry),
-                                     sandbox=str(self.sandbox),
-                                     require_root=False)
+                                     wrapper=str(self.wrapper),
+                                     require_root_owner=False)
         self.assertEqual(ctx.exception.code, "E_CONTROLLED_TASK_CONTRACT_MISMATCH")
 
-    def test_missing_sandbox_rejected(self):
+    def test_missing_wrapper_rejected(self):
         registry = self._registry()
         with self.assertRaises(ce.ControlledLaunchError) as ctx:
             ce.controlled_task_check(self.pkg, task_id="task-1",
                                      registry_path=str(registry),
-                                     sandbox=str(self.root / "missing-sandbox"),
-                                     require_root=False)
-        self.assertEqual(ctx.exception.code, "E_CONTROLLED_SANDBOX_MISSING")
+                                     wrapper=str(self.root / "missing-wrapper"),
+                                     require_root_owner=False)
+        self.assertEqual(ctx.exception.code, "E_CONTROLLED_WRAPPER_MISSING")
 
-    def test_non_root_rejected(self):
+    def test_non_root_owned_wrapper_rejected(self):
         registry = self._registry()
-        with mock.patch.object(ce.os, "geteuid", return_value=1000):
-            with self.assertRaises(ce.ControlledLaunchError) as ctx:
-                ce.controlled_task_check(self.pkg, task_id="task-1",
-                                         registry_path=str(registry),
-                                         sandbox=str(self.sandbox),
-                                         require_root=True)
-        self.assertEqual(ctx.exception.code, "E_CONTROLLED_LAUNCH_REQUIRES_ROOT")
+        with self.assertRaises(ce.ControlledLaunchError) as ctx:
+            ce.controlled_task_check(self.pkg, task_id="task-1",
+                                     registry_path=str(registry),
+                                     wrapper=str(self.wrapper),
+                                     require_root_owner=True)
+        self.assertEqual(ctx.exception.code, "E_CONTROLLED_WRAPPER_NOT_ROOT")
 
-    def test_argv_wraps_installed_sandbox(self):
-        argv = ce.hermes_argv(self.pkg / "EXECUTOR-PROMPT.md",
-                              task_id="task-1", sandbox=str(self.sandbox))
-        self.assertEqual(argv[0], str(self.sandbox))
-        self.assertEqual(argv[1:3], ["--task", "task-1"])
-        self.assertEqual(argv[3], "--")
-        self.assertEqual(argv[4], "hermes")
-        self.assertEqual(argv[5:7], ["-p", "android-stack"])
-        self.assertNotEqual(argv[0], "hermes")
+    def test_argv_uses_narrow_sudo_wrapper(self):
+        argv = ce.hermes_argv(self.pkg / "EXECUTOR-PROMPT.md", task_id="task-1",
+                              wrapper=str(self.wrapper),
+                              manifest_sha256=self._manifest(),
+                              require_root_owner=False)
+        self.assertEqual(argv[:4], ["sudo", "-n", "--", str(self.wrapper)])
+        self.assertEqual(argv[4:6], ["--task-id", "task-1"])
+        self.assertEqual(argv[6:8], ["--prompt-file", str(self.pkg / "EXECUTOR-PROMPT.md")])
+        self.assertEqual(argv[8:10], ["--expected-manifest-sha256", self._manifest()])
 
-    def test_execute_uses_sandbox_and_registered_task(self):
+    def test_execute_uses_wrapper_and_manifest_hash(self):
         registry = self._registry()
         captured = {}
 
@@ -107,27 +110,26 @@ class ControlledLaunchTests(unittest.TestCase):
             captured["env"] = kwargs.get("env")
             return subprocess.CompletedProcess(argv, 0, "ok", "")
 
-        with mock.patch.object(ce.os, "geteuid", return_value=0):
-            result = ce.execute(str(self.pkg), self.pkg / "EXECUTOR-PROMPT.md", 5,
-                                task_id="task-1", task_registry=str(registry),
-                                sandbox=str(self.sandbox), runner=runner)
+        result = ce.execute(str(self.pkg), self.pkg / "EXECUTOR-PROMPT.md", 5,
+                            task_id="task-1", task_registry=str(registry),
+                            wrapper=str(self.wrapper),
+                            require_root_owner=False, runner=runner)
         self.assertEqual(result["outcome"], ce.O_SUCCESS)
-        self.assertEqual(captured["argv"][0], str(self.sandbox))
-        self.assertEqual(captured["argv"][1:3], ["--task", "task-1"])
-        self.assertEqual(captured["argv"][3], "--")
-        self.assertEqual(captured["argv"][4], "hermes")
+        self.assertEqual(captured["argv"][:4], ["sudo", "-n", "--", str(self.wrapper)])
+        self.assertEqual(captured["argv"][4:6], ["--task-id", "task-1"])
+        self.assertEqual(captured["argv"][8], "--expected-manifest-sha256")
+        self.assertEqual(captured["argv"][9], self._manifest())
         self.assertEqual(captured["env"]["HERMES_CONTRACT_PACKAGE"], str(self.pkg))
 
-    def test_execute_non_root_blocks_without_runner(self):
+    def test_execute_rejects_non_root_owned_wrapper_without_runner(self):
         registry = self._registry()
         called = []
-        with mock.patch.object(ce.os, "geteuid", return_value=1000):
-            result = ce.execute(str(self.pkg), self.pkg / "EXECUTOR-PROMPT.md", 5,
-                                task_id="task-1", task_registry=str(registry),
-                                sandbox=str(self.sandbox),
-                                runner=lambda *a, **k: called.append(a))
+        result = ce.execute(str(self.pkg), self.pkg / "EXECUTOR-PROMPT.md", 5,
+                            task_id="task-1", task_registry=str(registry),
+                            wrapper=str(self.wrapper), require_root_owner=True,
+                            runner=lambda *a, **k: called.append(a))
         self.assertEqual(result["outcome"], ce.O_BLOCKED)
-        self.assertEqual(result["reason"], "E_CONTROLLED_LAUNCH_REQUIRES_ROOT")
+        self.assertEqual(result["reason"], "E_CONTROLLED_WRAPPER_NOT_ROOT")
         self.assertEqual(called, [])
 
 
