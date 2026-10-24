@@ -47,6 +47,9 @@ COMPILER_VALIDATOR = PROJECT_ROOT / "specification" / "compiler" / "validate_pac
 
 HERMES_BIN = "hermes"
 HERMES_PROFILE = "android-stack"
+CONTROLLED_SANDBOX = "/usr/local/lib/aegl-model/aegl-hermes-sandbox"
+CONTROLLED_TASK_REGISTRY = "/var/lib/aegl-model/registry.json"
+CONTROLLED_TASK_ID_ENV = "AEGL_HERMES_TASK_ID"
 
 # Compiler-generated artifacts a READY package must carry.
 REQUIRED_ARTIFACTS = (
@@ -78,6 +81,10 @@ class GateError(RuntimeError):
 
     def as_dict(self) -> dict:
         return {"status": "REJECTED", "code": self.code, "message": self.message}
+
+
+class ControlledLaunchError(GateError):
+    """The pre-registered controlled Hermes task cannot be used."""
 
 
 # --------------------------------------------------------------------------- #
@@ -254,8 +261,81 @@ def check_self_modification(allowed_paths) -> None:
         )
 
 
+def _controlled_task_id(task_id=None) -> str:
+    if task_id is None:
+        task_id = os.environ.get(CONTROLLED_TASK_ID_ENV, "")
+    if not isinstance(task_id, str) or not task_id.strip():
+        raise ControlledLaunchError(
+            "E_CONTROLLED_TASK_ID_MISSING",
+            "%s is required; register a task with the installed aegl-model-task as root"
+            % CONTROLLED_TASK_ID_ENV,
+        )
+    return task_id.strip()
+
+
+def controlled_task_check(package, *, task_id=None,
+                          registry_path=CONTROLLED_TASK_REGISTRY,
+                          sandbox=CONTROLLED_SANDBOX,
+                          require_root: bool = True) -> dict:
+    """Require a root-registered task whose contract is the validated package."""
+    task_id = _controlled_task_id(task_id)
+    registry = os.fspath(registry_path)
+    if not os.path.isfile(registry):
+        raise ControlledLaunchError(
+            "E_CONTROLLED_TASK_REGISTRY_INVALID",
+            "trusted task registry missing: %s" % registry,
+        )
+    try:
+        with open(registry, encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ControlledLaunchError(
+            "E_CONTROLLED_TASK_REGISTRY_INVALID",
+            "trusted task registry invalid: %s" % exc,
+        ) from exc
+    if not isinstance(data, dict):
+        raise ControlledLaunchError(
+            "E_CONTROLLED_TASK_REGISTRY_INVALID",
+            "trusted task registry must be a JSON object",
+        )
+    entry = data.get(task_id)
+    if not isinstance(entry, dict):
+        raise ControlledLaunchError(
+            "E_CONTROLLED_TASK_NOT_REGISTERED",
+            "task %r is not registered in %s; use the installed aegl-model-task as root"
+            % (task_id, registry),
+        )
+    entry_package = entry.get("contract_package")
+    if not isinstance(entry_package, str) or not entry_package:
+        raise ControlledLaunchError(
+            "E_CONTROLLED_TASK_CONTRACT_MISMATCH",
+            "registered task %r has no contract_package" % task_id,
+        )
+    if os.path.realpath(entry_package) != os.path.realpath(os.fspath(package)):
+        raise ControlledLaunchError(
+            "E_CONTROLLED_TASK_CONTRACT_MISMATCH",
+            "registered task %r contract_package does not match the validated package"
+            % task_id,
+        )
+    sandbox_path = os.fspath(sandbox)
+    if not os.path.isfile(sandbox_path) or not os.access(sandbox_path, os.X_OK):
+        raise ControlledLaunchError(
+            "E_CONTROLLED_SANDBOX_MISSING",
+            "controlled Hermes sandbox missing or not executable: %s" % sandbox_path,
+        )
+    if require_root and os.geteuid() != 0:
+        raise ControlledLaunchError(
+            "E_CONTROLLED_LAUNCH_REQUIRES_ROOT",
+            "the controlled Hermes launcher requires root; run the bridge round from a trusted root terminal",
+        )
+    return {"task_id": task_id, "sandbox": sandbox_path, "entry": entry}
+
+
 def gate(package_raw: str, supplied_manifest_sha256: str,
-         project_root: Path = PROJECT_ROOT) -> dict:
+         project_root: Path = PROJECT_ROOT, *, task_id=None,
+         task_registry=CONTROLLED_TASK_REGISTRY,
+         sandbox=CONTROLLED_SANDBOX,
+         require_root: bool = True) -> dict:
     """Full package gate. Raises GateError on the first failure.
 
     Order matters: the manifest hash is checked against the PRISTINE package
@@ -284,6 +364,11 @@ def gate(package_raw: str, supplied_manifest_sha256: str,
     with open(package / "implementation-contract.json", "r", encoding="utf-8") as handle:
         contract = json.load(handle)
 
+    controlled = controlled_task_check(
+        package, task_id=task_id, registry_path=task_registry,
+        sandbox=sandbox, require_root=require_root,
+    )
+
     return {
         "status": "READY",
         "package": str(package),
@@ -292,6 +377,8 @@ def gate(package_raw: str, supplied_manifest_sha256: str,
         "allowed_paths": list(contract.get("allowed_paths", [])),
         "forbidden_paths": list(contract.get("forbidden_paths", [])),
         "validator": validation,
+        "controlled_task_id": controlled["task_id"],
+        "controlled_sandbox": controlled["sandbox"],
     }
 
 
@@ -299,8 +386,8 @@ def gate(package_raw: str, supplied_manifest_sha256: str,
 # Contract-Guard execution
 # --------------------------------------------------------------------------- #
 
-def hermes_argv(prompt_path: Path) -> list[str]:
-    """The one authorized execution route. Fixed argv, no shell, no raw query text."""
+def hermes_inner_argv(prompt_path: Path) -> list[str]:
+    """The Hermes argv INSIDE the controlled sandbox (never executed directly)."""
     return [
         HERMES_BIN,
         "-p", HERMES_PROFILE,
@@ -310,9 +397,25 @@ def hermes_argv(prompt_path: Path) -> list[str]:
     ]
 
 
+def hermes_argv(prompt_path: Path, *, task_id=None,
+                sandbox=CONTROLLED_SANDBOX) -> list[str]:
+    """The one authorized execution route: installed sandbox + pre-registered task."""
+    task_id = _controlled_task_id(task_id)
+    sandbox_path = os.fspath(sandbox)
+    if not os.path.isfile(sandbox_path) or not os.access(sandbox_path, os.X_OK):
+        raise ControlledLaunchError(
+            "E_CONTROLLED_SANDBOX_MISSING",
+            "controlled Hermes sandbox missing or not executable: %s" % sandbox_path,
+        )
+    return [sandbox_path, "--task", task_id, "--", *hermes_inner_argv(prompt_path)]
+
+
 def execute(package: str, prompt_path: Path, max_runtime_s: int, *,
             project_root: Path = PROJECT_ROOT, runner=subprocess.run,
-            base_env: dict | None = None) -> dict:
+            base_env: dict | None = None, task_id=None,
+            task_registry=CONTROLLED_TASK_REGISTRY,
+            sandbox=CONTROLLED_SANDBOX,
+            require_root: bool = True) -> dict:
     """Run the validated EXECUTOR-PROMPT.md under the Contract Guard.
 
     Sets HERMES_CONTRACT_PACKAGE to the validated package (the Contract Guard's own
@@ -321,7 +424,22 @@ def execute(package: str, prompt_path: Path, max_runtime_s: int, *,
     env = dict(os.environ if base_env is None else base_env)
     env["HERMES_CONTRACT_PACKAGE"] = str(package)
 
-    argv = hermes_argv(prompt_path)
+    try:
+        controlled = controlled_task_check(
+            package, task_id=task_id, registry_path=task_registry,
+            sandbox=sandbox, require_root=require_root,
+        )
+        argv = hermes_argv(prompt_path, task_id=controlled["task_id"],
+                           sandbox=controlled["sandbox"])
+    except GateError as exc:
+        return {
+            "outcome": O_BLOCKED,
+            "exit_code": 1,
+            "argv": [],
+            "stdout_tail": "",
+            "stderr_tail": exc.message,
+            "reason": exc.code,
+        }
     try:
         proc = runner(
             argv,
