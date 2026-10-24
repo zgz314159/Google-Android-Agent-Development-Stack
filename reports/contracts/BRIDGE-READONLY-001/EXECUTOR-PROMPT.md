@@ -20,17 +20,17 @@ re-plan decisions this contract has already frozen.
 ## 2. Recon budget
 - `broad repo scan = forbidden`.
 - Read only these 1 `read_first` files:
-  1. README.md
+  1. project/README.md
 - Extend to a targeted search ONLY for `CONTRACT_GAP`, `CONTRACT_CONTRADICTION`, a missing
   dependency, or compile evidence that requires one extra file. Record `EXTRA_RECON_REASON`
   (file + why) for every extension.
 
 ## 3. Execute tasks in dependency order
-  TASK-01  Run `id -un`, `pwd`, `git rev-parse HEAD` and `uname -s` in the disposable worktree; write their raw output to `EVIDENCE.txt`; do not modify any other file.  (depends: none)
+  TASK-01  Run `id -un`, `pwd`, `git rev-parse HEAD` and `uname -s` in the disposable worktree; write their raw output to `project/EVIDENCE.txt`; do not modify any other file.  (depends: none)
 
 ## 4. Boundaries
 Allowed paths:
-  - .
+  - project
 Forbidden paths:
   - (none declared)
 Frozen decisions (do not reopen): DEC-001.
@@ -42,7 +42,7 @@ wrong, an acceptance is impossible, or a boundary is unsafe:
 
 ## 6. Verify and hand off
 1. Run the targeted tests named in `tasks.md`.
-2. Build the Verification Plan (engine `maestro`,
+2. Build the Verification Plan (engine `none`,
    journey `BRIDGE-READONLY-RUN`).
 3. Run the deterministic Verification Layer exactly once.
 4. On PASS: make NO further tool call, search, read, audit, repeated verification or

@@ -21,24 +21,24 @@
       "path": "design.md",
       "required": true,
       "role": "design",
-      "sha256": "c6da141813738628eb76a7277b1064af1101411e8b6db1a4917b40cc580c38f0",
-      "size": 2287,
+      "sha256": "730e77f8ff0b8a4771f2caa96ad0a6d92342a2655096697ced5cca66236efac8",
+      "size": 2001,
       "source": "authored"
     },
     {
       "path": "tasks.md",
       "required": true,
       "role": "tasks",
-      "sha256": "d6e0a3afcce0d2a241a9115352d072885161dfa6c0784b7c1aa01d811f1cfb01",
-      "size": 685,
+      "sha256": "54fdadbd10e3737a2cf5a43ca55b6545d724fea2f37ac6e10871030e724b9d7e",
+      "size": 715,
       "source": "authored"
     },
     {
       "path": "DESIGN.md",
       "required": true,
       "role": "ui_design",
-      "sha256": "06863f73a19fb5ff3cf3a30d6bd921ce65eef5ad734b21dbcfeb1dfb7c57accc",
-      "size": 498,
+      "sha256": "17facb401b2689d59cf64ea46b51f30538c475607d82effe84891a6784718b98",
+      "size": 479,
       "source": "authored"
     },
     {
@@ -53,16 +53,16 @@
       "path": "project-context.json",
       "required": true,
       "role": "project_context",
-      "sha256": "091f303c439d64c40ec7127ba603b2e2de34852331406a0322fcd620634357b4",
-      "size": 1046,
+      "sha256": "f8b1476fcac5636133bc824e60d0f841bca79621c1c48b8fe9dabee3cfda0182",
+      "size": 1052,
       "source": "authored"
     },
     {
       "path": "verification-intent.json",
       "required": true,
       "role": "verification_intent",
-      "sha256": "d3ea392c55ddb291a2b7bfe6e424fbce482c1d87337e439ceb64f2c0da34b82a",
-      "size": 639,
+      "sha256": "618af0aa8cdb86548ac47542165ef53d29c5da4ff90218511584a60526a75f4c",
+      "size": 650,
       "source": "authored"
     }
   ],

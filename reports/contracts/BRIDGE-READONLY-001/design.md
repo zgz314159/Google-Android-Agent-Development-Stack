@@ -40,18 +40,10 @@ its real path. No formal project, compiler, guard, launcher or profile is modifi
     "schema_version_target": 0
   },
   "ui_change": {
-    "selectors_added": ["bridge_readonly_evidence"],
+    "selectors_added": [],
     "surfaces": []
   },
-  "selector_contract": [
-    {
-      "compose_test_tag": "bridge_readonly_evidence",
-      "name": "bridge_readonly_evidence",
-      "required": true,
-      "state": "EVIDENCE.txt exists in the disposable worktree",
-      "uiautomator": "By.res(\"bridge_readonly_evidence\")"
-    }
-  ],
+  "selector_contract": [],
   "stop_conditions": [
     "Any write outside the disposable worktree: STOP, CONTRACT_DEVIATION.",
     "Any synthesized or missing evidence: STOP, EVIDENCE_MISSING.",

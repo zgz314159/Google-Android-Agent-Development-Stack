@@ -11,7 +11,7 @@ No interactive affordance is added, moved or removed.
 
 ## State Indicators
 
-`bridge_readonly_evidence` denotes that `EVIDENCE.txt` exists with the actual read-only values.
+No UI selector is required; `project/EVIDENCE.txt` is the evidence artifact.
 
 ## Accessibility
 

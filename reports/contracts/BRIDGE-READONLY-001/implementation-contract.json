@@ -3,17 +3,17 @@
     "AC-BRIDGE-001"
   ],
   "allowed_paths": [
-    "."
+    "project"
   ],
   "artifact_hashes": {
-    "DESIGN.md": "06863f73a19fb5ff3cf3a30d6bd921ce65eef5ad734b21dbcfeb1dfb7c57accc",
+    "DESIGN.md": "17facb401b2689d59cf64ea46b51f30538c475607d82effe84891a6784718b98",
     "PRODUCT.md": "c3464b30a04a2d9ef0ea8907caf0b2e18fb232a9086a185bb8ed9919925a14d4",
     "acceptance.md": "cd8694c79deb6474f1ff686f082c85308b438851be92243ac4929b78073a4ec8",
-    "design.md": "c6da141813738628eb76a7277b1064af1101411e8b6db1a4917b40cc580c38f0",
-    "project-context.json": "091f303c439d64c40ec7127ba603b2e2de34852331406a0322fcd620634357b4",
+    "design.md": "730e77f8ff0b8a4771f2caa96ad0a6d92342a2655096697ced5cca66236efac8",
+    "project-context.json": "f8b1476fcac5636133bc824e60d0f841bca79621c1c48b8fe9dabee3cfda0182",
     "requirements.md": "3e587c90c6dbb5911351406f2fd177f96a5eee7448e839c1bef01209b8429d3b",
-    "tasks.md": "d6e0a3afcce0d2a241a9115352d072885161dfa6c0784b7c1aa01d811f1cfb01",
-    "verification-intent.json": "d3ea392c55ddb291a2b7bfe6e424fbce482c1d87337e439ceb64f2c0da34b82a"
+    "tasks.md": "54fdadbd10e3737a2cf5a43ca55b6545d724fea2f37ac6e10871030e724b9d7e",
+    "verification-intent.json": "618af0aa8cdb86548ac47542165ef53d29c5da4ff90218511584a60526a75f4c"
   },
   "artifact_refs": [
     {
@@ -100,7 +100,7 @@
   "project": "Google-Android-Agent-Development-Stack",
   "read_first": [
     {
-      "path": "README.md",
+      "path": "project/README.md",
       "why": "confirm the disposable worktree identity without a broad scan"
     }
   ],
@@ -109,10 +109,10 @@
       "acceptance": "PASS",
       "boundaries": "PASS",
       "hashes": "PASS",
-      "schema": "PASS",
+      "schema": "FAIL",
       "traceability": "PASS"
     },
-    "status": "READY"
+    "status": "NOT_READY"
   },
   "requirements": [
     {
@@ -131,15 +131,7 @@
     "Write only EVIDENCE.txt inside that worktree",
     "Return the real sandbox execution outcome"
   ],
-  "selector_contract": [
-    {
-      "compose_test_tag": "bridge_readonly_evidence",
-      "name": "bridge_readonly_evidence",
-      "required": true,
-      "state": "EVIDENCE.txt exists in the disposable worktree",
-      "uiautomator": "By.res(\"bridge_readonly_evidence\")"
-    }
-  ],
+  "selector_contract": [],
   "stop_conditions": [
     "Any write outside the disposable worktree: STOP, CONTRACT_DEVIATION.",
     "Any synthesized or missing evidence: STOP, EVIDENCE_MISSING.",
@@ -151,24 +143,22 @@
         "AC-BRIDGE-001"
       ],
       "allowed_paths": [
-        "."
+        "project"
       ],
       "boundary": "Read-only inspection and one evidence file only. No formal source or host change.",
       "depends": [],
-      "done_when": "EVIDENCE.txt is present with the raw output and the sandbox reports its real execution outcome.",
-      "goal": "Run `id -un`, `pwd`, `git rev-parse HEAD` and `uname -s` in the disposable worktree; write their raw output to `EVIDENCE.txt`; do not modify any other file.",
+      "done_when": "project/EVIDENCE.txt is present with the raw output and the sandbox reports its real execution outcome.",
+      "goal": "Run `id -un`, `pwd`, `git rev-parse HEAD` and `uname -s` in the disposable worktree; write their raw output to `project/EVIDENCE.txt`; do not modify any other file.",
       "id": "TASK-01",
       "verification": [
-        "EVIDENCE.txt` exists and contains the actual username",
+        "project/EVIDENCE.txt` exists and contains the actual username",
         "worktree path",
         "git HEAD and OS name; no other file changed."
       ]
     }
   ],
   "ui_change": {
-    "selectors_added": [
-      "bridge_readonly_evidence"
-    ],
+    "selectors_added": [],
     "surfaces": []
   },
   "unresolved_questions": [],
@@ -176,20 +166,18 @@
     "acceptance_ids": [
       "AC-BRIDGE-001"
     ],
-    "engine": "maestro",
+    "engine": "none",
     "feature_id": "BRIDGE-READONLY",
     "fixture_intent": "The disposable task worktree at /var/lib/aegl-model/tasks/BRIDGE-READONLY-001/project.",
     "journey_id": "BRIDGE-READONLY-RUN",
     "oracle_intent": "Deterministic read-only: actual id -un, pwd, git HEAD and uname -s in EVIDENCE.txt; no synthesized value, no formal write, no promotion.",
     "persistence_checks": [
-      "EVIDENCE.txt persists in the disposable worktree"
+      "project/EVIDENCE.txt persists in the disposable worktree"
     ],
-    "required_selectors": [
-      "bridge_readonly_evidence"
-    ],
+    "required_selectors": [],
     "rotation_checks": [],
     "search_checks": [
-      "EVIDENCE.txt contains the actual read-only values"
+      "project/EVIDENCE.txt contains the actual read-only values"
     ]
   }
 }
