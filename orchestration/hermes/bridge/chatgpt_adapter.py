@@ -216,24 +216,32 @@ class RealOps:
         return value or ""
 
     def user_turns(self) -> list[str]:
-        """Individual user turns — the exact-match authority for confirmation."""
+        """Individual user message bodies — the exact-match authority for confirmation.
+
+        Reads only user-message containers observed in the live ChatGPT DOM and
+        returns each message's own body text. There is deliberately NO whole-page
+        fallback: if user messages cannot be identified this raises so that
+        delivery confirmation fails closed instead of comparing the entire page.
+        """
         value = self.js(
             """
             (() => {
-              const nodes = [
-                ...document.querySelectorAll(
-                  '[data-message-author-role="user"], [data-testid^="conversation-turn-"][data-turn="user"]'
-                )
-              ];
-              if (nodes.length) return nodes.map(n => n.innerText);
-              const main = document.querySelector('main');
-              return main ? [main.innerText] : [];
+              const bubbles = [...document.querySelectorAll('[data-user-message-bubble="true"]')];
+              if (!bubbles.length) return null;
+              return bubbles.map(bubble => {
+                const parts = [...bubble.querySelectorAll('.whitespace-pre-wrap')]
+                  .map(node => node.innerText);
+                if (!parts.length) return null;
+                return parts.join("");
+              });
             })()
             """
         )
-        if isinstance(value, list):
-            return [str(item) for item in value]
-        return [str(value)] if value else []
+        if not isinstance(value, list) or not value:
+            raise AdapterError("no user message nodes found in the control conversation")
+        if any(item is None for item in value):
+            raise AdapterError("a user message node has no extractable body")
+        return [str(item) for item in value]
 
     def user_turn_text(self) -> str:
         """Text of the user turns only — the authority for send confirmation."""
