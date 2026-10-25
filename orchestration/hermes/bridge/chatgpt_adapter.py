@@ -31,6 +31,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -51,6 +52,28 @@ def _default_hermes_agent_dir() -> str:
 HERMES_AGENT = _default_hermes_agent_dir()
 
 DEFAULT_CONFIRM_TIMEOUT_S = 15.0
+
+# Browser-Harness modifier bitfield: 1=Alt, 2=Ctrl, 4=Meta, 8=Shift.
+SHIFT_KEY = 8
+
+
+def _keystroke_plan(text: str) -> list[tuple[str, int]]:
+    """Per-key plan that preserves multi-line text in the composer.
+
+    Every line break becomes Shift+Enter (a line break, never a submit); every
+    other character is typed as itself. Browser-Harness ``fill_input`` types one
+    character at a time and silently drops ``\\n``, which is exactly what
+    corrupted multi-line control messages.
+    """
+    if not isinstance(text, str):
+        raise AdapterError("message text is required for composer input")
+    plan: list[tuple[str, int]] = []
+    for index, line in enumerate(re.split(r"\r\n|\r|\n", text)):
+        if index:
+            plan.append(("Enter", SHIFT_KEY))
+        for char in line:
+            plan.append((char, 0))
+    return plan
 
 # Status vocabulary
 CONFIRMED_SENT = "CONFIRMED_SENT"
@@ -161,7 +184,27 @@ class RealOps:
         return self.h["js"](expression)
 
     def fill_input(self, selector: str, text: str) -> None:
-        self.h["fill_input"](selector, text, clear_first=True, timeout=3)
+        """Fill the composer without losing line breaks.
+
+        Clears via the Browser-Harness primitive, then types the text through
+        :func:`_keystroke_plan` so every line break is a Shift+Enter instead of a
+        dropped ``\\n``, and finally dispatches input/change so the editor sees
+        the update.
+        """
+        self.h["fill_input"](selector, "", clear_first=True, timeout=3)
+        for key, modifiers in _keystroke_plan(text):
+            self.h["press_key"](key, modifiers)
+        self.js(
+            """
+            (() => {
+              const e = document.querySelector(%s);
+              if (!e) return;
+              e.dispatchEvent(new Event('input', {bubbles: true}));
+              e.dispatchEvent(new Event('change', {bubbles: true}));
+            })()
+            """
+            % json.dumps(selector)
+        )
 
     def press_key(self, key: str) -> None:
         self.h["press_key"](key)
@@ -462,7 +505,29 @@ def send_once(text: str, identifier: str, *, ops=None,
     selector = ops.composer_selector()
     ops.fill_input(selector, text)
 
-    if not ops.composer_text(selector).strip():
+    if exact:
+        # Pre-Enter guard for the production result path: the composer body must
+        # still equal the original multi-line text under the existing exact
+        # normalisation. A lost newline, truncation, an empty body or an
+        # unreadable composer must never be submitted, and is never refilled or
+        # retried.
+        try:
+            composer = ops.composer_text(selector)
+        except Exception as exc:  # noqa: BLE001 - a read failure is not a green light
+            raise AdapterError("composer readback failed: %s: %s" % (type(exc).__name__, exc))
+        if not composer.strip():
+            return {
+                "status": SEND_UNCERTAIN,
+                "sent": False,
+                "reason": "composer empty after fill; no send attempted",
+            }
+        if normalize_message(composer) != normalize_message(text):
+            return {
+                "status": SEND_UNCERTAIN,
+                "sent": False,
+                "reason": "composer content does not match the message to send; no send attempted",
+            }
+    elif not ops.composer_text(selector).strip():
         # Nothing to submit. No send is attempted, so there is no resend risk.
         return {
             "status": SEND_UNCERTAIN,
