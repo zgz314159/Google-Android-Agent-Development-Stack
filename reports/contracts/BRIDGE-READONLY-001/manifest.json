@@ -53,8 +53,8 @@
       "path": "project-context.json",
       "required": true,
       "role": "project_context",
-      "sha256": "f8b1476fcac5636133bc824e60d0f841bca79621c1c48b8fe9dabee3cfda0182",
-      "size": 1052,
+      "sha256": "83013fc221a30d198b0c7be2a46e4f1b031546404befbef305f5cc417e44031d",
+      "size": 1121,
       "source": "authored"
     },
     {

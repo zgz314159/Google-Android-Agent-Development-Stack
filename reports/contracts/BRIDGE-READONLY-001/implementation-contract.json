@@ -10,7 +10,7 @@
     "PRODUCT.md": "c3464b30a04a2d9ef0ea8907caf0b2e18fb232a9086a185bb8ed9919925a14d4",
     "acceptance.md": "ab1f2533783ca7ac9d1b0ba647e5c405ebf5dd9152f4c1f8e893f616defb1db1",
     "design.md": "cc1ba0cb9c8a2e0dfa0d10793fe73afe24db7f0496fec30978b6580f4418c088",
-    "project-context.json": "f8b1476fcac5636133bc824e60d0f841bca79621c1c48b8fe9dabee3cfda0182",
+    "project-context.json": "83013fc221a30d198b0c7be2a46e4f1b031546404befbef305f5cc417e44031d",
     "requirements.md": "3e587c90c6dbb5911351406f2fd177f96a5eee7448e839c1bef01209b8429d3b",
     "tasks.md": "5bef3287c6245411a7e5fe4def68fa7c4f16aaf54e01d7a77fb98a3471e9985d",
     "verification-intent.json": "be8a0053c1d874c868e15ca6d8426aa36475ddb87c37631fab1c905fe8606d82"
@@ -105,8 +105,8 @@
   "project": "Google-Android-Agent-Development-Stack",
   "read_first": [
     {
-      "path": "project/README.md",
-      "why": "confirm the disposable worktree identity without a broad scan"
+      "path": "project/orchestration/hermes/README.md",
+      "why": "orient on the Hermes orchestration integration used by this read-only sandbox task, without a broad repo scan"
     }
   ],
   "readiness": {

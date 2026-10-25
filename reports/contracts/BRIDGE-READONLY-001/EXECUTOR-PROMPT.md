@@ -20,7 +20,7 @@ re-plan decisions this contract has already frozen.
 ## 2. Recon budget
 - `broad repo scan = forbidden`.
 - Read only these 1 `read_first` files:
-  1. project/README.md
+  1. project/orchestration/hermes/README.md
 - Extend to a targeted search ONLY for `CONTRACT_GAP`, `CONTRACT_CONTRADICTION`, a missing
   dependency, or compile evidence that requires one extra file. Record `EXTRA_RECON_REASON`
   (file + why) for every extension.

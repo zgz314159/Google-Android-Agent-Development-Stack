@@ -6,8 +6,8 @@
   "purpose": "Authorize one disposable worktree and EVIDENCE.txt for a deterministic read-only sandbox check.",
   "read_first": [
     {
-      "path": "project/README.md",
-      "why": "confirm the disposable worktree identity without a broad scan"
+      "path": "project/orchestration/hermes/README.md",
+      "why": "orient on the Hermes orchestration integration used by this read-only sandbox task, without a broad repo scan"
     }
   ],
   "allowed_paths": [
