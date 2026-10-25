@@ -10,7 +10,7 @@
     {
       "step": "identity",
       "command": "id -un",
-      "expected": "a non-empty user name; record the actual value",
+      "expected": "aegl-ai",
       "on_failure": "stop; record the actual command, exit code and output; do not synthesize EVIDENCE.txt"
     },
     {
@@ -22,7 +22,7 @@
     {
       "step": "revision",
       "command": "git rev-parse HEAD",
-      "expected": "the fixed task commit as a 40-character lowercase hexadecimal id; record the actual value",
+      "expected": "the frozen task commit recorded in PREP-BINDING.json under the trusted contract package; the contract must not embed its own commit SHA",
       "on_failure": "stop; record the actual command, exit code and output; do not synthesize EVIDENCE.txt"
     },
     {
@@ -34,17 +34,17 @@
     {
       "step": "evidence",
       "command": "test -s EVIDENCE.txt && cat EVIDENCE.txt",
-      "expected": "EVIDENCE.txt exists in the worktree and contains the actual outputs of the four commands with labels",
+      "expected": "exactly four labeled lines in this order, with no extra lines: `id -un: aegl-ai`, `pwd: /var/tmp/BRIDGE-READONLY-001/project`, `git rev-parse HEAD: <PREP-BINDING.json commit>`, `uname -s: Linux`",
       "on_failure": "stop; record the failure; do not synthesize or repair EVIDENCE.txt"
     }
   ],
   "persistence_checks": [
-    "EVIDENCE.txt persists in the task worktree (contract path project/EVIDENCE.txt)"
+    "EVIDENCE.txt persists in the task worktree (contract path project/EVIDENCE.txt) with exactly four labeled lines"
   ],
   "rotation_checks": [],
   "search_checks": [
-    "EVIDENCE.txt contains the actual id -un, pwd, git rev-parse HEAD and uname -s values"
+    "EVIDENCE.txt contains the exact values aegl-ai, /var/tmp/BRIDGE-READONLY-001/project, the PREP-BINDING.json commit and Linux"
   ],
-  "fixture_intent": "The disposable task root /var/tmp/BRIDGE-READONLY-001 with worktree project/.",
-  "oracle_intent": "Deterministic CLI evidence: actual command outputs and EVIDENCE.txt; no synthesized value, no formal write, no promotion."
+  "fixture_intent": "The disposable task root /var/tmp/BRIDGE-READONLY-001 with worktree project/; the trusted PREP-BINDING.json binds the expected task commit after the commit exists.",
+  "oracle_intent": "Deterministic CLI evidence: actual command outputs in exactly four labeled EVIDENCE.txt lines, checked against the trusted PREP-BINDING.json; no synthesized value, no formal write, no promotion."
 }

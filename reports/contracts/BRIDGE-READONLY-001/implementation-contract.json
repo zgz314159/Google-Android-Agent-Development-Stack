@@ -6,14 +6,14 @@
     "project"
   ],
   "artifact_hashes": {
-    "DESIGN.md": "d6ced035026375873bc7043eee988e0269f3656b7ca74556170e200ebd9827b1",
+    "DESIGN.md": "940d57fd6b41b158c2667920beb2082db4196057d241819a9f927fd0201cd283",
     "PRODUCT.md": "c3464b30a04a2d9ef0ea8907caf0b2e18fb232a9086a185bb8ed9919925a14d4",
-    "acceptance.md": "cd8694c79deb6474f1ff686f082c85308b438851be92243ac4929b78073a4ec8",
-    "design.md": "dffd78b6f17635efcb6b2f4bf7e56f2481095ad847ef39ff36f2371e7dccfc40",
+    "acceptance.md": "ab1f2533783ca7ac9d1b0ba647e5c405ebf5dd9152f4c1f8e893f616defb1db1",
+    "design.md": "cc1ba0cb9c8a2e0dfa0d10793fe73afe24db7f0496fec30978b6580f4418c088",
     "project-context.json": "f8b1476fcac5636133bc824e60d0f841bca79621c1c48b8fe9dabee3cfda0182",
     "requirements.md": "3e587c90c6dbb5911351406f2fd177f96a5eee7448e839c1bef01209b8429d3b",
-    "tasks.md": "5dc9f2d62ef22a8b16c6b6b9b3fc68e75062726a3c5153f88846839a70a1c16c",
-    "verification-intent.json": "7dbe4eb5dce674b4c8060f7335fbdadca9f47098b9c3c998faddd91edd7f4625"
+    "tasks.md": "5bef3287c6245411a7e5fe4def68fa7c4f16aaf54e01d7a77fb98a3471e9985d",
+    "verification-intent.json": "be8a0053c1d874c868e15ca6d8426aa36475ddb87c37631fab1c905fe8606d82"
   },
   "artifact_refs": [
     {
@@ -79,6 +79,11 @@
       "id": "DEC-001",
       "rationale": "A single task root/source_root keeps the worktree, registration, Guard and validator aligned without relaxing the Guard to '.' or relying on string-only matching.",
       "statement": "The disposable task root is the contract source_root; allowed_paths is exactly 'project'; the launcher, Guard, registration and validator all use that source_root-relative path."
+    },
+    {
+      "id": "DEC-002",
+      "rationale": "Binding the expected HEAD outside the contract content avoids a self-referential commit hash cycle while keeping the acceptance expected value trusted.",
+      "statement": "The expected task commit is bound after the task commit by a root-owned PREP-BINDING.json under the trusted contract package; the contract does not embed its own commit SHA."
     }
   ],
   "experiment_id": "BRIDGE-READONLY",
@@ -147,13 +152,14 @@
       ],
       "boundary": "Read-only inspection and one evidence file only. No formal source or host change.",
       "depends": [],
-      "done_when": "EVIDENCE.txt is present in the worktree with the raw output and the sandbox reports its real execution outcome.",
-      "goal": "Run `id -un`, `pwd`, `git rev-parse HEAD` and `uname -s` in `/var/tmp/BRIDGE-READONLY-001/project`; write their raw output to `EVIDENCE.txt` in that worktree; do not modify any other file.",
+      "done_when": "EVIDENCE.txt is present in the worktree with exactly the four labeled actual values and the bridge reports its real process outcome; process exit does not by itself prove task acceptance.",
+      "goal": "Run `id -un`, `pwd`, `git rev-parse HEAD` and `uname -s` in `/var/tmp/BRIDGE-READONLY-001/project`; write exactly four labeled lines to `EVIDENCE.txt` in this order: `id -un: <actual>`, `pwd: <actual>`, `git rev-parse HEAD: <actual>`, `uname -s: <actual>`; no other lines or files.",
       "id": "TASK-01",
       "verification": [
-        "EVIDENCE.txt` in the worktree contains the actual username",
-        "worktree path",
-        "git HEAD and OS name; compare it with the actual command results; no other file changed."
+        "EVIDENCE.txt` in the worktree contains exactly four labeled lines whose values are `aegl-ai",
+        "/var/tmp/BRIDGE-READONLY-001/project",
+        "the commit in the trusted `PREP-BINDING.json",
+        "and `Linux`; compare with the actual command results; no other file changed."
       ]
     }
   ],
@@ -169,7 +175,7 @@
     "cli_checks": [
       {
         "command": "id -un",
-        "expected": "a non-empty user name; record the actual value",
+        "expected": "aegl-ai",
         "on_failure": "stop; record the actual command, exit code and output; do not synthesize EVIDENCE.txt",
         "step": "identity"
       },
@@ -181,7 +187,7 @@
       },
       {
         "command": "git rev-parse HEAD",
-        "expected": "the fixed task commit as a 40-character lowercase hexadecimal id; record the actual value",
+        "expected": "the frozen task commit recorded in PREP-BINDING.json under the trusted contract package; the contract must not embed its own commit SHA",
         "on_failure": "stop; record the actual command, exit code and output; do not synthesize EVIDENCE.txt",
         "step": "revision"
       },
@@ -193,23 +199,23 @@
       },
       {
         "command": "test -s EVIDENCE.txt && cat EVIDENCE.txt",
-        "expected": "EVIDENCE.txt exists in the worktree and contains the actual outputs of the four commands with labels",
+        "expected": "exactly four labeled lines in this order, with no extra lines: `id -un: aegl-ai`, `pwd: /var/tmp/BRIDGE-READONLY-001/project`, `git rev-parse HEAD: <PREP-BINDING.json commit>`, `uname -s: Linux`",
         "on_failure": "stop; record the failure; do not synthesize or repair EVIDENCE.txt",
         "step": "evidence"
       }
     ],
     "engine": "cli",
     "feature_id": "BRIDGE-READONLY",
-    "fixture_intent": "The disposable task root /var/tmp/BRIDGE-READONLY-001 with worktree project/.",
+    "fixture_intent": "The disposable task root /var/tmp/BRIDGE-READONLY-001 with worktree project/; the trusted PREP-BINDING.json binds the expected task commit after the commit exists.",
     "journey_id": "BRIDGE-READONLY-RUN",
-    "oracle_intent": "Deterministic CLI evidence: actual command outputs and EVIDENCE.txt; no synthesized value, no formal write, no promotion.",
+    "oracle_intent": "Deterministic CLI evidence: actual command outputs in exactly four labeled EVIDENCE.txt lines, checked against the trusted PREP-BINDING.json; no synthesized value, no formal write, no promotion.",
     "persistence_checks": [
-      "EVIDENCE.txt persists in the task worktree (contract path project/EVIDENCE.txt)"
+      "EVIDENCE.txt persists in the task worktree (contract path project/EVIDENCE.txt) with exactly four labeled lines"
     ],
     "required_selectors": [],
     "rotation_checks": [],
     "search_checks": [
-      "EVIDENCE.txt contains the actual id -un, pwd, git rev-parse HEAD and uname -s values"
+      "EVIDENCE.txt contains the exact values aegl-ai, /var/tmp/BRIDGE-READONLY-001/project, the PREP-BINDING.json commit and Linux"
     ]
   }
 }

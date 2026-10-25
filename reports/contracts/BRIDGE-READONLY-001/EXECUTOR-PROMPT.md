@@ -26,14 +26,14 @@ re-plan decisions this contract has already frozen.
   (file + why) for every extension.
 
 ## 3. Execute tasks in dependency order
-  TASK-01  Run `id -un`, `pwd`, `git rev-parse HEAD` and `uname -s` in `/var/tmp/BRIDGE-READONLY-001/project`; write their raw output to `EVIDENCE.txt` in that worktree; do not modify any other file.  (depends: none)
+  TASK-01  Run `id -un`, `pwd`, `git rev-parse HEAD` and `uname -s` in `/var/tmp/BRIDGE-READONLY-001/project`; write exactly four labeled lines to `EVIDENCE.txt` in this order: `id -un: <actual>`, `pwd: <actual>`, `git rev-parse HEAD: <actual>`, `uname -s: <actual>`; no other lines or files.  (depends: none)
 
 ## 4. Boundaries
 Allowed paths:
   - project
 Forbidden paths:
   - (none declared)
-Frozen decisions (do not reopen): DEC-001.
+Frozen decisions (do not reopen): DEC-001, DEC-002.
 
 ## 5. If the contract is wrong
 If a contract fact contradicts the source, a required file is missing, an assumption is
@@ -48,11 +48,11 @@ wrong, an acceptance is impossible, or a boundary is unsafe:
 5. On PASS: make NO further tool call, search, read, audit, repeated verification or exploratory check. Produce the Phase C report in the FINAL ASSISTANT RESPONSE using only evidence already collected in this session, emit the compact final task result, and STOP immediately.
 
 CLI checks:
-  - identity: `id -un` — expected: a non-empty user name; record the actual value; on failure: stop; record the actual command, exit code and output; do not synthesize EVIDENCE.txt
+  - identity: `id -un` — expected: aegl-ai; on failure: stop; record the actual command, exit code and output; do not synthesize EVIDENCE.txt
   - worktree: `pwd` — expected: /var/tmp/BRIDGE-READONLY-001/project; on failure: stop; record the actual value; do not synthesize EVIDENCE.txt
-  - revision: `git rev-parse HEAD` — expected: the fixed task commit as a 40-character lowercase hexadecimal id; record the actual value; on failure: stop; record the actual command, exit code and output; do not synthesize EVIDENCE.txt
+  - revision: `git rev-parse HEAD` — expected: the frozen task commit recorded in PREP-BINDING.json under the trusted contract package; the contract must not embed its own commit SHA; on failure: stop; record the actual command, exit code and output; do not synthesize EVIDENCE.txt
   - operating-system: `uname -s` — expected: Linux; on failure: stop; record the actual value; do not synthesize EVIDENCE.txt
-  - evidence: `test -s EVIDENCE.txt && cat EVIDENCE.txt` — expected: EVIDENCE.txt exists in the worktree and contains the actual outputs of the four commands with labels; on failure: stop; record the failure; do not synthesize or repair EVIDENCE.txt
+  - evidence: `test -s EVIDENCE.txt && cat EVIDENCE.txt` — expected: exactly four labeled lines in this order, with no extra lines: `id -un: aegl-ai`, `pwd: /var/tmp/BRIDGE-READONLY-001/project`, `git rev-parse HEAD: <PREP-BINDING.json commit>`, `uname -s: Linux`; on failure: stop; record the failure; do not synthesize or repair EVIDENCE.txt
 
 After this session (POST-SESSION observers, not in-session steps):
 - `on_session_finalize` / Auto-Finalizer are POST-SESSION observers.
