@@ -1,15 +1,25 @@
 #!/usr/bin/env bash
 # Root-only fixed-argument launcher for one pre-registered Hermes task.
 # Invoked by zhong through a single narrow sudoers rule; no shell/eval/arbitrary command.
+#
+# The launcher owns the task lifetime: it starts the sandbox in a new session
+# (process group), enforces the runtime budget itself, then TERM -> grace ->
+# KILL -> reap -> verify that the whole group is gone before returning. The
+# bridge waits longer than this cleanup window and never kills this controller
+# early.
 set -euo pipefail
 [ "$(id -u)" -eq 0 ] || { printf 'BLOCKED: root required\n' >&2; exit 1; }
 
 TASK_ID=""; PROMPT=""; EXPECTED=""
+MAX_RUNTIME=120
+GRACE=10
 while [ $# -gt 0 ]; do
   case "$1" in
     --task-id) TASK_ID="${2:-}"; shift 2 ;;
     --prompt-file) PROMPT="${2:-}"; shift 2 ;;
     --expected-manifest-sha256) EXPECTED="${2:-}"; shift 2 ;;
+    --max-runtime) MAX_RUNTIME="${2:-}"; shift 2 ;;
+    --grace) GRACE="${2:-}"; shift 2 ;;
     *) printf 'BLOCKED: unknown argument %s\n' "$1" >&2; exit 1 ;;
   esac
 done
@@ -18,6 +28,10 @@ case "$TASK_ID" in ""|*[!A-Za-z0-9._-]*) printf 'BLOCKED: invalid task id\n' >&2
 [ -n "$PROMPT" ] || { printf 'BLOCKED: prompt file required\n' >&2; exit 1; }
 [ "${#EXPECTED}" -eq 64 ] || { printf 'BLOCKED: manifest sha required\n' >&2; exit 1; }
 case "$EXPECTED" in *[!0-9a-f]*) printf 'BLOCKED: manifest sha must be lowercase hex\n' >&2; exit 1 ;; esac
+case "$MAX_RUNTIME" in ""|*[!0-9]*) printf 'BLOCKED: invalid max-runtime\n' >&2; exit 1 ;; esac
+[ "$MAX_RUNTIME" -ge 1 ] && [ "$MAX_RUNTIME" -le 86400 ] || { printf 'BLOCKED: max-runtime out of range\n' >&2; exit 1; }
+case "$GRACE" in ""|*[!0-9]*) printf 'BLOCKED: invalid grace\n' >&2; exit 1 ;; esac
+[ "$GRACE" -ge 0 ] && [ "$GRACE" -le 300 ] || { printf 'BLOCKED: grace out of range\n' >&2; exit 1; }
 
 REG=/var/lib/aegl-model/registry.json
 [ -r "$REG" ] || { printf 'BLOCKED: task registry missing\n' >&2; exit 1; }
@@ -46,5 +60,87 @@ done
 GOT="$(sha256sum "$REAL_CONTRACT/manifest.json" | awk '{print $1}')"
 [ "$GOT" = "$EXPECTED" ] || { printf 'BLOCKED: contract manifest hash mismatch\n' >&2; exit 1; }
 
-exec /usr/local/lib/aegl-model/aegl-hermes-sandbox --task "$TASK_ID" -- \
+# SUPERVISE_START
+SUPERVISED_PGID=""
+SUPERVISE_GRACE=0
+
+on_signal() {
+  if [ -n "$SUPERVISED_PGID" ]; then
+    kill -TERM -- "-$SUPERVISED_PGID" 2>/dev/null || true
+    sleep "${SUPERVISE_GRACE:-2}" 2>/dev/null || true
+    kill -KILL -- "-$SUPERVISED_PGID" 2>/dev/null || true
+  fi
+  exit 143
+}
+trap on_signal TERM INT HUP
+
+supervise() {
+  local max_runtime=$1
+  local grace=$2
+  shift 2
+  local label="${TASK_ID:-task}"
+  local child rc deadline grace_end i
+  setsid "$@" &
+  child=$!
+  SUPERVISED_PGID=$child
+  SUPERVISE_GRACE=$grace
+  deadline=$(( $(date +%s) + max_runtime ))
+
+  while kill -0 "$child" 2>/dev/null; do
+    if [ "$(date +%s)" -ge "$deadline" ]; then
+      echo "AEGL_TASK_TIMEOUT task=$label pgid=$child max_runtime=${max_runtime}s phase=TERM" >&2
+      kill -TERM -- "-$child" 2>/dev/null || true
+      grace_end=$(( $(date +%s) + grace ))
+      while kill -0 "$child" 2>/dev/null && [ "$(date +%s)" -lt "$grace_end" ]; do
+        sleep 0.2
+      done
+      echo "AEGL_TASK_TIMEOUT task=$label pgid=$child phase=KILL" >&2
+      kill -KILL -- "-$child" 2>/dev/null || true
+      wait "$child" 2>/dev/null || true
+      for i in $(seq 1 50); do
+        if ! pgrep -g "$child" >/dev/null 2>&1; then break; fi
+        kill -KILL -- "-$child" 2>/dev/null || true
+        sleep 0.2
+      done
+      SUPERVISED_PGID=""
+      if pgrep -g "$child" >/dev/null 2>&1; then
+        echo "AEGL_TASK_CLEANUP=UNCONFIRMED task=$label pgid=$child" >&2
+        return 125
+      fi
+      echo "AEGL_TASK_CLEANUP=CONFIRMED task=$label pgid=$child" >&2
+      return 124
+    fi
+    sleep 0.2
+  done
+
+  wait "$child"
+  rc=$?
+  if pgrep -g "$child" >/dev/null 2>&1; then
+    echo "AEGL_TASK_CHILDREN_LINGER task=$label pgid=$child phase=TERM" >&2
+    kill -TERM -- "-$child" 2>/dev/null || true
+    sleep "$grace"
+    kill -KILL -- "-$child" 2>/dev/null || true
+    for i in $(seq 1 50); do
+      if ! pgrep -g "$child" >/dev/null 2>&1; then break; fi
+      kill -KILL -- "-$child" 2>/dev/null || true
+      sleep 0.2
+    done
+    if pgrep -g "$child" >/dev/null 2>&1; then
+      SUPERVISED_PGID=""
+      echo "AEGL_TASK_CLEANUP=UNCONFIRMED task=$label pgid=$child" >&2
+      return 125
+    fi
+    echo "AEGL_TASK_CLEANUP=CONFIRMED task=$label pgid=$child (lingering children reaped)" >&2
+  fi
+  SUPERVISED_PGID=""
+  return "$rc"
+}
+# SUPERVISE_END
+
+set +e
+supervise "$MAX_RUNTIME" "$GRACE" /usr/local/lib/aegl-model/aegl-hermes-sandbox --task "$TASK_ID" -- \
   hermes -p android-stack chat --oneshot --query-file "$REAL_PROMPT"
+rc=$?
+set -e
+echo "AEGL_TASK_EXIT task=$TASK_ID code=$rc" >&2
+exit "$rc"

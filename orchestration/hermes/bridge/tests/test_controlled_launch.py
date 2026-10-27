@@ -132,6 +132,53 @@ class ControlledLaunchTests(unittest.TestCase):
         self.assertEqual(result["reason"], "E_CONTROLLED_WRAPPER_NOT_ROOT")
         self.assertEqual(called, [])
 
+    def test_execute_passes_supervisor_limits_and_outer_wait(self):
+        registry = self._registry()
+        captured = {}
+
+        def runner(argv, **kwargs):
+            captured["argv"] = argv
+            captured["timeout"] = kwargs.get("timeout")
+            return subprocess.CompletedProcess(argv, 0, "ok", "")
+
+        result = ce.execute(str(self.pkg), self.pkg / "EXECUTOR-PROMPT.md", 5,
+                            task_id="task-1", task_registry=str(registry),
+                            wrapper=str(self.wrapper), require_root_owner=False,
+                            runner=runner)
+        self.assertEqual(result["outcome"], ce.O_SUCCESS)
+        self.assertEqual(captured["argv"][-4:], [
+            "--max-runtime", "5", "--grace", str(ce.WRAPPER_GRACE_S)])
+        self.assertEqual(captured["timeout"],
+                         5 + ce.WRAPPER_GRACE_S + ce.WRAPPER_SLACK_S)
+
+    def test_execute_timeout_reports_cleanup_unconfirmed(self):
+        registry = self._registry()
+
+        def runner(argv, **kwargs):
+            raise subprocess.TimeoutExpired(argv, kwargs.get("timeout"))
+
+        result = ce.execute(str(self.pkg), self.pkg / "EXECUTOR-PROMPT.md", 5,
+                            task_id="task-1", task_registry=str(registry),
+                            wrapper=str(self.wrapper), require_root_owner=False,
+                            runner=runner)
+        self.assertEqual(result["outcome"], ce.O_BLOCKED)
+        self.assertEqual(result["exit_code"], 125)
+        self.assertIn("cleanup not confirmed", result["stderr_tail"])
+
+    def test_execute_supervisor_timeout_codes_are_blocked(self):
+        registry = self._registry()
+        for code in (124, 125):
+            def runner(argv, **kwargs):
+                return subprocess.CompletedProcess(argv, code, "", "AEGL_TASK_CLEANUP")
+
+            result = ce.execute(str(self.pkg), self.pkg / "EXECUTOR-PROMPT.md", 5,
+                                task_id="task-1", task_registry=str(registry),
+                                wrapper=str(self.wrapper), require_root_owner=False,
+                                runner=runner)
+            self.assertEqual(result["outcome"], ce.O_BLOCKED)
+            self.assertEqual(result["exit_code"], code)
+            self.assertIn("AEGL_TASK_CLEANUP", result["stderr_tail"])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

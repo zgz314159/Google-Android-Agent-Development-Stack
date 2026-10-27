@@ -401,6 +401,10 @@ class FakeOps:
 
     def fill_input(self, selector, text):
         self.fill_calls += 1
+        if self._composer == "echo":
+            # Default fake composer echoes what was typed, so the production
+            # pre-Enter guard sees a faithful multi-line draft.
+            self._composer = text
 
     def composer_text(self, selector):
         return self._composer

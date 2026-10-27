@@ -65,6 +65,12 @@ READY_FILE = "READY.json"
 
 LOG_TAIL_CHARS = 2000
 
+# The root wrapper supervises the task and owns TERM -> grace -> KILL -> reap.
+# The bridge must wait past that cleanup window; it is never allowed to kill the
+# controller early and leave privileged descendants behind.
+WRAPPER_GRACE_S = 10
+WRAPPER_SLACK_S = 30
+
 # Outcomes
 O_SUCCESS = "SUCCESS"
 O_FAILED = "FAILED"
@@ -463,6 +469,11 @@ def execute(package: str, prompt_path: Path, max_runtime_s: int, *,
                            wrapper=controlled["wrapper"],
                            manifest_sha256=contract_manifest,
                            require_root_owner=require_root_owner)
+        argv = [
+            *argv,
+            "--max-runtime", str(max(1, int(max_runtime_s))),
+            "--grace", str(WRAPPER_GRACE_S),
+        ]
     except GateError as exc:
         return {
             "outcome": O_BLOCKED,
@@ -472,12 +483,13 @@ def execute(package: str, prompt_path: Path, max_runtime_s: int, *,
             "stderr_tail": exc.message,
             "reason": exc.code,
         }
+    runtime_s = max(1, int(max_runtime_s))
     try:
         proc = runner(
             argv,
             capture_output=True,
             text=True,
-            timeout=max_runtime_s,
+            timeout=runtime_s + WRAPPER_GRACE_S + WRAPPER_SLACK_S,
             cwd=str(project_root),
             env=env,
             shell=False,
@@ -485,14 +497,22 @@ def execute(package: str, prompt_path: Path, max_runtime_s: int, *,
     except subprocess.TimeoutExpired as exc:
         return {
             "outcome": O_BLOCKED,
-            "exit_code": 124,
+            "exit_code": 125,
             "argv": argv,
             "stdout_tail": (exc.stdout or "")[-LOG_TAIL_CHARS:] if isinstance(exc.stdout, str) else "",
-            "stderr_tail": "timeout after %ss" % max_runtime_s,
+            "stderr_tail": (
+                "controller wait exceeded after %ss; wrapper cleanup not confirmed"
+                % (runtime_s + WRAPPER_GRACE_S + WRAPPER_SLACK_S)
+            ),
         }
 
     exit_code = int(proc.returncode)
-    outcome = O_SUCCESS if exit_code == 0 else O_FAILED
+    if exit_code == 0:
+        outcome = O_SUCCESS
+    elif exit_code in (124, 125):
+        outcome = O_BLOCKED
+    else:
+        outcome = O_FAILED
     return {
         "outcome": outcome,
         "exit_code": exit_code,

@@ -378,7 +378,12 @@ def _round_impl(*, root: Path | None, read_fn, gate_fn, execute_fn, send_fn,
                 "result": envelope, "send": send}
 
     # CONFIRMED_SENT or ALREADY_PRESENT: the chain may now advance.
-    return _commit_pending(pending, root=root, state=state, send=send)
+    committed = _commit_pending(pending, root=root, state=state, send=send)
+    diagnostic = (execution.get("stderr_tail") or "").strip()
+    if diagnostic:
+        # Sanitized, bounded timeout/cleanup diagnostic (no credentials, no full log).
+        committed["execution_diagnostic"] = diagnostic[-400:]
+    return committed
 
 
 def run_round(*, root: Path | None = None, read_fn=None, gate_fn=None,
