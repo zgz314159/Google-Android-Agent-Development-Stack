@@ -160,5 +160,24 @@ class PreEnterGuardTest(unittest.TestCase):
         self.assertEqual(ops.press_calls, 1)
 
 
+class ComposerTextTest(unittest.TestCase):
+    def test_joins_blocks_with_single_newline(self):
+        message, _ = canonical_message()
+        blocks = message.split("\n")
+        ops = object.__new__(adapter.RealOps)
+        ops.js = lambda expression: blocks
+        self.assertEqual(ops.composer_text("sel"), message)
+
+    def test_blank_middle_block_is_preserved(self):
+        ops = object.__new__(adapter.RealOps)
+        ops.js = lambda expression: ["<<<X>>>", "", "NEXT:"]
+        self.assertEqual(ops.composer_text("sel"), "<<<X>>>\n\nNEXT:")
+
+    def test_missing_composer_returns_empty(self):
+        ops = object.__new__(adapter.RealOps)
+        ops.js = lambda expression: None
+        self.assertEqual(ops.composer_text("sel"), "")
+
+
 if __name__ == "__main__":
     unittest.main()

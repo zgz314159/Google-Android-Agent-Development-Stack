@@ -234,17 +234,34 @@ class RealOps:
         raise AdapterError("unique visible ChatGPT composer not found")
 
     def composer_text(self, selector: str) -> str:
-        encoded = json.dumps(selector)
+        """Reconstruct the composer text from the editor's line blocks.
+
+        ChatGPT's contenteditable stores each visual line as a direct block
+        (``<p>``). Its ``textContent`` has no separators and its ``innerText``
+        inserts extra newlines around blocks, so neither equals the submitted
+        text. Read the block texts and join them with a single newline;
+        ProseMirror's trailing placeholder break is not content.
+        """
         value = self.js(
             """
             (() => {
               const e = document.querySelector(%s);
-              return e ? e.innerText : null;
+              if (!e) return null;
+              const blocks = [...e.children];
+              if (!blocks.length) return [e.innerText || ""];
+              return blocks.map(block => {
+                const clone = block.cloneNode(true);
+                clone.querySelectorAll('br:not(.ProseMirror-trailingBreak)')
+                  .forEach(br => br.replaceWith('\\n'));
+                return clone.textContent || "";
+              });
             })()
             """
-            % encoded
+            % json.dumps(selector)
         )
-        return value or ""
+        if not isinstance(value, list):
+            return ""
+        return "\n".join(str(item) for item in value)
 
     def conversation_text(self) -> str:
         """Whole conversation text (both roles) — the identifier-absent check."""
