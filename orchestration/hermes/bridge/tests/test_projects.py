@@ -5,6 +5,7 @@ import os
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 BRIDGE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BRIDGE_DIR))
@@ -48,6 +49,27 @@ class ProjectsUnitTests(unittest.TestCase):
     def test_git_ownership_flags_are_declared(self):
         self.assertTrue(pj.PROJECT_BINDINGS["ImageAnalysisFactory"]["require_git_ownership"])
         self.assertFalse(pj.PROJECT_BINDINGS["Google-Android-Agent-Development-Stack"]["require_git_ownership"])
+
+    def test_git_safe_directory_is_exact_not_wildcard(self):
+        captured = []
+
+        class _P:
+            returncode = 0
+            stdout = "x\n"
+            stderr = ""
+
+        def fake_run(argv, **kw):
+            captured.append(argv)
+            return _P()
+
+        with mock.patch.object(pj.subprocess, "run", side_effect=fake_run):
+            pj._git(["rev-parse", "HEAD"], "/var/tmp/wt", ("/var/tmp/wt", "/var/tmp/formal"))
+        argv = captured[0]
+        self.assertEqual(argv, ["git",
+                                "-c", "safe.directory=/var/tmp/wt",
+                                "-c", "safe.directory=/var/tmp/formal",
+                                "-C", "/var/tmp/wt", "rev-parse", "HEAD"])
+        self.assertTrue(all("*" not in token for token in argv), argv)
 
 
 if __name__ == "__main__":

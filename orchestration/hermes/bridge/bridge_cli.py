@@ -324,7 +324,8 @@ def _round_impl(*, root: Path | None, read_fn, gate_fn, execute_fn, send_fn,
     progress({"decision": "EXECUTING", "status": "EXECUTING",
               "task_id": task["task_id"], "max_runtime_s": task["max_runtime_s"]})
     try:
-        execution = execute_fn(gate["package"], Path(gate["prompt"]), task["max_runtime_s"])
+        execution = execute_fn(gate["package"], Path(gate["prompt"]), task["max_runtime_s"],
+                               task_id=task["task_id"])
     except KeyboardInterrupt:
         # Durable interruption record; no terminal result; never a synthesized SUCCESS.
         journal({"event": "INTERRUPTED", "task_id": task["task_id"],
@@ -395,7 +396,10 @@ def run_round(*, root: Path | None = None, read_fn=None, gate_fn=None,
     read_fn = read_fn or (lambda: adapter.read_latest_assistant())
     gate_fn = gate_fn or ce.gate
     execute_fn = execute_fn or (
-        lambda package, prompt, max_runtime_s: ce.execute(package, prompt, max_runtime_s)
+        # The validated envelope's task_id is threaded through explicitly so gate,
+        # execute and the wrapper all act as ONE identity; the bridge never falls back
+        # to AEGL_HERMES_TASK_ID from the environment.
+        lambda package, prompt, max_runtime_s, **kw: ce.execute(package, prompt, max_runtime_s, **kw)
     )
     send_fn = send_fn or (
         # The normal result path confirms delivery by the exact canonical result
@@ -689,7 +693,8 @@ def resolve_send_uncertain(*, root: Path | None = None, resend_once: bool = Fals
     )
     confirm_fn = confirm_fn or (lambda message: adapter.confirm_message_present(message))
     execute_fn = execute_fn or (
-        lambda package, prompt, max_runtime_s: ce.execute(package, prompt, max_runtime_s)
+        # accepted for the never-executes-Hermes proof; never invoked on any path
+        lambda package, prompt, max_runtime_s, **kw: ce.execute(package, prompt, max_runtime_s, **kw)
     )
     with bs.bridge_lock(root):
         return _resolve_send_uncertain_impl(root=root, resend_once=resend_once,

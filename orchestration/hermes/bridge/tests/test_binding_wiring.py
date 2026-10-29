@@ -17,10 +17,13 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 BRIDGE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BRIDGE_DIR))
 
+import bridge_cli  # noqa: E402
+import bridge_state as bs  # noqa: E402
 import contract_executor as ce  # noqa: E402
 import projects as pj  # noqa: E402
 from protocol import sha256_file  # noqa: E402
@@ -214,6 +217,96 @@ class GateWiringTests(unittest.TestCase):
         with self.assertRaises(ce.GateError) as ctx:
             ce.gate("reports/contracts/X", "b" * 64, project="Google-Android-Agent-Development-Stack")
         self.assertEqual(ctx.exception.code, "E_PACKAGE_NOT_ABSOLUTE")
+
+
+class _FakeProc:
+    returncode = 0
+    stdout = ""
+    stderr = ""
+
+
+class ExecuteIdentityTests(unittest.TestCase):
+    """The validated envelope's task_id reaches the wrapper argv, with no env fallback."""
+
+    TASK_ID = "IAP-M1-001"
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="iap-exec-", dir="/var/tmp"))
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        self.pkg = self.tmp / "pkg"
+        self.pkg.mkdir()
+        (self.pkg / "manifest.json").write_text('{"entries":[]}\n')
+        self.wrapper = self.tmp / "run_registered_task"
+        self.wrapper.write_text("#!/bin/sh\nexit 0\n")
+        self.wrapper.chmod(0o755)
+        self.registry = self.tmp / "registry.json"
+        self.registry.write_text(json.dumps({self.TASK_ID: {
+            "worktree": str(self.tmp / "project"),
+            "scratch": str(self.tmp / "scratch"),
+            "project": str(self.tmp / "formal"),
+            "contract_package": str(self.pkg),
+        }}, indent=2) + "\n")
+
+    def _execute_argv(self, *, env_task_id):
+        captured = {}
+
+        def runner(argv, **kw):
+            captured["argv"] = argv
+            return _FakeProc()
+
+        environ = dict(os.environ)
+        if env_task_id is None:
+            environ.pop("AEGL_HERMES_TASK_ID", None)
+        else:
+            environ["AEGL_HERMES_TASK_ID"] = env_task_id
+        with mock.patch.dict(os.environ, environ, clear=True):
+            result = ce.execute(str(self.pkg), Path("/var/tmp/prompt.md"), 60,
+                                runner=runner, base_env=environ, task_id=self.TASK_ID,
+                                task_registry=self.registry, wrapper=self.wrapper,
+                                require_root_owner=False)
+        return captured.get("argv"), result
+
+    def test_wrapper_argv_uses_envelope_task_id_without_env(self):
+        argv, result = self._execute_argv(env_task_id=None)
+        self.assertEqual(result["outcome"], "SUCCESS", result)
+        self.assertIsNotNone(argv)
+        self.assertEqual(argv[0], "sudo")            # the real production launcher
+        self.assertIn("--task-id", argv)
+        self.assertEqual(argv[argv.index("--task-id") + 1], self.TASK_ID)
+
+    def test_wrapper_argv_ignores_a_different_env_task_id(self):
+        argv, result = self._execute_argv(env_task_id="SOME-OTHER-TASK")
+        self.assertEqual(result["outcome"], "SUCCESS", result)
+        self.assertEqual(argv[argv.index("--task-id") + 1], self.TASK_ID)
+        self.assertNotIn("SOME-OTHER-TASK", argv)
+
+    def test_bridge_cli_threads_envelope_task_id_to_execute(self):
+        root = self.tmp / "bridge"
+        state = bs.load_state(root)
+        state.chain(next_sequence=1, next_nonce="n1", next_in_reply_to="GENESIS", status="IDLE")
+        envelope = {
+            "protocol": "HERMES_TASK_V1", "task_id": self.TASK_ID, "sequence": 1, "nonce": "n1",
+            "in_reply_to": "GENESIS", "project": "ImageAnalysisFactory",
+            "action": "EXECUTE_CONTRACT", "contract_package": str(self.pkg),
+            "contract_manifest_sha256": "a" * 64, "risk": "LOW", "max_runtime_s": 60,
+        }
+        text = "<<<HERMES_TASK_V1>>>\n" + json.dumps(envelope) + "\n<<<END_HERMES_TASK_V1>>>"
+        seen = {}
+
+        def execute_fn(package, prompt, max_runtime_s, **kw):
+            seen.update(kw)
+            return {"outcome": "SUCCESS", "exit_code": 0}
+
+        result = bridge_cli.run_round(
+            root=root,
+            read_fn=lambda: {"status": "OK", "text": text, "sha256": "x"},
+            gate_fn=lambda package, sha, **kw: {"package": package, "prompt": "/var/tmp/p.md",
+                                                "allowed_paths": []},
+            execute_fn=execute_fn,
+            send_fn=lambda message, identifier: {"status": "CONFIRMED_SENT", "sent": True},
+        )
+        self.assertEqual(result["decision"], "WAITING_FOR_GPT", result)
+        self.assertEqual(seen.get("task_id"), self.TASK_ID)
 
 
 if __name__ == "__main__":

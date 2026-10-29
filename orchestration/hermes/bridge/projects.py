@@ -123,13 +123,18 @@ class GitError(RuntimeError):
     pass
 
 
-def _git(args, cwd):
-    proc = subprocess.run(
-        # safe.directory is scoped to this one invocation (an ownership check only);
-        # it never relaxes filesystem permissions on the formal repository.
-        ["git", "-c", "safe.directory=*", "-C", cwd, *args],
-        capture_output=True, text=True, timeout=30,
-    )
+def _git(args, cwd, trusted=()):
+    """Run one git query.
+
+    ``safe.directory`` is set to the EXACT, already-resolved repository/worktree paths
+    for this one command only — never a wildcard, never global config, never an ACL
+    change. A git failure is raised, never swallowed.
+    """
+    argv = ["git"]
+    for path in trusted:
+        argv += ["-c", "safe.directory=%s" % os.path.realpath(os.fspath(path))]
+    argv += ["-C", os.fspath(cwd), *args]
+    proc = subprocess.run(argv, capture_output=True, text=True, timeout=30)
     if proc.returncode != 0:
         raise GitError("git %s failed in %s: %s" % (" ".join(args), cwd, (proc.stderr or "").strip()[:200]))
     return proc.stdout.strip()
@@ -139,19 +144,21 @@ def _abspath_in(base, value):
     return os.path.realpath(value if os.path.isabs(value) else os.path.join(base, value))
 
 
-def git_identity(worktree):
+def git_identity(worktree, trusted=None):
     """Real git identity: toplevel / git-dir / common-dir / HEAD.
 
+    Trust is limited to the supplied exact paths (default: the worktree itself).
     git may report ``--git-common-dir`` relative to the worktree, so every reported
     path is resolved against the worktree, never this process's cwd.
     """
     wt = os.path.realpath(os.fspath(worktree))
+    trusted = tuple(trusted) if trusted else (wt,)
     return {
         "worktree": wt,
-        "toplevel": _abspath_in(wt, _git(["rev-parse", "--show-toplevel"], wt)),
-        "git_dir": _abspath_in(wt, _git(["rev-parse", "--absolute-git-dir"], wt)),
-        "common_dir": _abspath_in(wt, _git(["rev-parse", "--git-common-dir"], wt)),
-        "head": _git(["rev-parse", "HEAD"], wt),
+        "toplevel": _abspath_in(wt, _git(["rev-parse", "--show-toplevel"], wt, trusted)),
+        "git_dir": _abspath_in(wt, _git(["rev-parse", "--absolute-git-dir"], wt, trusted)),
+        "common_dir": _abspath_in(wt, _git(["rev-parse", "--git-common-dir"], wt, trusted)),
+        "head": _git(["rev-parse", "HEAD"], wt, trusted),
     }
 
 
@@ -163,7 +170,7 @@ def verify_git_binding(worktree, formal_source_root):
     """
     formal = os.path.realpath(os.fspath(formal_source_root))
     try:
-        ident = git_identity(worktree)
+        ident = git_identity(worktree, trusted=(worktree, formal))
     except GitError as exc:
         return {"ok": False, "code": "E_EXT_WORKTREE_GIT", "message": str(exc), "identity": None}
     if ident["toplevel"] != ident["worktree"]:
