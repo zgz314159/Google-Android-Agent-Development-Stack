@@ -26,7 +26,12 @@ import sys
 import tempfile
 from pathlib import Path
 
-from protocol import GENESIS, sha256_file  # noqa: F401  (GENESIS re-exported for callers)
+try:
+    from protocol import GENESIS, sha256_file  # noqa: F401  (GENESIS re-exported for callers)
+    import projects  # noqa: E402
+except ImportError:  # imported as a package rather than from the bridge dir
+    from .protocol import GENESIS, sha256_file  # noqa: F401
+    from . import projects  # noqa: E402
 
 def _resolve_project_root() -> Path:
     """The Stack root, derived portably (env override, then this file's location)."""
@@ -97,11 +102,14 @@ class ControlledLaunchError(GateError):
 # Path gate
 # --------------------------------------------------------------------------- #
 
-def resolve_package(package_raw: str, project_root: Path = PROJECT_ROOT) -> Path:
-    """Resolve contract_package to a real, project-local directory.
+def resolve_package(package_raw: str, project_root: Path | None = None, *,
+                    binding: dict | None = None) -> Path:
+    """Resolve contract_package to a real directory under its declared root.
 
     Rejects: empty, relative, missing, not a directory, and anything whose REAL
-    path escapes the project root (symlink or ``..`` traversal).
+    path escapes the declared root (symlink or ``..`` traversal). The root is an
+    explicitly supplied ``project_root`` (tests/legacy) or, in production, the
+    binding's ``contract_root``.
     """
     if not isinstance(package_raw, str) or not package_raw.strip():
         raise GateError("E_PACKAGE_EMPTY", "contract_package is empty")
@@ -118,11 +126,16 @@ def resolve_package(package_raw: str, project_root: Path = PROJECT_ROOT) -> Path
     if not real.is_dir():
         raise GateError("E_PACKAGE_NOT_DIR", "contract_package is not a directory")
 
-    root = project_root.resolve(strict=True)
+    if project_root is not None:
+        root = Path(project_root).resolve(strict=True)
+    elif binding is not None:
+        root = Path(binding["contract_root"]).resolve(strict=True)
+    else:
+        raise GateError("E_PACKAGE_ROOT_UNSPECIFIED", "no root given to resolve_package")
     if real == root:
-        raise GateError("E_PACKAGE_ESCAPE", "contract_package is the project root itself")
+        raise GateError("E_PACKAGE_ESCAPE", "contract_package is the declared root itself")
     if root not in real.parents:
-        raise GateError("E_PACKAGE_ESCAPE", "contract_package resolves outside the project root")
+        raise GateError("E_PACKAGE_ESCAPE", "contract_package resolves outside the declared contract_root")
 
     return real
 
@@ -161,7 +174,8 @@ def check_ready(package: Path) -> None:
 
 
 def run_package_validator(package: Path, project_root: Path = PROJECT_ROOT,
-                          *, isolate: bool = True) -> dict:
+                          *, isolate: bool = True,
+                          validator_project_root: str | None = str(COMPILER_PROJECT_ROOT)) -> dict:
     """Run the EXISTING deterministic validator against the package.
 
     ``isolate=True`` validates a byte-for-byte snapshot in a temp directory: the
@@ -180,9 +194,15 @@ def run_package_validator(package: Path, project_root: Path = PROJECT_ROOT,
             shutil.copytree(package, target)
         else:
             target = package
+        # The validator resolves read_first against --project-root when given, else
+        # against the package's own source_root. A binding may pin it (Stack keeps its
+        # historical shared projects root) or set it to None (IAP resolves against the
+        # disposable task root the contract declares).
+        argv = [sys.executable, str(COMPILER_VALIDATOR), str(target)]
+        if validator_project_root is not None:
+            argv += ["--project-root", str(validator_project_root)]
         proc = subprocess.run(
-            [sys.executable, str(COMPILER_VALIDATOR), str(target),
-             "--project-root", str(COMPILER_PROJECT_ROOT)],
+            argv,
             capture_output=True,
             text=True,
             timeout=120,
@@ -345,17 +365,27 @@ def controlled_task_check(package, *, task_id=None,
 
 
 def gate(package_raw: str, supplied_manifest_sha256: str,
-         project_root: Path = PROJECT_ROOT, *, task_id=None,
+         project_root: Path | None = None, *, project: str | None = None,
+         binding: dict | None = None, task_id=None,
          task_registry=CONTROLLED_TASK_REGISTRY,
          wrapper=CONTROLLED_WRAPPER,
          require_root_owner: bool = True) -> dict:
     """Full package gate. Raises GateError on the first failure.
 
-    Order matters: the manifest hash is checked against the PRISTINE package
-    before the validator runs, so the supplied hash describes exactly the bytes
-    the validator then judges.
+    ``project`` MUST come from the validated HERMES_TASK_V1 envelope (or an explicit
+    ``binding`` in tests); it is never inferred from a path. The task identity, the
+    trusted registration entry, the root-frozen contract and the execution worktree are
+    then cross-checked so a run can never target the wrong project. When the binding
+    requires it, repo ownership is proven with real git before anything executes.
+
+    Order matters: the manifest hash is checked against the PRISTINE package before the
+    validator runs, so the supplied hash describes exactly the bytes the validator judges.
     """
-    package = resolve_package(package_raw, project_root)
+    binding = binding or projects.binding_for(project)
+    if binding is None:
+        raise GateError("E_PROJECT", "project %r is not in the allowlist" % (project,))
+
+    package = resolve_package(package_raw, project_root, binding=binding)
     check_artifacts(package)
 
     actual = manifest_sha256(package)
@@ -365,9 +395,52 @@ def gate(package_raw: str, supplied_manifest_sha256: str,
             "supplied contract_manifest_sha256 does not match the package manifest",
         )
 
+    # Trusted registration: fixed wrapper + root-owned entry whose contract_package
+    # matches this validated package.
+    controlled = controlled_task_check(
+        package, task_id=task_id, registry_path=task_registry,
+        wrapper=wrapper, require_root_owner=require_root_owner,
+    )
+    entry = controlled["entry"]
+
+    # registry project PATH must be exactly the declared formal source root
+    registry_project = entry.get("project")
+    if not isinstance(registry_project, str) or \
+            os.path.realpath(registry_project) != os.path.realpath(binding["formal_source_root"]):
+        raise GateError(
+            "E_EXT_REGISTRY_PROJECT",
+            "registry project %r is not the declared formal source root %s"
+            % (registry_project, binding["formal_source_root"]),
+        )
+
+    with open(package / "project-context.json", "r", encoding="utf-8") as handle:
+        context = json.load(handle)
+
+    contract_root = Path(project_root) if project_root is not None else Path(binding["contract_root"])
+    verdict = projects.validate_project(
+        project,
+        package_real=str(package),
+        contract_root=str(contract_root),
+        context_project=context.get("project"),
+        context_source_root=context.get("source_root"),
+        context_allowed_paths=context.get("allowed_paths"),
+        worktree=entry.get("worktree"),
+        binding=binding,
+    )
+    if not verdict["ok"]:
+        raise GateError(verdict["code"], verdict["message"])
+
+    if binding.get("require_git_ownership"):
+        ownership = projects.verify_git_binding(entry.get("worktree"), binding["formal_source_root"])
+        if not ownership["ok"]:
+            raise GateError(ownership["code"], ownership["message"])
+
     check_ready(package)
 
-    validation = run_package_validator(package, project_root)
+    validation = run_package_validator(
+        package, project_root or PROJECT_ROOT,
+        validator_project_root=projects.validator_project_root_for(project),
+    )
     if validation["status"] != "READY":
         raise GateError(
             "E_PACKAGE_NOT_READY",
@@ -377,13 +450,9 @@ def gate(package_raw: str, supplied_manifest_sha256: str,
     with open(package / "implementation-contract.json", "r", encoding="utf-8") as handle:
         contract = json.load(handle)
 
-    controlled = controlled_task_check(
-        package, task_id=task_id, registry_path=task_registry,
-        wrapper=wrapper, require_root_owner=require_root_owner,
-    )
-
     return {
         "status": "READY",
+        "project": project,
         "package": str(package),
         "manifest_sha256": actual,
         "prompt": str(package / PROMPT_FILE),

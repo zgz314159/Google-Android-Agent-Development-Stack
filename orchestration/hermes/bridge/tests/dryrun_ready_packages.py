@@ -40,7 +40,7 @@ def main() -> int:
             rows.append((package.name, "NO_MANIFEST", str(exc)))
             continue
         try:
-            result = ce.gate(str(package), sha)
+            result = ce.gate(str(package), sha, project="Google-Android-Agent-Development-Stack")
             rows.append((package.name, "GATE_PASS",
                          "validator=%s %s" % (result["validator"]["status"],
                                               result["validator"]["summary"])))

@@ -66,7 +66,10 @@ TASK_FIELDS = (
     "max_runtime_s",
 )
 
-ALLOWED_PROJECTS = frozenset({"Google-Android-Agent-Development-Stack"})
+try:
+    from projects import ALLOWED_PROJECTS  # noqa: F401  (declared, default-deny binding table)
+except ImportError:  # imported as a package (e.g. tests) rather than from the bridge dir
+    from .projects import ALLOWED_PROJECTS  # noqa: F401
 ALLOWED_ACTIONS = frozenset({"EXECUTE_CONTRACT", "STOP"})
 ALLOWED_RISK = frozenset({"LOW", "MEDIUM", "HIGH"})
 

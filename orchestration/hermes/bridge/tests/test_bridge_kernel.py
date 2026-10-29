@@ -264,18 +264,20 @@ class TestDuplicateKey(unittest.TestCase):
 class TestPathGate(unittest.TestCase):
     def test_relative_path_rejected(self):
         with self.assertRaises(ce.GateError) as ctx:
-            ce.gate("reports/contracts/X", "b" * 64)
+            ce.gate("reports/contracts/X", "b" * 64, project="Google-Android-Agent-Development-Stack")
         self.assertEqual(ctx.exception.code, "E_PACKAGE_NOT_ABSOLUTE")
 
     def test_missing_path_rejected(self):
         with self.assertRaises(ce.GateError) as ctx:
-            ce.gate(str(BRIDGE_DIR.parents[2] / "does-not-exist"), "b" * 64)
+            ce.gate(str(BRIDGE_DIR.parents[2] / "does-not-exist"), "b" * 64,
+                    project="Google-Android-Agent-Development-Stack")
         self.assertEqual(ctx.exception.code, "E_PACKAGE_MISSING")
 
     def test_outside_project_rejected(self):
         with tempfile.TemporaryDirectory() as project, tempfile.TemporaryDirectory() as outside:
             with self.assertRaises(ce.GateError) as ctx:
-                ce.gate(outside, "b" * 64, project_root=Path(project))
+                ce.gate(outside, "b" * 64, project_root=Path(project),
+                        project="Google-Android-Agent-Development-Stack")
             self.assertEqual(ctx.exception.code, "E_PACKAGE_ESCAPE")
 
     def test_symlink_escape_rejected(self):
@@ -284,7 +286,8 @@ class TestPathGate(unittest.TestCase):
             link = project_path / "escape"
             link.symlink_to(outside)
             with self.assertRaises(ce.GateError) as ctx:
-                ce.gate(str(link), "b" * 64, project_root=project_path)
+                ce.gate(str(link), "b" * 64, project_root=project_path,
+                        project="Google-Android-Agent-Development-Stack")
             self.assertEqual(ctx.exception.code, "E_PACKAGE_ESCAPE")
 
     def test_manifest_hash_mismatch_rejected(self):
@@ -296,7 +299,8 @@ class TestPathGate(unittest.TestCase):
             (pkg / "READY.json").write_text('{"status":"READY"}', encoding="utf-8")
             (pkg / "EXECUTOR-PROMPT.md").write_text("prompt", encoding="utf-8")
             with self.assertRaises(ce.GateError) as ctx:
-                ce.gate(str(pkg), "0" * 64, project_root=Path(project))
+                ce.gate(str(pkg), "0" * 64, project_root=Path(project),
+                        project="Google-Android-Agent-Development-Stack")
             self.assertEqual(ctx.exception.code, "E_MANIFEST_HASH_MISMATCH")
 
 
@@ -308,7 +312,7 @@ class TestRiskGate(TempStateMixin):
     def _run(self, risk: str) -> tuple[dict, list]:
         calls: list = []
 
-        def gate_fn(package, sha):
+        def gate_fn(package, sha, **kw):
             calls.append(("gate", package))
             raise AssertionError("contract gate must not run for a non-LOW risk")
 
@@ -357,7 +361,7 @@ class TestStopAction(TempStateMixin):
         result = bridge_cli.run_round(
             root=self.root,
             read_fn=lambda: {"status": "OK", "text": envelope_for(task)},
-            gate_fn=lambda package, sha: calls.append("gate"),
+            gate_fn=lambda package, sha, **kw: calls.append("gate"),
             execute_fn=execute_fn,
             send_fn=lambda text, identifier: calls.append("send"),
         )
@@ -488,7 +492,7 @@ class TestSingleWorker(TempStateMixin):
 # 11. STOPPED latch (AC-PHASE4H-003)
 # --------------------------------------------------------------------------- #
 
-def safe_gate(package, sha):
+def safe_gate(package, sha, **kw):
     return {"package": package, "prompt": "/tmp/EXECUTOR-PROMPT.md",
             "allowed_paths": list(SAFE_ALLOWED)}
 
@@ -614,7 +618,7 @@ class TestSelfModificationGate(TempStateMixin):
         result = bridge_cli.run_round(
             root=self.root,
             read_fn=lambda: {"status": "OK", "text": envelope_for(make_task())},
-            gate_fn=lambda package, sha: {"package": package, "prompt": "/tmp/p.md",
+            gate_fn=lambda package, sha, **kw: {"package": package, "prompt": "/tmp/p.md",
                                           "allowed_paths": list(BRIDGE_ALLOWED)},
             execute_fn=lambda package, prompt, max_runtime_s: execute_calls.append(package) or {
                 "outcome": "SUCCESS", "exit_code": 0},

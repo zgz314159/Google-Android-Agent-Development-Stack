@@ -290,7 +290,8 @@ def _round_impl(*, root: Path | None, read_fn, gate_fn, execute_fn, send_fn,
 
     # -- 7. CONTRACT GATE ---------------------------------------------------
     try:
-        gate = gate_fn(task["contract_package"], task["contract_manifest_sha256"])
+        gate = gate_fn(task["contract_package"], task["contract_manifest_sha256"],
+                       project=task["project"], task_id=task["task_id"])
     except ce.GateError as exc:
         state.set_status("ERROR")
         journal({"event": "CONTRACT_REJECTED", "task_id": task["task_id"],
