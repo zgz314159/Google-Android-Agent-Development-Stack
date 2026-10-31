@@ -3,6 +3,7 @@
 
     python3 bridge_cli.py round                   # LATCH/RECONCILE -> READ -> VALIDATE -> maybe EXECUTE -> REPORT -> STOP
     python3 bridge_cli.py recover                 # official bounded recovery (RECOVERY_REQUIRED only)
+    python3 bridge_cli.py recover-preconsume      # clear ONE retryable PRE-CONSUME rejection (ERROR -> WAITING_FOR_GPT)
     python3 bridge_cli.py resolve-send-uncertain  # HUMAN-ONLY resolution of a SEND_UNCERTAIN pending result
     python3 bridge_cli.py status                  # print the persistent chain state
 
@@ -541,6 +542,112 @@ def run_recover(*, root: Path | None = None, exit_code: int = EXIT_INTERRUPTED,
 
 
 # --------------------------------------------------------------------------- #
+# Pre-consume rejection recovery (strictly scoped, append-only)
+# --------------------------------------------------------------------------- #
+
+PRECONSUME_RECOVERY_REASON_DEFAULT = "E_EXT_WORKTREE_GIT"
+PRECONSUME_TERMINAL_EVENTS = ("ACCEPTED", "RESULT", "STOPPED")
+
+
+def _recover_preconsume_precheck(state, root, *, task_id, sequence, nonce,
+                                 in_reply_to, envelope_sha256, reason_code, read_fn):
+    """Evaluate the PRE-CONSUME recovery preconditions EXACTLY ONCE (default deny).
+
+    Returns ``(rejection, entry)``: a terminal payload when the invocation must not
+    proceed, or the matching ``CONTRACT_REJECTED`` journal entry when it may. Every
+    clause must hold; the invocation never half-applies. This clears ONLY a rejection
+    raised at the contract gate, i.e. BEFORE the task identity was consumed (a
+    ``round`` writes ``ACCEPTED`` at step 9, after the gate at step 7).
+    """
+    def reject(reason, exit_code=EXIT_REJECTED, **extra):
+        payload = {"decision": "PRECONSUME_RECOVERY_REJECTED", "reason": reason,
+                   "task_id": task_id, "sequence": sequence, "exit_code": exit_code}
+        payload.update(extra)
+        return (payload, None)
+
+    if state.get("status") != "ERROR":
+        return reject("NOT_IN_ERROR", status=state.get("status"))
+    if bs.read_pending(root) is not None:
+        return reject("PENDING_RESULT_PRESENT")
+    if (state.get("expected_sequence") != sequence
+            or state.get("expected_nonce") != nonce
+            or state.get("expected_in_reply_to") != in_reply_to):
+        return reject("CHAIN_MISMATCH")
+    consumed_ids, consumed_pairs = bs.consumed_identities(root)
+    if task_id in consumed_ids or (sequence, nonce) in consumed_pairs:
+        return reject("TASK_ALREADY_CONSUMED")
+
+    matching = [e for e in bs.read_journal(root)
+                if e.get("task_id") == task_id and e.get("sequence") == sequence]
+    for entry in matching:
+        if entry.get("event") in PRECONSUME_TERMINAL_EVENTS:
+            return reject("TASK_ALREADY_RESOLVED", event=entry.get("event"))
+    last = matching[-1] if matching else None
+    if last is None or last.get("event") != "CONTRACT_REJECTED" or last.get("code") != reason_code:
+        return reject("NO_MATCHING_REJECTION")
+
+    # The original envelope must still be the latest completed assistant message. This
+    # is a READ-ONLY seam: it never sends and never invokes the model.
+    try:
+        message = read_fn()
+    except Exception as exc:  # noqa: BLE001 - a read failure is reported, never retried
+        return reject("READ_FAILED", exit_code=EXIT_ERROR, message=str(exc))
+    extracted = proto.extract_control_message(
+        message.get("text") if isinstance(message, dict) else None)
+    if extracted.get("status") != proto.S_ACCEPTED:
+        return reject("ENVELOPE_UNAVAILABLE")
+    task = extracted["task"]
+    if (task.get("task_id") != task_id or task.get("sequence") != sequence
+            or task.get("nonce") != nonce or task.get("in_reply_to") != in_reply_to
+            or extracted.get("task_envelope_sha256") != envelope_sha256):
+        return reject("ENVELOPE_MISMATCH")
+    return (None, last)
+
+
+def _recover_preconsume_impl(*, root, task_id, sequence, nonce, in_reply_to,
+                             envelope_sha256, reason_code, read_fn) -> dict:
+    """Clear exactly ONE retryable PRE-CONSUME rejection.
+
+    Append-only: the existing journal is preserved and one ``PRECONSUME_RECOVERY``
+    audit event is added. Chain values are NOT changed, no pending result is written,
+    no result is synthesized, nothing is sent and Hermes is never executed. Only the
+    safety latch is lifted (``ERROR -> WAITING_FOR_GPT``).
+    """
+    state = bs.load_state(root)
+    rejection, entry = _recover_preconsume_precheck(
+        state, root, task_id=task_id, sequence=sequence, nonce=nonce,
+        in_reply_to=in_reply_to, envelope_sha256=envelope_sha256,
+        reason_code=reason_code, read_fn=read_fn)
+    if rejection is not None:
+        return rejection
+    bs.journal_append({
+        "event": "PRECONSUME_RECOVERY",
+        "task_id": task_id,
+        "sequence": sequence,
+        "code": reason_code,
+        "task_envelope_sha256": envelope_sha256,
+        "from_status": "ERROR",
+        "to_status": "WAITING_FOR_GPT",
+    }, root)
+    state.set_status("WAITING_FOR_GPT")
+    return {"decision": "PRECONSUME_RECOVERED", "task_id": task_id, "sequence": sequence,
+            "status": "WAITING_FOR_GPT", "exit_code": EXIT_OK,
+            "note": "safety latch cleared; dispatch the still-valid task with a bounded campaign"}
+
+
+def run_recover_preconsume(*, root=None, task_id, sequence, nonce, in_reply_to,
+                           envelope_sha256, reason_code=PRECONSUME_RECOVERY_REASON_DEFAULT,
+                           read_fn=None) -> dict:
+    """The one official entry that clears a retryable PRE-CONSUME rejection, under lock."""
+    read_fn = read_fn or adapter.read_latest_assistant
+    with bs.bridge_lock(root):
+        return _recover_preconsume_impl(root=root, task_id=task_id, sequence=sequence,
+                                        nonce=nonce, in_reply_to=in_reply_to,
+                                        envelope_sha256=envelope_sha256,
+                                        reason_code=reason_code, read_fn=read_fn)
+
+
+# --------------------------------------------------------------------------- #
 # HUMAN-ONLY SEND_UNCERTAIN resolver (never called automatically)
 # --------------------------------------------------------------------------- #
 
@@ -714,7 +821,16 @@ def _cmd_round(args) -> int:
 
 def _cmd_recover(args) -> int:
     result = run_recover(exit_code=args.exit_code, reason=args.reason,
-                         confirm_timeout_s=args.confirm_timeout)
+                         confirm_timeout=args.confirm_timeout)
+    _emit(result)
+    return int(result.get("exit_code", EXIT_ERROR))
+
+
+def _cmd_recover_preconsume(args) -> int:
+    result = run_recover_preconsume(
+        task_id=args.task_id, sequence=args.sequence, nonce=args.nonce,
+        in_reply_to=args.in_reply_to, envelope_sha256=args.envelope_sha256,
+        reason_code=args.reason_code)
     _emit(result)
     return int(result.get("exit_code", EXIT_ERROR))
 
@@ -755,6 +871,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_recover.add_argument("--confirm-timeout", type=float,
                            default=adapter.DEFAULT_CONFIRM_TIMEOUT_S)
     p_recover.set_defaults(func=_cmd_recover)
+    p_pre = sub.add_parser(
+        "recover-preconsume",
+        help="clear ONE retryable PRE-CONSUME rejection (ERROR -> WAITING_FOR_GPT)")
+    p_pre.add_argument("--task-id", required=True)
+    p_pre.add_argument("--sequence", type=int, required=True)
+    p_pre.add_argument("--nonce", required=True)
+    p_pre.add_argument("--in-reply-to", required=True)
+    p_pre.add_argument("--envelope-sha256", required=True)
+    p_pre.add_argument("--reason-code", default=PRECONSUME_RECOVERY_REASON_DEFAULT)
+    p_pre.set_defaults(func=_cmd_recover_preconsume)
     p_resolve = sub.add_parser("resolve-send-uncertain")
     p_resolve.add_argument("--resend-once", action="store_true")
     p_resolve.add_argument("--reason", default="")
