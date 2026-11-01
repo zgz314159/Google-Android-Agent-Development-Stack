@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -514,6 +515,29 @@ def hermes_argv(prompt_path: Path, *, task_id=None, wrapper=CONTROLLED_WRAPPER,
     ]
 
 
+_AEGL_TIMEOUT_RE = re.compile(r"AEGL_TASK_TIMEOUT\b[^\n]*\bphase=([A-Za-z]+)")
+
+
+def _wrapper_markers(stderr: str) -> dict:
+    """Structure the wrapper's timeout/cleanup markers.
+
+    Only the structured state is extracted — never the raw log — so the Bridge and the
+    Campaign can carry it without persisting stdout/stderr that may contain prompts,
+    model text, headers or credentials. Missing markers are reported as UNKNOWN.
+    """
+    text = stderr or ""
+    cleanup = "UNKNOWN"
+    if "AEGL_TASK_CLEANUP=CONFIRMED" in text:
+        cleanup = "CONFIRMED"
+    elif "AEGL_TASK_CLEANUP=UNCONFIRMED" in text:
+        cleanup = "UNCONFIRMED"
+    return {
+        "timed_out": "AEGL_TASK_TIMEOUT" in text,
+        "timeout_phases": sorted(set(_AEGL_TIMEOUT_RE.findall(text))),
+        "cleanup": cleanup,
+    }
+
+
 def execute(package: str, prompt_path: Path, max_runtime_s: int, *,
             project_root: Path = PROJECT_ROOT, runner=subprocess.run,
             base_env: dict | None = None, task_id=None,
@@ -551,6 +575,9 @@ def execute(package: str, prompt_path: Path, max_runtime_s: int, *,
             "stdout_tail": "",
             "stderr_tail": exc.message,
             "reason": exc.code,
+            "timed_out": "UNKNOWN",
+            "timeout_phases": [],
+            "cleanup": "UNKNOWN",
         }
     runtime_s = max(1, int(max_runtime_s))
     try:
@@ -573,6 +600,9 @@ def execute(package: str, prompt_path: Path, max_runtime_s: int, *,
                 "controller wait exceeded after %ss; wrapper cleanup not confirmed"
                 % (runtime_s + WRAPPER_GRACE_S + WRAPPER_SLACK_S)
             ),
+            "timed_out": True,
+            "timeout_phases": [],
+            "cleanup": "UNKNOWN",
         }
 
     exit_code = int(proc.returncode)
@@ -588,4 +618,5 @@ def execute(package: str, prompt_path: Path, max_runtime_s: int, *,
         "argv": argv,
         "stdout_tail": (proc.stdout or "")[-LOG_TAIL_CHARS:],
         "stderr_tail": (proc.stderr or "")[-LOG_TAIL_CHARS:],
+        **_wrapper_markers(proc.stderr),
     }

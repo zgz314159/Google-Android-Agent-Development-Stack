@@ -137,6 +137,26 @@ def _commit_pending(pending: dict, *, root, state, send) -> dict:
     }
 
 
+def _round_diagnostic(*, task_id, stage, execution, send, result_sha) -> dict:
+    """Whitelisted, structure-only execution/send metadata.
+
+    Carries ONLY: task_id, stage, exit code, timeout/cleanup state, send status and the
+    result hash. Raw stdout/stderr are never propagated (truncation is not redaction), so
+    prompts, model text, headers, credentials or environment contents cannot leak.
+    """
+    execution = execution or {}
+    return {
+        "task_id": task_id or "UNKNOWN",
+        "stage": stage,
+        "exit_code": execution.get("exit_code", "UNKNOWN"),
+        "timed_out": execution.get("timed_out", "UNKNOWN"),
+        "timeout_phases": execution.get("timeout_phases", []),
+        "cleanup": execution.get("cleanup", "UNKNOWN"),
+        "send_status": (send or {}).get("status", "UNKNOWN"),
+        "result_sha256": result_sha or "UNKNOWN",
+    }
+
+
 def _recover_pending(pending: dict, *, root, state, journal, send_fn, confirm_fn) -> dict:
     """Resolve a durable pending result at startup. Never resends blindly."""
     result_sha = pending.get("result_sha256")
@@ -378,14 +398,17 @@ def _round_impl(*, root: Path | None, read_fn, gate_fn, execute_fn, send_fn,
         return {"decision": "SEND_UNCERTAIN", "task_id": task["task_id"],
                 "sequence": task["sequence"], "outcome": execution["outcome"],
                 "exit_code": EXIT_SEND_UNCERTAIN, "status": "ERROR",
-                "result": envelope, "send": send}
+                "result": envelope, "send": send,
+                "diagnostic": _round_diagnostic(
+                    task_id=task["task_id"], stage="SEND_UNCERTAIN",
+                    execution=execution, send=send, result_sha=result_sha)}
 
     # CONFIRMED_SENT or ALREADY_PRESENT: the chain may now advance.
     committed = _commit_pending(pending, root=root, state=state, send=send)
-    diagnostic = (execution.get("stderr_tail") or "").strip()
-    if diagnostic:
-        # Sanitized, bounded timeout/cleanup diagnostic (no credentials, no full log).
-        committed["execution_diagnostic"] = diagnostic[-400:]
+    # Whitelisted metadata only — the raw stdout/stderr tail is deliberately not carried.
+    committed["diagnostic"] = _round_diagnostic(
+        task_id=task["task_id"], stage="EXECUTED", execution=execution,
+        send=send, result_sha=result_sha)
     return committed
 
 

@@ -94,6 +94,33 @@ def _default_progress(line: str) -> None:
     sys.stdout.flush()
 
 
+def _round_diagnostic_fields(round_result) -> str:
+    """Whitelisted per-round diagnostic; every absent field is reported as UNKNOWN.
+
+    Emits only task_id, stage, exit code, timeout/cleanup state, send status and the
+    result hash — never stdout/stderr, prompts, model text, headers or credentials.
+    """
+    rr = round_result if isinstance(round_result, dict) else {}
+    diag = rr.get("diagnostic") if isinstance(rr.get("diagnostic"), dict) else {}
+    result = rr.get("result") if isinstance(rr.get("result"), dict) else {}
+    send = rr.get("send") if isinstance(rr.get("send"), dict) else {}
+
+    def pick(key, fallback=None):
+        value = diag.get(key, fallback)
+        if value is None or value == "":
+            return "UNKNOWN"
+        return str(value)
+
+    return ("task_id=%s stage=%s exit_code=%s timed_out=%s cleanup=%s send_status=%s result_sha256=%s"
+            % (pick("task_id", rr.get("task_id")),
+               pick("stage", rr.get("decision")),
+               pick("exit_code"),
+               pick("timed_out"),
+               pick("cleanup"),
+               pick("send_status", send.get("status")),
+               pick("result_sha256", rr.get("result_sha256") or result.get("result_sha256"))))
+
+
 class CampaignSupervisor:
     """Bounded, one-round-at-a-time Supervisor for a single milestone."""
 
@@ -182,7 +209,8 @@ class CampaignSupervisor:
                 "task_id": pending.get("task_id") if isinstance(pending, dict) else None,
             })
             self.round_calls += 1
-            self.bridge_round()
+            round_result = self.bridge_round() or {}
+            self._progress_line("CAMPAIGN_ROUND_DIAG " + _round_diagnostic_fields(round_result))
             after = self.bridge_status()
             if after.get("status") in SAFETY_STATUSES:
                 return self._pause(
@@ -274,7 +302,8 @@ class CampaignSupervisor:
 
         # Exactly one Bridge round for this valid new task.
         self.round_calls += 1
-        self.bridge_round()
+        round_result = self.bridge_round() or {}
+        self._progress_line("CAMPAIGN_ROUND_DIAG " + _round_diagnostic_fields(round_result))
 
         state["round_count"] = int(state.get("round_count", 0)) + 1
         state["last_dispatched_task_id"] = task.get("task_id")
