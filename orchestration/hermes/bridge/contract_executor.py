@@ -515,26 +515,57 @@ def hermes_argv(prompt_path: Path, *, task_id=None, wrapper=CONTROLLED_WRAPPER,
     ]
 
 
-_AEGL_TIMEOUT_RE = re.compile(r"AEGL_TASK_TIMEOUT\b[^\n]*\bphase=([A-Za-z]+)")
+_TIMEOUT_PHASE_RE = re.compile(r"\bphase=(TERM|KILL)\b")
+_MARKER_TASK_RE = re.compile(r"\btask=(\S+)")
+_CLEANUP_RE = re.compile(r"AEGL_TASK_CLEANUP=(CONFIRMED|UNCONFIRMED)\b")
+ALLOWED_TIMEOUT_PHASES = ("TERM", "KILL")
 
 
-def _wrapper_markers(stderr: str) -> dict:
-    """Structure the wrapper's timeout/cleanup markers.
+def _wrapper_markers(stderr: str, *, task_id, exit_code: int) -> dict:
+    """Structure the wrapper's timeout/cleanup markers for THIS task only.
 
-    Only the structured state is extracted — never the raw log — so the Bridge and the
-    Campaign can carry it without persisting stdout/stderr that may contain prompts,
-    model text, headers or credentials. Missing markers are reported as UNKNOWN.
+    Full records are parsed line by line and bound to ``task_id``; a marker for another
+    task is ignored. Only TERM/KILL are accepted phases. Cleanup is UNCONFIRMED when any
+    UNCONFIRMED record is seen (precedence); a missing or conflicting record is UNKNOWN —
+    it is never reported as CONFIRMED. ``timed_out`` is True only when a timeout marker
+    was observed; without one, exit 124/125 is UNKNOWN (never False).
     """
     text = stderr or ""
-    cleanup = "UNKNOWN"
-    if "AEGL_TASK_CLEANUP=CONFIRMED" in text:
-        cleanup = "CONFIRMED"
-    elif "AEGL_TASK_CLEANUP=UNCONFIRMED" in text:
-        cleanup = "UNCONFIRMED"
+    task = str(task_id) if task_id else ""
+    phases = set()
+    marker_seen = False
+    cleanups = set()
+    for line in text.splitlines():
+        if "AEGL_TASK_TIMEOUT" in line:
+            seen_task = _MARKER_TASK_RE.search(line)
+            if not task or (seen_task and seen_task.group(1) == task):
+                marker_seen = True
+                phase = _TIMEOUT_PHASE_RE.search(line)
+                if phase:
+                    phases.add(phase.group(1))
+        elif "AEGL_TASK_CLEANUP=" in line:
+            seen_task = _MARKER_TASK_RE.search(line)
+            if task and not (seen_task and seen_task.group(1) == task):
+                continue
+            cleanup = _CLEANUP_RE.search(line)
+            if cleanup:
+                cleanups.add(cleanup.group(1))
+    if "UNCONFIRMED" in cleanups:
+        cleanup_state = "UNCONFIRMED"
+    elif cleanups == {"CONFIRMED"}:
+        cleanup_state = "CONFIRMED"
+    else:
+        cleanup_state = "UNKNOWN"
+    if marker_seen:
+        timed_out = True
+    elif int(exit_code) in (124, 125):
+        timed_out = "UNKNOWN"
+    else:
+        timed_out = False
     return {
-        "timed_out": "AEGL_TASK_TIMEOUT" in text,
-        "timeout_phases": sorted(set(_AEGL_TIMEOUT_RE.findall(text))),
-        "cleanup": cleanup,
+        "timed_out": timed_out,
+        "timeout_phases": sorted(phases),
+        "cleanup": cleanup_state,
     }
 
 
@@ -575,9 +606,7 @@ def execute(package: str, prompt_path: Path, max_runtime_s: int, *,
             "stdout_tail": "",
             "stderr_tail": exc.message,
             "reason": exc.code,
-            "timed_out": "UNKNOWN",
-            "timeout_phases": [],
-            "cleanup": "UNKNOWN",
+            **_wrapper_markers("", task_id=task_id, exit_code=1),
         }
     runtime_s = max(1, int(max_runtime_s))
     try:
@@ -600,9 +629,9 @@ def execute(package: str, prompt_path: Path, max_runtime_s: int, *,
                 "controller wait exceeded after %ss; wrapper cleanup not confirmed"
                 % (runtime_s + WRAPPER_GRACE_S + WRAPPER_SLACK_S)
             ),
-            "timed_out": True,
-            "timeout_phases": [],
-            "cleanup": "UNKNOWN",
+            **_wrapper_markers(
+                exc.stderr if isinstance(exc.stderr, str) else "",
+                task_id=controlled["task_id"], exit_code=125),
         }
 
     exit_code = int(proc.returncode)
@@ -618,5 +647,5 @@ def execute(package: str, prompt_path: Path, max_runtime_s: int, *,
         "argv": argv,
         "stdout_tail": (proc.stdout or "")[-LOG_TAIL_CHARS:],
         "stderr_tail": (proc.stderr or "")[-LOG_TAIL_CHARS:],
-        **_wrapper_markers(proc.stderr),
+        **_wrapper_markers(proc.stderr, task_id=controlled["task_id"], exit_code=exit_code),
     }

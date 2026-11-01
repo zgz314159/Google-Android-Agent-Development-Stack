@@ -29,6 +29,7 @@ Standard library only.
 
 from __future__ import annotations
 
+import re
 import sys
 import time
 from pathlib import Path
@@ -94,10 +95,56 @@ def _default_progress(line: str) -> None:
     sys.stdout.flush()
 
 
-def _round_diagnostic_fields(round_result) -> str:
-    """Whitelisted per-round diagnostic; every absent field is reported as UNKNOWN.
+_STAGE_ALLOWED = frozenset({
+    "EXECUTED", "ENTRY_REJECTED", "SEND_UNCERTAIN", "WAITING_FOR_GPT",
+    "CONTRACT_REJECTED", "TASK_REJECTED", "ENVELOPE_REJECTED", "REPLAY_REJECTED",
+    "SELF_MODIFY_REJECTED", "AMBIGUOUS_CONTROL_MESSAGE", "NO_CONTROL_MESSAGE",
+    "AWAITING_APPROVAL", "RECOVERY_REQUIRED", "STOPPED", "STOPPED_LATCHED", "ERROR",
+})
+_CLEANUP_ALLOWED = frozenset({"CONFIRMED", "UNCONFIRMED", "UNKNOWN"})
+_SEND_ALLOWED = frozenset({"CONFIRMED_SENT", "ALREADY_PRESENT", "SEND_UNCERTAIN", "UNKNOWN"})
+_PHASE_ALLOWED = ("TERM", "KILL")
+_TASK_ID_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
+_HASH_RE = re.compile(r"^[0-9a-f]{64}$")
 
-    Emits only task_id, stage, exit code, timeout/cleanup state, send status and the
+
+def _enum(value, allowed):
+    return value if isinstance(value, str) and value in allowed else "UNKNOWN"
+
+
+def _integer(value):
+    return str(value) if isinstance(value, int) and not isinstance(value, bool) else "UNKNOWN"
+
+
+def _ident(value):
+    return value if isinstance(value, str) and _TASK_ID_RE.fullmatch(value) else "UNKNOWN"
+
+
+def _hash(value):
+    return value if isinstance(value, str) and _HASH_RE.fullmatch(value) else "UNKNOWN"
+
+
+def _bool_or_unknown(value):
+    if value is True:
+        return "True"
+    if value is False:
+        return "False"
+    return "UNKNOWN"
+
+
+def _phases(value):
+    if not isinstance(value, (list, tuple)):
+        return "UNKNOWN"
+    allowed = sorted({p for p in value if isinstance(p, str) and p in _PHASE_ALLOWED})
+    return ",".join(allowed) if allowed else "UNKNOWN"
+
+
+def _round_diagnostic_fields(round_result) -> str:
+    """Whitelisted per-round diagnostic, type- and value-constrained.
+
+    Every field is validated against an allowlist / format; an illegal or missing value
+    becomes UNKNOWN. No newlines and no arbitrary strings are passed through. Emits only
+    task_id, stage, exit code, timed_out, timeout_phases, cleanup, send status and the
     result hash — never stdout/stderr, prompts, model text, headers or credentials.
     """
     rr = round_result if isinstance(round_result, dict) else {}
@@ -105,20 +152,20 @@ def _round_diagnostic_fields(round_result) -> str:
     result = rr.get("result") if isinstance(rr.get("result"), dict) else {}
     send = rr.get("send") if isinstance(rr.get("send"), dict) else {}
 
-    def pick(key, fallback=None):
-        value = diag.get(key, fallback)
-        if value is None or value == "":
-            return "UNKNOWN"
-        return str(value)
+    def get(key, fallback=None):
+        return diag[key] if key in diag else fallback
 
-    return ("task_id=%s stage=%s exit_code=%s timed_out=%s cleanup=%s send_status=%s result_sha256=%s"
-            % (pick("task_id", rr.get("task_id")),
-               pick("stage", rr.get("decision")),
-               pick("exit_code"),
-               pick("timed_out"),
-               pick("cleanup"),
-               pick("send_status", send.get("status")),
-               pick("result_sha256", rr.get("result_sha256") or result.get("result_sha256"))))
+    return ("task_id=%s stage=%s exit_code=%s timed_out=%s timeout_phases=%s "
+            "cleanup=%s send_status=%s result_sha256=%s"
+            % (_ident(get("task_id", rr.get("task_id"))),
+               _enum(get("stage", rr.get("decision")), _STAGE_ALLOWED),
+               _integer(get("exit_code")),
+               _bool_or_unknown(get("timed_out")),
+               _phases(get("timeout_phases")),
+               _enum(get("cleanup"), _CLEANUP_ALLOWED),
+               _enum(get("send_status", send.get("status")), _SEND_ALLOWED),
+               _hash(get("result_sha256",
+                         rr.get("result_sha256") or result.get("result_sha256")))))
 
 
 class CampaignSupervisor:

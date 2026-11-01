@@ -137,17 +137,20 @@ def _commit_pending(pending: dict, *, root, state, send) -> dict:
     }
 
 
-def _round_diagnostic(*, task_id, stage, execution, send, result_sha) -> dict:
+def _round_diagnostic(*, task_id, execution, send, result_sha) -> dict:
     """Whitelisted, structure-only execution/send metadata.
 
-    Carries ONLY: task_id, stage, exit code, timeout/cleanup state, send status and the
-    result hash. Raw stdout/stderr are never propagated (truncation is not redaction), so
-    prompts, model text, headers, credentials or environment contents cannot leak.
+    Carries ONLY: task_id, stage, exit code, timeout/cleanup state, timeout phases, send
+    status and the result hash. ``stage`` reflects a known fact: the wrapper was launched
+    (EXECUTED) or the execution entry was rejected before launch (ENTRY_REJECTED — never
+    reported as started). Raw stdout/stderr are never propagated (truncation is not
+    redaction), so prompts, model text, headers, credentials or env cannot leak.
     """
     execution = execution or {}
+    launched = bool(execution.get("argv"))
     return {
         "task_id": task_id or "UNKNOWN",
-        "stage": stage,
+        "stage": "EXECUTED" if launched else "ENTRY_REJECTED",
         "exit_code": execution.get("exit_code", "UNKNOWN"),
         "timed_out": execution.get("timed_out", "UNKNOWN"),
         "timeout_phases": execution.get("timeout_phases", []),
@@ -400,14 +403,14 @@ def _round_impl(*, root: Path | None, read_fn, gate_fn, execute_fn, send_fn,
                 "exit_code": EXIT_SEND_UNCERTAIN, "status": "ERROR",
                 "result": envelope, "send": send,
                 "diagnostic": _round_diagnostic(
-                    task_id=task["task_id"], stage="SEND_UNCERTAIN",
-                    execution=execution, send=send, result_sha=result_sha)}
+                    task_id=task["task_id"], execution=execution,
+                    send=send, result_sha=result_sha)}
 
     # CONFIRMED_SENT or ALREADY_PRESENT: the chain may now advance.
     committed = _commit_pending(pending, root=root, state=state, send=send)
     # Whitelisted metadata only — the raw stdout/stderr tail is deliberately not carried.
     committed["diagnostic"] = _round_diagnostic(
-        task_id=task["task_id"], stage="EXECUTED", execution=execution,
+        task_id=task["task_id"], execution=execution,
         send=send, result_sha=result_sha)
     return committed
 

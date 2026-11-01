@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
-"""One isolated flow check: the round diagnostic must reach the campaign output.
+"""One isolated, end-to-end diagnostic check for the real execution chain.
 
-Fake-driven (no Chrome, no Bridge state, no Hermes, no model). Drives the REAL
-CampaignSupervisor.run() -> _dispatch -> bridge_round seam and asserts the whitelisted
-CAMPAIGN_ROUND_DIAG line. A wrapper timeout with a cleanup record must surface
-timed_out/cleanup/send status; an UNKNOWN cleanup must never print CONFIRMED, and a
-missing diagnostic must report UNKNOWN for every field.
+Traverses contract_executor.execute -> bridge_cli.run_round -> CampaignSupervisor.run.
+Only the external seams are replaced: the subprocess runner, the browser READ/WRITE
+(read_latest_assistant / send) and the isolated state dirs. The runner returns REAL
+wrapper-format stderr; the final diagnostic is produced by the production parsers — it is
+never injected by the test.
+
+Covers: wrapper timeout with a cleanup record; UNKNOWN when the timeout marker is absent;
+UNCONFIRMED never misreported as CONFIRMED (incl. conflicting records); unstructured body
+text never reaching the campaign output; and an execution-entry rejection reported as
+ENTRY_REJECTED (never "started").
 """
 
 from __future__ import annotations
 
 import json
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -25,62 +31,40 @@ for _p in (str(_SUPERVISOR_DIR), str(_BRIDGE_DIR)):
         sys.path.insert(0, _p)
 
 import protocol as bridge_protocol  # noqa: E402
+import bridge_state as bs  # noqa: E402
+import bridge_cli  # noqa: E402
+import contract_executor as ce  # noqa: E402
 import campaign_state as cstate  # noqa: E402
 import campaign_supervisor as csup  # noqa: E402
 
+TASK_ID = "T-DIAG"
 CAMPAIGN_ID = "CAMPAIGN-DIAG"
 MILESTONE = "S0"
 NONCE = "nonce-5"
 IN_REPLY = "in-reply-to-5"
-RESULT_SHA = "r" * 64
+PREV_RESULT = "a" * 64
+MANIFEST = "b" * 64
+SECRET_BODY = "PROMPT-BODY-SHOULD-NOT-LEAK"
 
 
-def make_task(*, task_id, sequence, nonce, in_reply_to):
+def make_task(*, package):
     return {
-        "protocol": "HERMES_TASK_V1", "task_id": task_id, "sequence": sequence,
-        "nonce": nonce, "in_reply_to": in_reply_to,
+        "protocol": "HERMES_TASK_V1", "task_id": TASK_ID, "sequence": 5,
+        "nonce": NONCE, "in_reply_to": IN_REPLY,
         "project": "Google-Android-Agent-Development-Stack", "action": "EXECUTE_CONTRACT",
-        "contract_package": "/tmp/contract-pkg", "contract_manifest_sha256": "b" * 64,
-        "risk": "LOW", "max_runtime_s": 60,
+        "contract_package": package, "contract_manifest_sha256": MANIFEST,
+        "risk": "LOW", "max_runtime_s": 120,
     }
 
 
-class Bridge:
-    def __init__(self, round_result):
-        self.round_result = round_result
-        self.sequence = 5
-        self.nonce = NONCE
-        self.in_reply_to = IN_REPLY
-        self.result_sha = RESULT_SHA
-        self.round_calls = 0
-
-    def status(self):
-        return {"protocol_version": "HERMES_TASK_V1", "expected_sequence": self.sequence,
-                "expected_nonce": self.nonce, "expected_in_reply_to": self.in_reply_to,
-                "status": "WAITING_FOR_GPT", "last_task_id": None,
-                "last_result_sha256": self.result_sha}
-
-    def round(self):
-        self.round_calls += 1
-        self.sequence += 1
-        self.nonce = "nonce-%d" % self.sequence
-        self.result_sha = "result-%d" % self.sequence
-        self.in_reply_to = self.result_sha
-        return dict(self.round_result)
-
-
 class Reader:
-    def __init__(self, bridge):
-        self.bridge = bridge
-        self.n = 0
+    def __init__(self, package):
+        self.package = package
 
     def __call__(self):
-        self.n += 1
-        st = self.bridge.status()
-        task = make_task(task_id="T-%d" % self.n, sequence=st["expected_sequence"],
-                         nonce=st["expected_nonce"], in_reply_to=st["expected_in_reply_to"])
         text = "%s\n%s\n%s" % (bridge_protocol.TASK_OPEN,
-                               json.dumps(task, sort_keys=True), bridge_protocol.TASK_CLOSE)
+                               json.dumps(make_task(package=str(self.package)), sort_keys=True),
+                               bridge_protocol.TASK_CLOSE)
         return {"status": "OK", "text": text, "sha256": bridge_protocol.sha256_text(text)}
 
 
@@ -100,56 +84,135 @@ class Sleep:
         self.clock.t += seconds
 
 
-class RoundDiagnosticFlow(unittest.TestCase):
+class ChainTest(unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.mkdtemp(prefix="round-diag-test-")
-        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        self.root = Path(tempfile.mkdtemp(prefix="round-diag-e2e-"))
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+        self.pkg = self.root / "pkg"
+        self.pkg.mkdir()
+        (self.pkg / "manifest.json").write_text("{}\n", encoding="utf-8")
+        self.prompt = self.root / "EXECUTOR-PROMPT.md"
+        self.prompt.write_text("task body\n", encoding="utf-8")
+        self.wrapper = self.root / "run_registered_task"
+        self.wrapper.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        self.wrapper.chmod(0o755)
+        self.registry = self.root / "registry.json"
+        self.bridge_root = self.root / "bridge"
+        self.supervisor_root = self.root / "supervisor"
 
-    def run_campaign(self, round_result):
-        clock = Clock()
-        store = cstate.CampaignStore(CAMPAIGN_ID, root=self.tmp)
+    def _write_registry(self, *, registered=True):
+        data = {TASK_ID: {"contract_package": str(self.pkg)}} if registered else {}
+        self.registry.write_text(json.dumps(data), encoding="utf-8")
+
+    def _seed_bridge(self):
+        state = bs.load_state(self.bridge_root)
+        state.chain(next_sequence=5, next_nonce=NONCE, next_in_reply_to=IN_REPLY,
+                    status="WAITING_FOR_GPT", last_task_id="PREV",
+                    last_result_sha256=PREV_RESULT)
+
+    def _run(self, *, stderr, returncode, registered=True):
+        self._write_registry(registered=registered)
+        self._seed_bridge()
+        reader = Reader(self.pkg)
+        captured = {}
+
+        def fake_runner(argv, **kwargs):
+            captured["argv"] = list(argv)
+            return subprocess.CompletedProcess(argv, returncode, "body\n" + SECRET_BODY + "\n", stderr)
+
+        def fake_execute(package, prompt, max_runtime_s, **kw):
+            return ce.execute(package, str(prompt), max_runtime_s,
+                              task_id=kw.get("task_id"), runner=fake_runner,
+                              task_registry=str(self.registry), wrapper=str(self.wrapper),
+                              require_root_owner=False)
+
+        def fake_gate(package, manifest_sha, **_kw):
+            return {"package": str(self.pkg), "prompt": str(self.prompt), "allowed_paths": []}
+
+        def fake_send(text, identifier):
+            return {"status": bridge_protocol.S_ALREADY_PRESENT if False else "CONFIRMED_SENT"}
+
+        def bridge_round():
+            return bridge_cli.run_round(root=self.bridge_root, read_fn=reader,
+                                        gate_fn=fake_gate, execute_fn=fake_execute,
+                                        send_fn=fake_send)
+
         lines = []
-        bridge = Bridge(round_result)
+        clock = Clock()
         supervisor = csup.CampaignSupervisor(
             campaign_id=CAMPAIGN_ID, milestone=MILESTONE, start_sequence=None,
             start_nonce=None, start_in_reply_to=None, max_rounds=1,
-            max_wall_seconds=900.0, poll_seconds=5.0, store=store,
-            read_latest_assistant=Reader(bridge), bridge_status=bridge.status,
-            bridge_round=bridge.round, read_pending=lambda: None,
+            max_wall_seconds=900.0, poll_seconds=5.0,
+            store=cstate.CampaignStore(CAMPAIGN_ID, root=str(self.supervisor_root)),
+            read_latest_assistant=reader,
+            bridge_status=lambda: bs.load_state(self.bridge_root).as_dict(),
+            bridge_round=bridge_round,
+            read_pending=lambda: bs.read_pending(self.bridge_root),
             clock=clock, sleep=Sleep(clock), progress=lines.append)
         supervisor.run()
-        return [line for line in lines if line.startswith("CAMPAIGN_ROUND_DIAG ")]
+        return [line for line in lines if line.startswith("CAMPAIGN_ROUND_DIAG ")], captured, lines
 
-    def test_timeout_with_cleanup_reaches_campaign_output(self):
-        diag = {"task_id": "T-1", "stage": "EXECUTED", "exit_code": 124,
-                "timed_out": True, "timeout_phases": ["TERM", "KILL"],
-                "cleanup": "CONFIRMED", "send_status": "CONFIRMED_SENT",
-                "result_sha256": RESULT_SHA}
-        lines = self.run_campaign({"decision": "WAITING_FOR_GPT", "diagnostic": diag})
-        self.assertEqual(len(lines), 1, lines)
-        line = lines[0]
-        for expected in ("task_id=T-1", "stage=EXECUTED", "exit_code=124",
-                         "timed_out=True", "cleanup=CONFIRMED",
-                         "send_status=CONFIRMED_SENT", "result_sha256=" + RESULT_SHA):
-            self.assertIn(expected, line)
+    def _fields(self, line):
+        return dict(part.split("=", 1) for part in line.split(" ")[1:])
 
-    def test_unknown_cleanup_never_reports_confirmed(self):
-        diag = {"task_id": "T-1", "stage": "SEND_UNCERTAIN", "exit_code": 125,
-                "timed_out": True, "timeout_phases": [],
-                "cleanup": "UNKNOWN", "send_status": "SEND_UNCERTAIN",
-                "result_sha256": RESULT_SHA}
-        lines = self.run_campaign({"decision": "SEND_UNCERTAIN", "diagnostic": diag})
-        self.assertEqual(len(lines), 1, lines)
-        self.assertIn("cleanup=UNKNOWN", lines[0])
-        self.assertNotIn("cleanup=CONFIRMED", lines[0])
+    def test_timeout_unconfirmed_not_misreported_and_body_absent(self):
+        stderr = (
+            "AEGL_TASK_TIMEOUT task=%s pgid=42 max_runtime=120s phase=TERM\n"
+            "AEGL_TASK_TIMEOUT task=%s pgid=42 phase=KILL\n"
+            "AEGL_TASK_CLEANUP=UNCONFIRMED task=%s pgid=42\n"
+            "%s\n" % (TASK_ID, TASK_ID, TASK_ID, SECRET_BODY)
+        )
+        rows, captured, _ = self._run(stderr=stderr, returncode=124)
+        self.assertEqual(len(rows), 1, rows)
+        self.assertIn("--task-id", captured["argv"])
+        self.assertIn(TASK_ID, captured["argv"])
+        fields = self._fields(rows[0])
+        self.assertEqual(fields["task_id"], TASK_ID)
+        self.assertEqual(fields["stage"], "EXECUTED")
+        self.assertEqual(fields["exit_code"], "124")
+        self.assertEqual(fields["timed_out"], "True")
+        self.assertEqual(fields["timeout_phases"], "KILL,TERM")
+        self.assertEqual(fields["cleanup"], "UNCONFIRMED")
+        self.assertEqual(fields["send_status"], "CONFIRMED_SENT")
+        self.assertRegex(fields["result_sha256"], r"^[0-9a-f]{64}$")
+        self.assertNotIn(SECRET_BODY, rows[0])
 
-    def test_missing_diagnostic_reports_unknown(self):
-        lines = self.run_campaign({})
-        self.assertEqual(len(lines), 1, lines)
-        for expected in ("task_id=UNKNOWN", "stage=UNKNOWN", "exit_code=UNKNOWN",
-                         "timed_out=UNKNOWN", "cleanup=UNKNOWN",
-                         "send_status=UNKNOWN", "result_sha256=UNKNOWN"):
-            self.assertIn(expected, lines[0])
+    def test_no_timeout_marker_is_unknown_not_false(self):
+        stderr = "AEGL_TASK_CLEANUP=UNCONFIRMED task=%s pgid=42\n%s\n" % (TASK_ID, SECRET_BODY)
+        rows, _, _ = self._run(stderr=stderr, returncode=124)
+        fields = self._fields(rows[0])
+        self.assertEqual(fields["timed_out"], "UNKNOWN")
+        self.assertEqual(fields["cleanup"], "UNCONFIRMED")
+        self.assertEqual(fields["timeout_phases"], "UNKNOWN")
+        self.assertNotIn(SECRET_BODY, rows[0])
+
+    def test_conflicting_cleanup_never_confirmed(self):
+        stderr = (
+            "AEGL_TASK_CLEANUP=CONFIRMED task=%s pgid=42\n"
+            "AEGL_TASK_CLEANUP=UNCONFIRMED task=%s pgid=42\n"
+            "AEGL_TASK_TIMEOUT task=%s pgid=42 phase=KILL\n"
+        ) % (TASK_ID, TASK_ID, TASK_ID)
+        rows, _, _ = self._run(stderr=stderr, returncode=124)
+        fields = self._fields(rows[0])
+        self.assertEqual(fields["cleanup"], "UNCONFIRMED")
+        self.assertNotEqual(fields["cleanup"], "CONFIRMED")
+
+    def test_marker_for_other_task_is_ignored(self):
+        stderr = (
+            "AEGL_TASK_TIMEOUT task=OTHER pgid=42 phase=TERM\n"
+            "AEGL_TASK_CLEANUP=CONFIRMED task=OTHER pgid=42\n"
+        )
+        rows, _, _ = self._run(stderr=stderr, returncode=124)
+        fields = self._fields(rows[0])
+        self.assertEqual(fields["timed_out"], "UNKNOWN")
+        self.assertEqual(fields["cleanup"], "UNKNOWN")
+
+    def test_entry_rejection_is_not_reported_as_started(self):
+        rows, _, _ = self._run(stderr="", returncode=1, registered=False)
+        self.assertEqual(len(rows), 1, rows)
+        fields = self._fields(rows[0])
+        self.assertEqual(fields["stage"], "ENTRY_REJECTED")
+        self.assertNotEqual(fields["stage"], "EXECUTED")
 
 
 if __name__ == "__main__":
