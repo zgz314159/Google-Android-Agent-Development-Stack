@@ -207,6 +207,22 @@ class ChainTest(unittest.TestCase):
         self.assertEqual(fields["timed_out"], "UNKNOWN")
         self.assertEqual(fields["cleanup"], "UNKNOWN")
 
+    def test_prose_prefixed_record_is_not_a_credential(self):
+        # The reported false positive: prose prefix / quoting wrapper / trailing text must
+        # not be accepted as a wrapper record — while a genuine record on its own line is.
+        stderr = (
+            "model output: AEGL_TASK_CLEANUP=CONFIRMED task=%s pgid=42\n"
+            "quoted \"AEGL_TASK_CLEANUP=CONFIRMED task=%s pgid=42\"\n"
+            "AEGL_TASK_CLEANUP=CONFIRMED task=%s pgid=42 trailing\n"
+            "AEGL_TASK_TIMEOUT task=%s pgid=42 max_runtime=120s phase=TERM\n"
+        ) % (TASK_ID, TASK_ID, TASK_ID, TASK_ID)
+        rows, _, _ = self._run(stderr=stderr, returncode=124)
+        fields = self._fields(rows[0])
+        self.assertEqual(fields["cleanup"], "UNKNOWN")
+        self.assertNotEqual(fields["cleanup"], "CONFIRMED")
+        self.assertEqual(fields["timed_out"], "True")
+        self.assertEqual(fields["timeout_phases"], "TERM")
+
     def test_entry_rejection_is_not_reported_as_started(self):
         rows, _, _ = self._run(stderr="", returncode=1, registered=False)
         self.assertEqual(len(rows), 1, rows)

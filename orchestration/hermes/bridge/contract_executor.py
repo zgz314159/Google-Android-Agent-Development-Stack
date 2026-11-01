@@ -515,41 +515,53 @@ def hermes_argv(prompt_path: Path, *, task_id=None, wrapper=CONTROLLED_WRAPPER,
     ]
 
 
-_TIMEOUT_PHASE_RE = re.compile(r"\bphase=(TERM|KILL)\b")
-_MARKER_TASK_RE = re.compile(r"\btask=(\S+)")
-_CLEANUP_RE = re.compile(r"AEGL_TASK_CLEANUP=(CONFIRMED|UNCONFIRMED)\b")
 ALLOWED_TIMEOUT_PHASES = ("TERM", "KILL")
+
+# Real run_registered_task records (stderr), matched as WHOLE lines only:
+#   AEGL_TASK_TIMEOUT task=<id> pgid=<n> max_runtime=<n>s phase=TERM
+#   AEGL_TASK_TIMEOUT task=<id> pgid=<n> phase=KILL
+#   AEGL_TASK_CLEANUP=UNCONFIRMED task=<id> pgid=<n>
+#   AEGL_TASK_CLEANUP=CONFIRMED task=<id> pgid=<n>[ (lingering children reaped)]
+_TIMEOUT_TERM_RE = r"AEGL_TASK_TIMEOUT task=%s pgid=\d+ max_runtime=\d+s phase=TERM"
+_TIMEOUT_KILL_RE = r"AEGL_TASK_TIMEOUT task=%s pgid=\d+ phase=KILL"
+_CLEANUP_LINE_RE = r"AEGL_TASK_CLEANUP=(CONFIRMED|UNCONFIRMED) task=%s pgid=\d+( \(lingering children reaped\))?"
 
 
 def _wrapper_markers(stderr: str, *, task_id, exit_code: int) -> dict:
-    """Structure the wrapper's timeout/cleanup markers for THIS task only.
+    """Structure the wrapper's timeout/cleanup records for THIS task only.
 
-    Full records are parsed line by line and bound to ``task_id``; a marker for another
-    task is ignored. Only TERM/KILL are accepted phases. Cleanup is UNCONFIRMED when any
-    UNCONFIRMED record is seen (precedence); a missing or conflicting record is UNKNOWN —
-    it is never reported as CONFIRMED. ``timed_out`` is True only when a timeout marker
-    was observed; without one, exit 124/125 is UNKNOWN (never False).
+    Each record must be an ENTIRE line (no prose prefix, no quoting wrapper, no trailing
+    text) and must match the real run_registered_task format, including the current
+    task_id. Cleanup is UNCONFIRMED when any UNCONFIRMED record is present (precedence);
+    a missing or conflicting record is UNKNOWN — never CONFIRMED. ``timed_out`` is True
+    only for a matched timeout record; without one, exit 124/125 is UNKNOWN (never False).
     """
     text = stderr or ""
     task = str(task_id) if task_id else ""
     phases = set()
     marker_seen = False
     cleanups = set()
-    for line in text.splitlines():
-        if "AEGL_TASK_TIMEOUT" in line:
-            seen_task = _MARKER_TASK_RE.search(line)
-            if not task or (seen_task and seen_task.group(1) == task):
+    if task:
+        quoted = re.escape(task)
+        timeout_term = re.compile(_TIMEOUT_TERM_RE % quoted)
+        timeout_kill = re.compile(_TIMEOUT_KILL_RE % quoted)
+        cleanup_line = re.compile(_CLEANUP_LINE_RE % quoted)
+        for line in text.splitlines():
+            if timeout_term.fullmatch(line):
                 marker_seen = True
-                phase = _TIMEOUT_PHASE_RE.search(line)
-                if phase:
-                    phases.add(phase.group(1))
-        elif "AEGL_TASK_CLEANUP=" in line:
-            seen_task = _MARKER_TASK_RE.search(line)
-            if task and not (seen_task and seen_task.group(1) == task):
+                phases.add("TERM")
                 continue
-            cleanup = _CLEANUP_RE.search(line)
-            if cleanup:
-                cleanups.add(cleanup.group(1))
+            if timeout_kill.fullmatch(line):
+                marker_seen = True
+                phases.add("KILL")
+                continue
+            match = cleanup_line.fullmatch(line)
+            if match:
+                state, suffix = match.group(1), match.group(2)
+                # the "(lingering children reaped)" suffix is only produced on CONFIRMED
+                if suffix and state != "CONFIRMED":
+                    continue
+                cleanups.add(state)
     if "UNCONFIRMED" in cleanups:
         cleanup_state = "UNCONFIRMED"
     elif cleanups == {"CONFIRMED"}:
