@@ -137,9 +137,9 @@ def render_prompt(contract: dict) -> str:
             for check in intent.get("cli_checks", [])
         ) or "  - (none declared; contract is invalid)"
         verify_steps = f"""1. Run every CLI check below exactly as declared, in order.
-2. Record the actual command, actual output, expected result and failure condition in `EVIDENCE.txt`.
+2. Record evidence only in the files and format required by the frozen contract. Put expected results, failure conditions, and supplemental reporting in the FINAL ASSISTANT RESPONSE unless the contract explicitly requires them in an artifact.
 3. A zero process exit alone is NOT a PASS; the expected result must be observed in the actual output.
-4. If any check fails: STOP, record the failure, and do not synthesize or repair evidence.
+4. If any check fails: STOP, report the failure, and do not synthesize or repair evidence.
 5. On PASS: make NO further tool call, search, read, audit, repeated verification or exploratory check. Produce the Phase C report in the FINAL ASSISTANT RESPONSE using only evidence already collected in this session, emit the compact final task result, and STOP immediately.
 
 CLI checks:

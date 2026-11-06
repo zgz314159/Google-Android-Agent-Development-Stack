@@ -96,6 +96,64 @@ class CliContractTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, prompt)
 
+    def _prompt(self, pkg):
+        report = support.run_pipeline(pkg)
+        self.assertEqual(report["status"], "READY", report["errors"])
+        contract = json.loads(support.read(os.path.join(pkg, "implementation-contract.json")))
+        return support.build_contract.render_prompt(contract)
+
+    def test_prompt_is_contract_first_for_evidence(self):
+        pkg = make_cli_package(self.tmp.name)
+        prompt = self._prompt(pkg)
+        self.assertIn(
+            "Record evidence only in the files and format required by the frozen contract.",
+            prompt,
+        )
+        self.assertIn(
+            "Put expected results, failure conditions, and supplemental reporting in the FINAL ASSISTANT RESPONSE",
+            prompt,
+        )
+        self.assertNotIn(
+            "Record the actual command, actual output, expected result and failure condition in `EVIDENCE.txt`",
+            prompt,
+        )
+        self.assertNotIn("four labeled lines", prompt)
+        self.assertIn("EVIDENCE.txt exists and contains the actual command outputs", prompt)
+        self.assertNotIn("IAP", prompt)
+        self.assertNotIn("PREP-BINDING", prompt)
+
+    def test_contract_defined_evidence_format_survives(self):
+        pkg = make_cli_package(self.tmp.name)
+        path = os.path.join(pkg, "verification-intent.json")
+        data = json.loads(support.read(path))
+        data["cli_checks"][-1]["command"] = "test -s REPORT.json && cat REPORT.json"
+        data["cli_checks"][-1]["expected"] = (
+            "REPORT.json contains one JSON object with keys user, path, head, python"
+        )
+        support.write(path, json.dumps(data, indent=2) + "\n")
+        prompt = self._prompt(pkg)
+        self.assertIn("REPORT.json contains one JSON object with keys user, path, head, python", prompt)
+        self.assertNotIn("four labeled lines", prompt)
+        self.assertNotIn(
+            "Record the actual command, actual output, expected result and failure condition in `EVIDENCE.txt`",
+            prompt,
+        )
+
+    def test_contract_four_line_evidence_is_preserved(self):
+        pkg = make_cli_package(self.tmp.name)
+        path = os.path.join(pkg, "verification-intent.json")
+        data = json.loads(support.read(path))
+        data["cli_checks"][-1]["expected"] = (
+            "exactly four labeled lines in this order, with no extra lines: a, b, c, d"
+        )
+        support.write(path, json.dumps(data, indent=2) + "\n")
+        prompt = self._prompt(pkg)
+        self.assertIn("exactly four labeled lines in this order, with no extra lines: a, b, c, d", prompt)
+        self.assertIn(
+            "Put expected results, failure conditions, and supplemental reporting in the FINAL ASSISTANT RESPONSE",
+            prompt,
+        )
+
     def test_ui_contract_without_selector_is_rejected(self):
         pkg = make_cli_package(self.tmp.name)
         _write_intent(pkg, engine="uiautomator", required_selectors=[])
