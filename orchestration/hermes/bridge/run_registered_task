@@ -79,7 +79,7 @@ supervise() {
   local grace=$2
   shift 2
   local label="${TASK_ID:-task}"
-  local child rc deadline grace_end i
+  local child rc deadline grace_end i group_rc
   setsid "$@" &
   child=$!
   SUPERVISED_PGID=$child
@@ -103,19 +103,23 @@ supervise() {
         sleep 0.2
       done
       SUPERVISED_PGID=""
-      if pgrep -g "$child" >/dev/null 2>&1; then
-        echo "AEGL_TASK_CLEANUP=UNCONFIRMED task=$label pgid=$child" >&2
-        return 125
+      pgrep -g "$child" >/dev/null 2>&1
+      group_rc=$?
+      if [ "$group_rc" -eq 1 ]; then
+        echo "AEGL_TASK_CLEANUP=CONFIRMED task=$label pgid=$child" >&2
+        return 124
       fi
-      echo "AEGL_TASK_CLEANUP=CONFIRMED task=$label pgid=$child" >&2
-      return 124
+      echo "AEGL_TASK_CLEANUP=UNCONFIRMED task=$label pgid=$child" >&2
+      return 125
     fi
     sleep 0.2
   done
 
   wait "$child"
   rc=$?
-  if pgrep -g "$child" >/dev/null 2>&1; then
+  pgrep -g "$child" >/dev/null 2>&1
+  group_rc=$?
+  if [ "$group_rc" -eq 0 ]; then
     echo "AEGL_TASK_CHILDREN_LINGER task=$label pgid=$child phase=TERM" >&2
     kill -TERM -- "-$child" 2>/dev/null || true
     sleep "$grace"
@@ -125,12 +129,19 @@ supervise() {
       kill -KILL -- "-$child" 2>/dev/null || true
       sleep 0.2
     done
-    if pgrep -g "$child" >/dev/null 2>&1; then
+    pgrep -g "$child" >/dev/null 2>&1
+    group_rc=$?
+    if [ "$group_rc" -eq 1 ]; then
+      echo "AEGL_TASK_CLEANUP=CONFIRMED task=$label pgid=$child (lingering children reaped)" >&2
+    else
       SUPERVISED_PGID=""
       echo "AEGL_TASK_CLEANUP=UNCONFIRMED task=$label pgid=$child" >&2
       return 125
     fi
-    echo "AEGL_TASK_CLEANUP=CONFIRMED task=$label pgid=$child (lingering children reaped)" >&2
+  elif [ "$group_rc" -eq 1 ]; then
+    echo "AEGL_TASK_CLEANUP=CONFIRMED task=$label pgid=$child" >&2
+  else
+    echo "AEGL_TASK_CLEANUP=UNCONFIRMED task=$label pgid=$child" >&2
   fi
   SUPERVISED_PGID=""
   return "$rc"
