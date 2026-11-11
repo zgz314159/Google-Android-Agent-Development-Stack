@@ -1,5 +1,8 @@
 # Hermes Orchestration (Integration)
 
+Linux 当前系统的日常操作入口是 [系统中文使用教程](../../docs/SYSTEM-USAGE.zh-CN.md)。
+下文保留 S1 阶段的集成背景和验证范围，不代表当前受控任务的启动步骤。
+
 Thin integration of **Hermes** (Nous Research `hermes-agent`, official upstream) as the
 **orchestration kernel** of this Stack. Hermes is **not reimplemented and not forked** —
 we only add integration config, a project context file, a profile, resource policy, and a

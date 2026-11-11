@@ -1,5 +1,8 @@
 # INTEGRATION — Hermes Orchestration Kernel
 
+本文保留早期 S1 集成设计。当前操作请看 [中文教程](../../docs/SYSTEM-USAGE.zh-CN.md)：
+下面的直接 `hermes run` smoke 会调用模型，不能替代 AEGL 受控任务入口或只读检查。
+
 ## Principle
 
 Use Hermes upstream as-is. We add only:

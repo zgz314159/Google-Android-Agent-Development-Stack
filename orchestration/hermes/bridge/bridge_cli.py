@@ -869,7 +869,19 @@ def _cmd_resolve_send_uncertain(args) -> int:
 
 
 def _cmd_status(args) -> int:
-    state = bs.load_state()
+    # A health query must not initialize a chain or chmod an existing directory.
+    # Execution retains load_state()'s initialization semantics.
+    root = bs.state_dir()
+    try:
+        with open(root / bs.STATE_FILE, encoding="utf-8") as handle:
+            data = json.load(handle)
+    except FileNotFoundError:
+        _emit({"decision": "STATE_ABSENT", "state_dir": str(root),
+               "exit_code": EXIT_ERROR})
+        return EXIT_ERROR
+    if not isinstance(data, dict):
+        raise ValueError("state.json is not a JSON object")
+    state = bs.BridgeState(data, root / bs.STATE_FILE)
     task_ids, pairs = bs.consumed_identities()
     _emit({
         "state": state.as_dict(),

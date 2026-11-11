@@ -8,7 +8,7 @@
 # Chromium is NOT downloaded. Use --with-chromium only if you explicitly want it.
 #
 # Usage:
-#   scripts/bootstrap-host.sh [--dry-run] [--with-chromium] [--keep-web-ui]
+#   scripts/bootstrap-host.sh [--dry-run] [--with-chromium]
 #
 # Notes:
 #   * Never advances a campaign and never touches bridge/campaign state.

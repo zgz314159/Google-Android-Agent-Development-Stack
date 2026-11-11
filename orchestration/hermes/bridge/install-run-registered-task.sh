@@ -5,7 +5,7 @@ set -euo pipefail
 SRC="$(cd "$(dirname "$0")" && pwd)"
 WRAPPER="$SRC/run_registered_task"
 [ -f "$WRAPPER" ] && [ ! -L "$WRAPPER" ] || { printf 'INSTALL_FAILED: wrapper missing\n' >&2; exit 1; }
-EXPECTED_WRAPPER_SHA=f97b8f26d11e699101d6395af5599f85de4034c2fca06e63662973caf376b57c
+EXPECTED_WRAPPER_SHA=5ed0b06db96b48297e562277149b0e7f66d0314c96279c6d7e2365b772a9c5ca
 GOT="$(sha256sum "$WRAPPER" | awk '{print $1}')"
 [ "$GOT" = "$EXPECTED_WRAPPER_SHA" ] || { printf 'INSTALL_FAILED: wrapper hash mismatch\n' >&2; exit 1; }
 TARGET_DIR=/usr/local/lib/aegl-bridge
