@@ -300,7 +300,8 @@ bubblewrap、setpriv、ACL、独立服务身份及 Linux namespace 支持。Andr
 
 首次受控部署仍需逐项审查：
 
-- 目标用户、正式源码路径与 project binding；当前部分路径固定为本机 zhong。
+- 目标用户、正式源码路径与 project binding；binding 以操作者 home 为基准解析
+  （`~/Projects`、`~/AndroidStudioProjects`），换用户／目录仍需复核授权身份。
 - 独立 `aegl-ai`／broker／promotion 身份、只读入口挂载与受控 sudoers。
 - Hermes 锁定版本及依赖；专用 Chrome 和 Harness 的本地 CDP 连接。
 - 模型服务和模型 ID、credential **引用**的配置；由操作者本地完成认证，不把

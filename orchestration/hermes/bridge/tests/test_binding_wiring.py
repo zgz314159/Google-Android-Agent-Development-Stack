@@ -205,11 +205,12 @@ class GateWiringTests(unittest.TestCase):
     # --- 4. legacy Stack compatibility ---------------------------------------
     def test_stack_binding_values_preserved(self):
         b = pj.PROJECT_BINDINGS["Google-Android-Agent-Development-Stack"]
-        self.assertEqual(b["formal_source_root"],
-                         "/home/zhong/Projects/Google-Android-Agent-Development-Stack")
+        home = os.path.expanduser("~")
+        stack_root = os.path.join(home, "Projects", "Google-Android-Agent-Development-Stack")
+        self.assertEqual(b["formal_source_root"], stack_root)
         self.assertEqual(b["contract_root"],
-                         "/home/zhong/Projects/Google-Android-Agent-Development-Stack/reports/contracts")
-        self.assertEqual(b["validator_project_root"], "/home/zhong/Projects")
+                         os.path.join(stack_root, "reports", "contracts"))
+        self.assertEqual(b["validator_project_root"], os.path.join(home, "Projects"))
         self.assertFalse(b["require_git_ownership"])
 
     def test_stack_legacy_path_gate_unchanged(self):

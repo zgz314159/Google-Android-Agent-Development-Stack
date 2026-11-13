@@ -21,7 +21,7 @@ class ProjectsUnitTests(unittest.TestCase):
 
     def test_validator_project_root_is_in_the_table(self):
         self.assertEqual(pj.validator_project_root_for("Google-Android-Agent-Development-Stack"),
-                         "/home/zhong/Projects")
+                         os.path.join(os.path.expanduser("~"), "Projects"))
         self.assertIsNone(pj.validator_project_root_for("ImageAnalysisFactory"))
         self.assertIsNone(pj.validator_project_root_for("PowerAi"))
 
@@ -33,7 +33,8 @@ class ProjectsUnitTests(unittest.TestCase):
         self.assertEqual(v["code"], pj.E_PROJECT)
 
     def test_broad_root_predicate(self):
-        for broad in ("/", "/var/tmp", "/home/zhong", "/home/zhong/Projects", ""):
+        home = os.path.expanduser("~")
+        for broad in ("/", "/var/tmp", home, os.path.join(home, "Projects"), ""):
             self.assertTrue(pj._is_broad_root(broad), broad)
         self.assertFalse(pj._is_broad_root("/var/tmp/IAP-M1-001"))
 

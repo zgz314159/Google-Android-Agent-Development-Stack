@@ -30,6 +30,13 @@ import subprocess
 
 SCHEMA_VERSION = 3
 
+_HOME = os.path.expanduser("~")
+
+
+def _home(*parts):
+    return os.path.join(_HOME, *parts)
+
+
 # The AEGL sandbox's allowed disposable-worktree bases (mirror of
 # recovery/model_task_registry.py ALLOWED_BASES). Every binding's worktree_bases MUST
 # be a subset of this.
@@ -38,25 +45,26 @@ AEGL_ALLOWED_BASES = ("/tmp/", "/var/tmp/", "/run/aegl-", "/var/lib/aegl-")
 # Roots too broad to be "this task's approved source root".
 FORBIDDEN_BROAD_ROOTS = (
     "/", "/home", "/var", "/tmp", "/var/tmp", "/run",
-    "/home/zhong", "/home/zhong/Projects", "/home/zhong/AndroidStudioProjects",
+    _HOME, _home("Projects"), _home("AndroidStudioProjects"),
 )
 
 PROJECT_BINDINGS: dict[str, dict] = {
     "Google-Android-Agent-Development-Stack": {
-        "formal_source_root": "/home/zhong/Projects/Google-Android-Agent-Development-Stack",
-        "contract_root": "/home/zhong/Projects/Google-Android-Agent-Development-Stack/reports/contracts",
+        "formal_source_root": _home("Projects", "Google-Android-Agent-Development-Stack"),
+        "contract_root": _home("Projects", "Google-Android-Agent-Development-Stack",
+                               "reports", "contracts"),
         "worktree_bases": AEGL_ALLOWED_BASES,
         "promotion_target_ref": "refs/heads/master",
         "hermes_profile": "android-stack",
         # Historical validator behaviour, kept verbatim for Stack compatibility.
-        "validator_project_root": "/home/zhong/Projects",
+        "validator_project_root": _home("Projects"),
         # Legacy: the formal Stack .git is aegl-broker-only and MUST NOT be relaxed, so
         # the bridge (an unprivileged identity) cannot read it. Ownership for Stack is
         # proven by the root registration path, not here.
         "require_git_ownership": False,
     },
     "ImageAnalysisFactory": {
-        "formal_source_root": "/home/zhong/AndroidStudioProjects/ImageAnalysisFactory",
+        "formal_source_root": _home("AndroidStudioProjects", "ImageAnalysisFactory"),
         "contract_root": "/var/lib/aegl-model/trusted/ImageAnalysisFactory/reports/contracts",
         "worktree_bases": ("/var/tmp/",),
         "promotion_target_ref": "refs/heads/main",
