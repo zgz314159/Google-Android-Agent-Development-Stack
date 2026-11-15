@@ -85,6 +85,33 @@ class AdapterError(RuntimeError):
     pass
 
 
+def select_latest_assistant(snapshot: dict) -> dict:
+    """Choose the latest visible assistant candidate from a structure snapshot.
+
+    Explicit assistant-role containers win. For the current ChatGPT DOM, whose
+    message role attributes are absent, the newest visible, non-empty MarkdownRoot
+    that is not inside a user bubble is the assistant candidate. Hidden/empty
+    placeholders, user messages, and streaming responses are rejected.
+    """
+    if not isinstance(snapshot, dict):
+        raise AdapterError("assistant snapshot unreadable")
+    if snapshot.get("streaming") is True:
+        raise AdapterError("latest assistant response is still streaming")
+    candidates = snapshot.get("candidates")
+    if not isinstance(candidates, list):
+        raise AdapterError("assistant candidate list unreadable")
+    visible = [
+        candidate for candidate in candidates
+        if isinstance(candidate, dict)
+        and candidate.get("visible") is True
+        and candidate.get("user") is not True
+    ]
+    if not visible:
+        raise AdapterError("no assistant message container found")
+    explicit = [candidate for candidate in visible if candidate.get("assistant") is True]
+    return explicit[-1] if explicit else visible[-1]
+
+
 # --------------------------------------------------------------------------- #
 # Browser bootstrap (lazy)
 # --------------------------------------------------------------------------- #
@@ -307,18 +334,52 @@ class RealOps:
         """Text of the user turns only — the authority for send confirmation."""
         return "\n".join(self.user_turns())
 
-    def latest_assistant_text(self) -> str:
+    def latest_assistant_snapshot(self) -> dict:
+        """Structure-only assistant candidates; never returns message text."""
         value = self.js(
             """
             (() => {
               const nodes = [...document.querySelectorAll('[class*="MarkdownRoot"]')];
-              if (!nodes.length) return null;
-              return nodes[nodes.length - 1].innerText;
+              const candidates = nodes.map((node, index) => {
+                const rect = node.getBoundingClientRect();
+                const text = node.innerText || '';
+                return {
+                  index,
+                  visible: rect.width > 0 && rect.height > 0 && text.trim().length > 0,
+                  user: !!(node.closest('[data-user-message-bubble="true"]') ||
+                           node.closest('[data-message-author-role="user"]')),
+                  assistant: !!(node.closest('[data-message-author-role="assistant"]'))
+                };
+              });
+              return {
+                candidates,
+                streaming: !!(document.querySelector('button[data-testid="stop-button"]') ||
+                              document.querySelector('[data-is-streaming="true"]') ||
+                              document.querySelector('[class*="result-streaming"]'))
+              };
             })()
             """
         )
-        if not value:
-            raise AdapterError("latest assistant MarkdownRoot not found")
+        if not isinstance(value, dict):
+            raise AdapterError("assistant snapshot unreadable")
+        return value
+
+    def latest_assistant_text(self) -> str:
+        snapshot = self.latest_assistant_snapshot()
+        chosen = select_latest_assistant(snapshot)
+        index = chosen.get("index")
+        value = self.js(
+            """
+            (() => {
+              const nodes = [...document.querySelectorAll('[class*="MarkdownRoot"]')];
+              const node = nodes[%d];
+              return node ? (node.innerText || null) : null;
+            })()
+            """
+            % int(index)
+        )
+        if not value or not value.strip():
+            raise AdapterError("latest assistant message is empty or unreadable")
         return str(value)
 
 
