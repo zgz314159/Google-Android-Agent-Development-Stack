@@ -124,9 +124,11 @@ SQLite、竖切与测试已在 Ubuntu 完成；Windows 视觉/托盘/通知/发�
 
 - **业务目标与验收**：C#/WPF/.NET 10 离线任务日历；阶段 0–2 需完成环境核对、
   旧版只读审计、解耦工程、SQLite、类型/主题/颜色优先级与首个竖切。
-- **实际结果**：`dotnet build` 成功；Core 34 项、Infrastructure 18 项测试通过；
-  WPF 仅 Windows 目标交叉编译成功。竖切“授课主题→保存→日历标签→重启读取”
-  有自动化证据。Windows 窗口/托盘/动画/发布为 NOT_RUN。
+- **实际结果**：`dotnet build` 成功；Core 47 项、Infrastructure 31 项测试通过
+  （共 74）；WPF 仅 Windows 目标交叉编译成功。竖切“授课主题→保存→日历标签→重启读取”
+  有自动化证据；Excel/CSV 导入导出、列映射预览、草稿/批次撤销、旧库只读 dry-run 迁移在 Ubuntu 通过；
+  `win-x64` self-contained 交叉发布包已生成但从未在 Windows 启动。
+  Windows 窗口/托盘/动画/发布为 NOT_RUN。
 - **系统问题变化**：无新增系统缺陷。SYS-01—06 状态不变；未重跑 005，未创建 006。
 - **已完成的接入准备**：在 Stack 授权开发副本增加精确 binding
   `OfflineTaskCalendar_WPF`（限定项目根与 `/var/tmp/RILI-WPF-V2/` worktree，
@@ -138,7 +140,8 @@ SQLite、竖切与测试已在 Ubuntu 完成；Windows 视觉/托盘/通知/发�
   安装版 bridge 更新与受控执行均 BLOCKED/NOT_RUN，没有提权或绕过门禁。
 - **业务缺陷修复（不属于系统问题）**：迁移事务嵌套、撤销完成写空 `updated_at`、
   `shown` 提醒重复返回、提醒唯一键导致重复插入、周重复顺序、相对周日期、
-  SQLitePCLRaw 高危依赖；均有测试或构建证据。
+  SQLitePCLRaw 高危依赖、NPOI 加密包高危依赖、Excel 时间列未映射、
+  全天任务重复键、Excel 日期序列、旧库默认时间误判为全天；均有测试或构建证据。
 - **收口决定**：业务阶段 0–2 完成；系统接入在权限边界处停止，继续可独立推进的
   业务开发。Windows 与受控执行恢复需 root 或 Windows 资源。
 
@@ -146,7 +149,7 @@ SQLite、竖切与测试已在 Ubuntu 完成；Windows 视觉/托盘/通知/发�
 日期／任务／业务目标：2026-11-21／OfflineTaskCalendar_WPF 阶段0-2／建立可离线 WPF 工程与首个竖切
 预先约定的独立验收：构建成功；核心/持久化测试通过；授课主题竖切可重启读取；WPF 仅交叉编译
 实际结果：无受控发送（无登记任务）；本地构建/测试 PASS；Windows 实机 NOT_RUN
-已证明的范围／证据摘要：Core 34 + Infra 18 + bridge 11；worktree Git 归属 OK
+已证明的范围／证据摘要：Core 47 + Infra 31 + bridge 11；worktree Git 归属 OK
 本轮系统问题：无新增；SYS-01—06 不变；未重开 005
 修复生效位置：业务仓本地提交；Stack 开发副本 binding 提交；均未做 root 安装
 未覆盖或无法证明的部分：Windows 行为、win-x64 发布、受控执行、契约信任安装
