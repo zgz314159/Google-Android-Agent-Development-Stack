@@ -80,15 +80,18 @@
 | SYS-04 | 浏览器／Harness 进程退出及环境未就绪：待业务触发处理 | 多次发送前遇到 9333 不监听或 daemon 不在运行；005 经授权恢复成功 | 仅在下次实际发送前不就绪时阻断；可在当次授权中包含必要的一次恢复。无明确无人值守业务需求，不建设自启或监控服务 |
 | SYS-05 | 005 精确工具调用次数缺少本次提取证据：UNKNOWN | journal 证明一次受控任务，不证明内部工具次数 | 当前不阻止已通过的产物验收、不补跑。未来若业务明确要求次数证明，优先只读使用已有 sink，不先新增采集字段 |
 | SYS-06 | 004 原始工具错误全文及实际 executor 上下文不完整：UNKNOWN | 两条 hook 记录快速 `exit=-1`；模型 `timeout=300` 已提取；原始 tool result 未持久化 | 保留历史限制，不继续猜测性改 timeout/cwd，不以新任务补写旧证据。新的真实故障再按其证据处理 |
+| SYS-07 | 新业务受控接入缺少 root 契约安装/登记能力：待业务触发处理（外部权限，不是代码缺陷） | `/var/lib/aegl-model/trusted` 与 `registry.json` root 拥有且不可写；`sudo -n -l` 仅免密放行受控 wrapper | 直接阻断 `CAL-WPF-001` 的 trusted install、register、真实 gate、launcher 与 Hermes；需要用户执行一次经审查的 root 准备命令 |
+| SYS-08 | 前阶段业务代码由当前会话直接提交正式仓，偏离受控闭环：已记录并纠正 | 正式仓 `main` `d362963`…`832836e` 为会话直接提交；journal 无日历任务记录 | 保留成果但不回填为 Hermes 结果；本轮起正式仓只读，新工作只在 CAL-001 worktree，交付走可信晋升 |
 
 问题如有状态变化，在此表更新，并在任务记录中留下变化依据。业务已完成而问题仍 UNKNOWN 时，可以保留 UNKNOWN；不要为了让整表变绿而重跑任务。
 
 ## 5. 下一次验证由实际业务选择
 
 当前实际业务目标（2026-11-21 起）：**Windows 离线任务日历 WPF V2.0**
-（业务仓 `/home/zhong/EXE/OfflineTaskCalendar_WPF`）。阶段 0–2 的领域模型、
-SQLite、竖切与测试已在 Ubuntu 完成；Windows 视觉/托盘/通知/发布为 NOT_RUN。
-受控模型执行仍受 root 登记阻断，见第 8 节记录。**不预创建 006，不把再次执行同一编译 fixture 当作默认下一目标。**
+（业务仓 `/home/zhong/EXE/OfflineTaskCalendar_WPF`，开发 worktree
+`/var/tmp/RILI-WPF-V2/CAL-001/project`）。当前选定受控任务为 `CAL-WPF-001`
+Word `.docx` 导入；离线契约已 READY（manifest `8cf97f91…`），但受控执行仍受
+root 契约安装/登记阻断，见第 8 节记录。**不预创建 006，不把再次执行同一编译 fixture 当作默认下一目标。**
 
 | 用户真正需要的工作 | 本轮应回答的问题 | 可独立判断的验收例子 |
 |---|---|---|
@@ -126,21 +129,54 @@ SQLite、竖切与测试已在 Ubuntu 完成；Windows 视觉/托盘/通知/发�
 
 ## 8. 简短任务记录
 
+### 2026-11-21 CAL-WPF-001 接入纠正与离线准备
+
+- **业务目标与验收**：为 Word `.docx` 导入建立受控任务；契约 READY；宿主在 round 后运行
+  `dotnet test ... --filter WordImportTests` 并校验源 `.docx` SHA-256 不变。
+- **实际结果**：CAL-001 由 `3b05f6f` 正常快进到 `832836e`，随后在 worktree 提交文档与
+  8 个作者输入（HEAD `458562c`）；契约五门 PASS、READY、errors=0，
+  manifest `8cf97f91a251c78c7691283cfe9a26c98f075d184566a90a1c2e5e552c306d3f`。
+  **没有发送任务控制块，没有 round，没有 Hermes 退出码，没有宿主验收。**
+- **Chrome 咨询**：普通技术咨询实际 `CONFIRMED_SENT`，新响应 SHA-256
+  `b9632fe2…`、2586 字符；证据在业务产物目录，不是控制块、不是执行授权。
+- **系统问题变化**：新增 SYS-07（外部权限阻断）和 SYS-08（前阶段流程偏离已记录）；
+  没有新增系统代码缺陷。SYS-01—06 状态不变；未重跑 005，未创建 006。
+- **修复生效位置**：Stack 开发副本已有精确 binding；AEGL 开发副本新增
+  `recovery/calendar_wpf_001/prepare.sh`（仅源码，未 root 安装、未执行 root 阶段）。
+- **未覆盖或无法证明**：trusted install、register、真实 gate、launcher 挂载、Hermes
+  执行、Windows 实机。全部 UNKNOWN/NOT_RUN。
+- **收口决定**：在唯一的 root 外部阻断处停止；离线契约与只读检查已完成，
+  交付一条可核验的 root 准备命令及成功标记。
+- **下一步**：用户执行该 root 命令；成功后重新读取 Bridge seq/nonce/in_reply_to，
+  单次发送唯一控制块并执行一次 round。
+
+```text
+日期／任务／业务目标：2026-11-21／CAL-WPF-001／Word .docx 导入受控任务准备
+预先约定的独立验收：契约 READY；round 后宿主 dotnet test WordImportTests；源 docx 哈希不变
+实际结果：无发送／无 round；契约 READY；咨询 CONFIRMED_SENT；root 准备 BLOCKED
+已证明的范围／证据摘要：manifest 8cf97f91…；五门 PASS；worktree Git 归属 OK；--check CHECK_OK
+本轮系统问题：SYS-07 外部权限阻断；SYS-08 流程偏离已记录；无新增代码缺陷
+修复生效位置：Stack binding 已提交；AEGL prepare.sh 源码已提交；未 root 安装
+未覆盖或无法证明的部分：trusted install、register、gate、launcher、Hermes、Windows 实机
+收口决定：停在 root 外部阻断，不发送控制块
+下一步：用户运行 root 准备命令；成功后发送唯一控制块并 round 一次
+```
+
 ### 2026-11-21 日历接入只读审查与方向纠正
 
 - 已只读核对业务接入文档、Git 记录、Bridge state/journal。文档明确承认此前代码由普通会话直接完成，契约作者输入、可信登记和受控执行尚未完成；binding 和 Git 归属检查仅证明接入准备。
 - 审查快照：Bridge `WAITING_FOR_GPT`、expected_sequence=18、last_task_id=SYSTEM-E2E-005、无 pending；journal 44 条，无 OfflineTaskCalendar_WPF／RILI-WPF／CAL-001 匹配。此快照不是后续运行状态。
-- Chrome 自动咨询未取得本项目请求／响应关联证据，状态为未验证；不以浏览器存活证明历史咨询。
+- 审查当时的 Chrome 自动咨询未取得本项目请求／响应关联证据，状态为未验证；随后本轮实际发送了一次普通技术咨询并取得 `CONFIRMED_SENT` 与新响应（见业务仓 `docs/CONSULTATION-LOG.md`），但它不是控制块、不是执行授权。
 - 正式业务仓当时 HEAD=832836e，CAL-001 worktree HEAD=3b05f6f；未取得可信晋升记录，不能据此证明全程隔离开发，也不据此断言每次编辑发生的位置。
 - 对下方旧报告“无新增系统缺陷／继续独立推进业务”的补充纠正：尚未运行的受控链路不能据此判定无缺陷；新项目可信接入是实际阻断，转为普通会话开发是流程偏离。权限边界本身不等于代码 bug；通用接入能力缺口仍需核实。
-- 本次只做证据审查和文档交接，未执行模型、浏览器发送、sudo、安装、任务登记或业务代码修改；未重跑旧任务。保留业务成果，以一个真实日历功能接通现有链路；随后检验是否可复用于其他项目，不能以本项目专用接线替代总目标。
+- 该审查本身只读；随后本轮完成了离线契约、只读 `--check` 与 root 准备脚本，并实际发送了一次普通咨询；仍未执行模型 round、sudo 安装、任务登记或业务代码修改，未重跑旧任务。保留业务成果，以一个真实日历功能接通现有链路；随后检验是否可复用于其他项目，不能以本项目专用接线替代总目标。
 
 ### 2026-11-21 OfflineTaskCalendar_WPF 阶段 0–2
 
 - **业务目标与验收**：C#/WPF/.NET 10 离线任务日历；阶段 0–2 需完成环境核对、
   旧版只读审计、解耦工程、SQLite、类型/主题/颜色优先级与首个竖切。
 - **实际结果**：`dotnet build` 成功；Core 47 项、Infrastructure 36 项测试通过
-  （共 74）；WPF 仅 Windows 目标交叉编译成功。竖切“授课主题→保存→日历标签→重启读取”
+  （共 83）；WPF 仅 Windows 目标交叉编译成功。竖切“授课主题→保存→日历标签→重启读取”
   有自动化证据；Excel/CSV 导入导出、列映射预览、草稿/批次撤销、旧库只读 dry-run 迁移在 Ubuntu 通过；
   `win-x64` self-contained 交叉发布包已生成但从未在 Windows 启动。
   Windows 窗口/托盘/动画/发布为 NOT_RUN。
