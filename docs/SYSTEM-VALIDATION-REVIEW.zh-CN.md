@@ -124,7 +124,7 @@ SQLite、竖切与测试已在 Ubuntu 完成；Windows 视觉/托盘/通知/发�
 
 - **业务目标与验收**：C#/WPF/.NET 10 离线任务日历；阶段 0–2 需完成环境核对、
   旧版只读审计、解耦工程、SQLite、类型/主题/颜色优先级与首个竖切。
-- **实际结果**：`dotnet build` 成功；Core 47 项、Infrastructure 34 项测试通过
+- **实际结果**：`dotnet build` 成功；Core 47 项、Infrastructure 36 项测试通过
   （共 74）；WPF 仅 Windows 目标交叉编译成功。竖切“授课主题→保存→日历标签→重启读取”
   有自动化证据；Excel/CSV 导入导出、列映射预览、草稿/批次撤销、旧库只读 dry-run 迁移在 Ubuntu 通过；
   `win-x64` self-contained 交叉发布包已生成但从未在 Windows 启动。
@@ -149,7 +149,7 @@ SQLite、竖切与测试已在 Ubuntu 完成；Windows 视觉/托盘/通知/发�
 日期／任务／业务目标：2026-11-21／OfflineTaskCalendar_WPF 阶段0-2／建立可离线 WPF 工程与首个竖切
 预先约定的独立验收：构建成功；核心/持久化测试通过；授课主题竖切可重启读取；WPF 仅交叉编译
 实际结果：无受控发送（无登记任务）；本地构建/测试 PASS；Windows 实机 NOT_RUN
-已证明的范围／证据摘要：Core 47 + Infra 34 + bridge 11；worktree Git 归属 OK
+已证明的范围／证据摘要：Core 47 + Infra 36 + bridge 11；worktree Git 归属 OK
 本轮系统问题：无新增；SYS-01—06 不变；未重开 005
 修复生效位置：业务仓本地提交；Stack 开发副本 binding 提交；均未做 root 安装
 未覆盖或无法证明的部分：Windows 行为、win-x64 发布、受控执行、契约信任安装
