@@ -79,7 +79,10 @@
 
 ## 5. 下一次验证由实际业务选择
 
-下一业务目标目前未指定。**不预创建 006，不把再次执行同一编译 fixture 当作默认下一目标。**
+当前实际业务目标（2026-11-21 起）：**Windows 离线任务日历 WPF V2.0**
+（业务仓 `/home/zhong/EXE/OfflineTaskCalendar_WPF`）。阶段 0–2 的领域模型、
+SQLite、竖切与测试已在 Ubuntu 完成；Windows 视觉/托盘/通知/发布为 NOT_RUN。
+受控模型执行仍受 root 登记阻断，见第 8 节记录。**不预创建 006，不把再次执行同一编译 fixture 当作默认下一目标。**
 
 | 用户真正需要的工作 | 本轮应回答的问题 | 可独立判断的验收例子 |
 |---|---|---|
@@ -116,6 +119,40 @@
 ```
 
 ## 8. 简短任务记录
+
+### 2026-11-21 OfflineTaskCalendar_WPF 阶段 0–2
+
+- **业务目标与验收**：C#/WPF/.NET 10 离线任务日历；阶段 0–2 需完成环境核对、
+  旧版只读审计、解耦工程、SQLite、类型/主题/颜色优先级与首个竖切。
+- **实际结果**：`dotnet build` 成功；Core 34 项、Infrastructure 18 项测试通过；
+  WPF 仅 Windows 目标交叉编译成功。竖切“授课主题→保存→日历标签→重启读取”
+  有自动化证据。Windows 窗口/托盘/动画/发布为 NOT_RUN。
+- **系统问题变化**：无新增系统缺陷。SYS-01—06 状态不变；未重跑 005，未创建 006。
+- **已完成的接入准备**：在 Stack 授权开发副本增加精确 binding
+  `OfflineTaskCalendar_WPF`（限定项目根与 `/var/tmp/RILI-WPF-V2/` worktree，
+  `require_git_ownership=true`），新增 4 项测试，bridge 项目测试 11 项通过；
+  隔离 worktree `/var/tmp/RILI-WPF-V2/CAL-001/project` 的真实 Git 归属验证 OK。
+- **环境阻断（非系统缺陷）**：可信契约目录位于 root 拥有的
+  `/var/lib/aegl-model/trusted/`；`aegl-model-task register` 仅 root；
+  当前非交互 sudo 不可用，sudoers 只放行受控 wrapper。因此契约安装、任务登记、
+  安装版 bridge 更新与受控执行均 BLOCKED/NOT_RUN，没有提权或绕过门禁。
+- **业务缺陷修复（不属于系统问题）**：迁移事务嵌套、撤销完成写空 `updated_at`、
+  `shown` 提醒重复返回、提醒唯一键导致重复插入、周重复顺序、相对周日期、
+  SQLitePCLRaw 高危依赖；均有测试或构建证据。
+- **收口决定**：业务阶段 0–2 完成；系统接入在权限边界处停止，继续可独立推进的
+  业务开发。Windows 与受控执行恢复需 root 或 Windows 资源。
+
+```text
+日期／任务／业务目标：2026-11-21／OfflineTaskCalendar_WPF 阶段0-2／建立可离线 WPF 工程与首个竖切
+预先约定的独立验收：构建成功；核心/持久化测试通过；授课主题竖切可重启读取；WPF 仅交叉编译
+实际结果：无受控发送（无登记任务）；本地构建/测试 PASS；Windows 实机 NOT_RUN
+已证明的范围／证据摘要：Core 34 + Infra 18 + bridge 11；worktree Git 归属 OK
+本轮系统问题：无新增；SYS-01—06 不变；未重开 005
+修复生效位置：业务仓本地提交；Stack 开发副本 binding 提交；均未做 root 安装
+未覆盖或无法证明的部分：Windows 行为、win-x64 发布、受控执行、契约信任安装
+收口决定：阶段完成；系统接入在无 root 处停止
+下一步：继续阶段 3–6 业务实现；Windows 或 root 可用时再恢复实机与受控执行
+```
 
 ### 2026-11-21 整理：SYSTEM-E2E-005
 

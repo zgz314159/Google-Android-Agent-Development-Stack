@@ -72,6 +72,69 @@ class ProjectsUnitTests(unittest.TestCase):
                                 "-C", "/var/tmp/wt", "rev-parse", "HEAD"])
         self.assertTrue(all("*" not in token for token in argv), argv)
 
+    def test_calendar_binding_is_exact_and_not_a_broad_root(self):
+        binding = pj.binding_for("OfflineTaskCalendar_WPF")
+        self.assertIsNotNone(binding)
+        self.assertEqual(binding["formal_source_root"],
+                         os.path.join(os.path.expanduser("~"), "EXE", "OfflineTaskCalendar_WPF"))
+        self.assertFalse(pj._is_broad_root(binding["formal_source_root"]))
+        self.assertFalse(pj._is_broad_root(os.path.dirname(binding["formal_source_root"])))
+        self.assertTrue(pj.worktree_bases_are_safe(binding))
+        self.assertTrue(binding["require_git_ownership"])
+        self.assertIsNone(binding["validator_project_root"])
+
+    def test_calendar_contract_validation_accepts_isolated_worktree_only(self):
+        binding = pj.binding_for("OfflineTaskCalendar_WPF")
+        package = os.path.join(binding["contract_root"], "CAL-001")
+        ok = pj.validate_project(
+            "OfflineTaskCalendar_WPF",
+            package_real=package,
+            contract_root=binding["contract_root"],
+            context_project="OfflineTaskCalendar_WPF",
+            context_source_root="/var/tmp/RILI-WPF-V2/CAL-001",
+            context_allowed_paths=["project"],
+            worktree="/var/tmp/RILI-WPF-V2/CAL-001/project",
+        )
+        self.assertTrue(ok["ok"], ok)
+
+        formal = pj.validate_project(
+            "OfflineTaskCalendar_WPF",
+            package_real=package,
+            contract_root=binding["contract_root"],
+            context_project="OfflineTaskCalendar_WPF",
+            context_source_root="/var/tmp/RILI-WPF-V2/CAL-001",
+            context_allowed_paths=["project"],
+            worktree=binding["formal_source_root"],
+        )
+        self.assertFalse(formal["ok"])
+        self.assertIn(formal["code"], (pj.E_EXT_WORKTREE_SOURCE_ROOT, pj.E_EXT_WORKTREE_IS_FORMAL))
+
+        outside = pj.validate_project(
+            "OfflineTaskCalendar_WPF",
+            package_real=package,
+            contract_root=binding["contract_root"],
+            context_project="OfflineTaskCalendar_WPF",
+            context_source_root="/var/tmp/RILI-WPF-V2/CAL-001",
+            context_allowed_paths=["project"],
+            worktree="/var/tmp/OTHER-001/project",
+        )
+        self.assertFalse(outside["ok"])
+        self.assertEqual(outside["code"], pj.E_EXT_WORKTREE_SOURCE_ROOT)
+
+    def test_calendar_binding_rejects_contract_of_other_project(self):
+        binding = pj.binding_for("OfflineTaskCalendar_WPF")
+        result = pj.validate_project(
+            "OfflineTaskCalendar_WPF",
+            package_real=os.path.join(binding["contract_root"], "CAL-001"),
+            contract_root=binding["contract_root"],
+            context_project="ImageAnalysisFactory",
+            context_source_root="/var/tmp/RILI-WPF-V2/CAL-001",
+            context_allowed_paths=["project"],
+            worktree="/var/tmp/RILI-WPF-V2/CAL-001/project",
+        )
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["code"], pj.E_EXT_CONTRACT_PROJECT)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

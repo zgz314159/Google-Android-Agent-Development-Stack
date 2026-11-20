@@ -75,6 +75,18 @@ PROJECT_BINDINGS: dict[str, dict] = {
         # bridge identity, so require a live git-ownership proof at the gate.
         "require_git_ownership": True,
     },
+    # Windows offline task calendar (C#/WPF/.NET 10). Exact project root only;
+    # never /home/zhong/EXE or /home/zhong. External task worktrees stay under /var/tmp.
+    "OfflineTaskCalendar_WPF": {
+        "formal_source_root": _home("EXE", "OfflineTaskCalendar_WPF"),
+        "contract_root": "/var/lib/aegl-model/trusted/OfflineTaskCalendar_WPF/reports/contracts",
+        "worktree_bases": ("/var/tmp/RILI-WPF-V2/",),
+        "promotion_target_ref": "refs/heads/main",
+        "hermes_profile": "android-stack",
+        "validator_project_root": None,
+        # The business repo is operator-controlled and readable by the bridge identity.
+        "require_git_ownership": True,
+    },
 }
 
 ALLOWED_PROJECTS = frozenset(PROJECT_BINDINGS)
