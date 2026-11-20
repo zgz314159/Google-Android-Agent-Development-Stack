@@ -90,7 +90,7 @@
 当前实际业务目标（2026-11-21 起）：**Windows 离线任务日历 WPF V2.0**
 （业务仓 `/home/zhong/EXE/OfflineTaskCalendar_WPF`，开发 worktree
 `/var/tmp/RILI-WPF-V2/CAL-001/project`）。当前选定受控任务为 `CAL-WPF-001`
-Word `.docx` 导入；离线契约已 READY（manifest `8cf97f91…`），但受控执行仍受
+Word `.docx` 导入；离线契约已 READY（manifest `639ed1fe…`），但受控执行仍受
 root 契约安装/登记阻断，见第 8 节记录。**不预创建 006，不把再次执行同一编译 fixture 当作默认下一目标。**
 
 | 用户真正需要的工作 | 本轮应回答的问题 | 可独立判断的验收例子 |
@@ -134,15 +134,15 @@ root 契约安装/登记阻断，见第 8 节记录。**不预创建 006，不�
 - **业务目标与验收**：为 Word `.docx` 导入建立受控任务；契约 READY；宿主在 round 后运行
   `dotnet test ... --filter WordImportTests` 并校验源 `.docx` SHA-256 不变。
 - **实际结果**：CAL-001 由 `3b05f6f` 正常快进到 `832836e`，随后在 worktree 提交文档与
-  8 个作者输入（HEAD `458562c`）；契约五门 PASS、READY、errors=0，
-  manifest `8cf97f91a251c78c7691283cfe9a26c98f075d184566a90a1c2e5e552c306d3f`。
+  8 个作者输入（HEAD `fdcb91a`）；契约五门 PASS、READY、errors=0，
+  manifest `639ed1fec89a9af7f67b0bb080c169aeb91ab3adb2b0d8c394f99c21fb83d105`。
   **没有发送任务控制块，没有 round，没有 Hermes 退出码，没有宿主验收。**
 - **Chrome 咨询**：普通技术咨询实际 `CONFIRMED_SENT`，新响应 SHA-256
   `b9632fe2…`、2586 字符；证据在业务产物目录，不是控制块、不是执行授权。
 - **系统问题变化**：新增 SYS-07（外部权限阻断）和 SYS-08（前阶段流程偏离已记录）；
   没有新增系统代码缺陷。SYS-01—06 状态不变；未重跑 005，未创建 006。
 - **修复生效位置**：Stack 开发副本已有精确 binding；AEGL 开发副本新增
-  `recovery/calendar_wpf_001/prepare.sh`（仅源码，未 root 安装、未执行 root 阶段）。
+  `recovery/calendar_wpf_001/prepare.sh`（仅源码，未 root 安装、未执行 root 阶段）；脚本对正式仓的 root Git 查询使用命令级 `-c safe.directory=$PROJECT` 并保留失败输出。
 - **未覆盖或无法证明**：trusted install、register、真实 gate、launcher 挂载、Hermes
   执行、Windows 实机。全部 UNKNOWN/NOT_RUN。
 - **收口决定**：在唯一的 root 外部阻断处停止；离线契约与只读检查已完成，
@@ -154,7 +154,7 @@ root 契约安装/登记阻断，见第 8 节记录。**不预创建 006，不�
 日期／任务／业务目标：2026-11-21／CAL-WPF-001／Word .docx 导入受控任务准备
 预先约定的独立验收：契约 READY；round 后宿主 dotnet test WordImportTests；源 docx 哈希不变
 实际结果：无发送／无 round；契约 READY；咨询 CONFIRMED_SENT；root 准备 BLOCKED
-已证明的范围／证据摘要：manifest 8cf97f91…；五门 PASS；worktree Git 归属 OK；--check CHECK_OK
+已证明的范围／证据摘要：manifest 639ed1fe…；五门 PASS；worktree Git 归属 OK；--check CHECK_OK
 本轮系统问题：SYS-07 外部权限阻断；SYS-08 流程偏离已记录；无新增代码缺陷
 修复生效位置：Stack binding 已提交；AEGL prepare.sh 源码已提交；未 root 安装
 未覆盖或无法证明的部分：trusted install、register、gate、launcher、Hermes、Windows 实机
