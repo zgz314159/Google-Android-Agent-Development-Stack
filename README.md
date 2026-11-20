@@ -5,7 +5,9 @@ AEGL 负责权限与受控执行；本仓负责把需求编译成冻结契约，
 固定 ChatGPT 会话与 Hermes，并组织确定性验证和结果回传。
 
 **从这里开始：[系统中文使用教程](docs/SYSTEM-USAGE.zh-CN.md)。**
-本轮核对记录见 [2026-11-11 定点验证](docs/VALIDATION-2026-11-11.md)。
+每次真实任务后的结论、系统问题与下一验证方向，统一维护在
+[业务验证方向与问题台账](docs/SYSTEM-VALIDATION-REVIEW.zh-CN.md)。
+早期核对记录见 [2026-11-11 定点验证](docs/VALIDATION-2026-11-11.md)。
 
 | 目录 | 职责 |
 |---|---|
