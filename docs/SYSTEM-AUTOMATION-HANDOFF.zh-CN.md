@@ -1,20 +1,28 @@
 # 跨项目自动接入：长期方向与新对话交接
 
+
+
+
+
+
+**顾问双链已落地（Stack）**：`execute_contract` 改为本地受权直跑 Hermes，内嵌 `chatgpt_advise` 纯文本汇报+最多1次指令直注；禁止 Chrome 控制块。相关 unittest 43/43 PASS。旧 `CAL-WORD-TABLE-001` STOP/superseded；阶段2将重冻 `CAL-WORD-TABLE-002`。
+
+**用户再次纠正双链语义（2026-11-21 19:44）**：要的不是把 `HERMES_TASK_V1`/`EXECUTE_CONTRACT` 控制块丢给 Chrome ChatGPT 做协议中继。正确意图：**(A) Hermes + Command Code + 终端** 上实际开发编程；开发完成后 **(B) 把开发汇报发给 Chrome ChatGPT 分析**；**(C) ChatGPT 给出下一步开发指令，回流到 Hermes + Command Code + 终端继续写代码**。Chrome 侧应是「分析/下指令」会话，不是 `<<<HERMES_TASK_V1>>>` 挑战-应答。`CAL-WORD-WIRE-001` seq25 虽已 SUCCESS（控制协议路径），但不代表该拓扑符合用户意图；**暂停** `CAL-WORD-TABLE-001` 的 root prepare/host-run（同拓扑），待按新语义改派发/回报通道后再冻。正式仓仍未晋升；阶段3未冻。
+
+**阶段1 COMPLETE + 阶段2已冻结等待 root**：`CAL-WORD-WIRE-001` Hermes SUCCESS + 宿主 WordParagraphImportTests 6/6 PASS，job COMPLETE；Windows NOT_RUN；正式仓未晋升。阶段2 `CAL-WORD-TABLE-001` / `CAL-WORD-TABLE-001-AUTO` WAITING_PREPARATION；baseline `9c61844492baf2abad8ec2e85c8e922a51e2ce0f`；manifest `52c24700836971926b6925ad0646a10237d6a821db98e562964cbbcfd586a3b9`；plan_sha256 `55aeb5a794fa63149982dd91b4bb05ddeef7e485cb67b7f67399f72a6ceec34f`；`--check` PASS；thread_id=cursor-inbox；300s。
+
 更新：2026-11-21。本文件保存用户要求与证据边界，不是新的运行框架或执行授权。
 
-## 自动化回传与派发：两条独立链路（2026-11-21 用户纠正）
+## 自动化回传与派发：双链（2026-11-21 用户纠正·顾问拓扑）
 
-必须分开，禁止把审查终端接到 Chrome ChatGPT：
+必须分开：
 
-1. **链路1 — 审查／派发**：`Hermes/Stack agent-link` ↔ **Cursor 终端** 或 **Codex 终端**。  
-   本地受控汇报写入审查端（Cursor inbox 或 `codex queue`），审查端用 `pending`／`decide`／`ack` 回写；  
-   不经 Chrome，也不经 ChatGPT 网页中转。
-2. **链路2 — 受控执行协议**：`Hermes Bridge` ↔ **Chrome ChatGPT**。  
-   仅用于 `HERMES_TASK_V1` 控制块发送、唯一新控制回复校验、round／清理／结果回传。  
-   ChatGPT 回复只作协议控制块或指导，不是审查会话，也不是 Cursor／Codex 的消息总线。
+1. **开发链**：Cursor `decide` + 本地契约 gate → **Hermes + Command Code + 终端** 写代码（`execute_contract` 本地受权直跑）。**禁止**向 Chrome 发送 `HERMES_TASK_V1` / `EXECUTE_CONTRACT` 控制块。
+2. **顾问链**：开发切片结束后，纯文本开发汇报 → **Chrome ChatGPT** 分析 → 指令**直注回流**下一轮 Hermes（每 job 最多 1 次）；指令不得含控制块，不得扩路径/预算/晋升。
+3. **事后审查**：Cursor inbox 仅收事后汇报；`pending`/`decide`/`ack` 收口。禁止用网页 ChatGPT 给 Cursor 传控制协议。
 
-错误拓扑：**Chrome ChatGPT ↔ Cursor／Codex**（用网页 ChatGPT 给审查终端传汇报或派发指令）——明确禁止。  
-关闭 Codex 审查通道只影响链路1的 Codex 端点；不影响链路2。Cursor 审查计划的 `thread_id` 应为 `cursor-inbox`。
+旧「链路2 = Chrome 回显 HERMES_TASK_V1」已废止（日历/agent-link 路径）。Bridge `run_round` 旧协议仍保留给其它任务，不被日历 job 使用。
+
 
 ## 总目标
 

@@ -161,39 +161,108 @@ class JobTests(unittest.TestCase):
             f.write_text(f'<TestRun><ResultSummary><Counters executed="{executed}" passed="{passed}" total="{executed}"/></ResultSummary></TestRun>')
             self.assertEqual(actions.parse_trx(f, 1)["passed_acceptance"], expected)
 
-    def fake_services(self, consumed=False):
+    def fake_services(self, consumed=False, *, advisor_text="继续实现表格导入；勿输出控制块。"):
         bridge = self.base/"bridge";bridge.mkdir(exist_ok=True)
         (bridge/"state.json").write_text(json.dumps({"status": "WAITING_FOR_GPT", "expected_sequence": 20,
                                                      "expected_nonce": "nonce", "expected_in_reply_to": "hash"}))
+        pkg = self.base/"pkg";pkg.mkdir(exist_ok=True)
+        (pkg/"EXECUTOR-PROMPT.md").write_text("do work\n")
+        (pkg/"manifest.json").write_text("{}")
+        registry = self.base/"registry.json"
+        registry.write_text(json.dumps({
+            "FRESH": {"worktree": str(self.base/"wt"), "scratch": str(self.base/"scratch"),
+                      "project": "DeclaredProject", "contract_package": str(pkg)}
+        }))
+        (self.base/"wt").mkdir(exist_ok=True)
         calls = []
         state = SimpleNamespace(state_dir=lambda: bridge, unresolved_accepted=lambda: [],
                                 journal_append=lambda event: calls.append(event['event']),
                                 consumed_identities=lambda: ({"FRESH"} if consumed else set(), set()))
-        def run_round(entry_guard_fn, read_fn):
-            entry_guard_fn();calls.append("guard");read_fn();calls.append("round")
-            return {"result": {"outcome": "SUCCESS", "exit_code": 0}, "diagnostic": {"cleanup": "CONFIRMED"},
-                    "send": {"status": "CONFIRMED_SENT"}}
-        svc = SimpleNamespace(state=state, ce=SimpleNamespace(gate=lambda *a, **k: calls.append("gate")),
-                              cli=SimpleNamespace(run_round=run_round))
-        svc.protocol = SimpleNamespace(validate_task=lambda *a: {"status": "ACCEPTED"},
-            extract_control_message=lambda text: {"status": "ACCEPTED", "task": json.loads(text)})
-        svc.adapter = SimpleNamespace(EXPECTED_CDP="http://127.0.0.1:9333", read_latest_assistant=lambda: {"sha256": "old"},
-            send_once=lambda text, *a, **k: (calls.append("send") or {"status": "CONFIRMED_SENT"}),
-            wait_for_new_assistant=lambda *a, **k: {"status": "NEW_ASSISTANT", "text": json.dumps(actions.task_check(self.plan["task"], svc))})
+        def gate(*a, **k):
+            calls.append("gate")
+        def require_launch_privilege():
+            calls.append("launch")
+        def execute(package, prompt_path, max_runtime_s, **kw):
+            calls.append("execute")
+            calls.append(str(prompt_path))
+            return {"outcome": "SUCCESS", "exit_code": 0, "cleanup": "CONFIRMED",
+                    "stdout_tail": "", "stderr_tail": "", "argv": []}
+        svc = SimpleNamespace(
+            state=state,
+            ce=SimpleNamespace(
+                gate=gate,
+                require_launch_privilege=require_launch_privilege,
+                execute=execute,
+                CONTROLLED_TASK_REGISTRY=str(registry),
+            ),
+            cli=SimpleNamespace(),
+        )
+        svc.protocol = SimpleNamespace(
+            S_NO_CONTROL="NO_CONTROL_MESSAGE",
+            validate_task=lambda *a: {"status": "ACCEPTED"},
+            extract_control_message=lambda text: (
+                {"status": "ACCEPTED", "task": {}} if "HERMES_TASK_V1" in (text or "")
+                else {"status": "NO_CONTROL_MESSAGE"}),
+        )
+        sent_texts = []
+        def send_once(text, *a, **k):
+            calls.append("send")
+            sent_texts.append(text)
+            return {"status": "CONFIRMED_SENT"}
+        svc.adapter = SimpleNamespace(
+            EXPECTED_CDP="http://127.0.0.1:9333",
+            read_latest_assistant=lambda: {"sha256": "old"},
+            send_once=send_once,
+            wait_for_new_assistant=lambda *a, **k: {"status": "NEW_ASSISTANT", "text": advisor_text},
+        )
+        svc._sent_texts = sent_texts
         return svc, calls
 
     def test_consumed_business_identity_stops_before_gate_send_or_round(self):
         self.business_plan();svc, calls = self.fake_services(consumed=True)
+        self.plan["task"]["contract_package"] = str(self.base/"pkg")
         with self.assertRaisesRegex(link.LinkError, "ALREADY_CONSUMED"):
             actions.execute_contract(self.plan["task"], "J", svc=svc)
         self.assertFalse(calls)
 
-    def test_real_bridge_adapter_seam_keeps_all_existing_gates(self):
-        self.business_plan();svc, calls = self.fake_services()
+    def test_local_execute_never_sends_hermes_task_control_block(self):
+        self.business_plan()
+        svc, calls = self.fake_services()
+        self.plan["task"]["contract_package"] = str(self.base/"pkg")
         result = actions.execute_contract(self.plan["task"], "J", svc=svc)
         self.assertTrue(result["passed"])
-        self.assertLess(calls.index("gate"), calls.index("send"))
-        self.assertEqual(calls.count("round"), 1)
+        self.assertIn("execute", calls)
+        self.assertIn("LOCAL_AUTHORIZED_EXECUTE", calls)
+        # Advisor may send plain report, but never HERMES_TASK_V1.
+        for text in svc._sent_texts:
+            self.assertNotIn("<<<HERMES_TASK_V1>>>", text)
+            self.assertNotIn("<<<END_HERMES_TASK_V1>>>", text)
+            self.assertNotIn('"action": "EXECUTE_CONTRACT"', text)
+        self.assertTrue(result.get("reinjected"))
+        self.assertIn("advisor", result)
+
+    def test_chatgpt_advise_rejects_control_block_reply(self):
+        self.business_plan()
+        bad = "<<<HERMES_TASK_V1>>>{\"protocol\":\"HERMES_TASK_V1\"}<<<END_HERMES_TASK_V1>>>"
+        svc, calls = self.fake_services(advisor_text=bad)
+        self.plan["task"]["contract_package"] = str(self.base/"pkg")
+        with self.assertRaisesRegex(link.LinkError, "ADVISOR_REPLY_CONTAINS_CONTROL_BLOCK"):
+            actions.chatgpt_advise(self.plan["task"], "J", execution_result={"bridge_result": {}}, svc=svc)
+
+    def test_advisor_instruction_injected_into_second_prompt(self):
+        self.business_plan()
+        svc, calls = self.fake_services(advisor_text="请补 WordTableImporter 测试")
+        self.plan["task"]["contract_package"] = str(self.base/"pkg")
+        result = actions.execute_contract(self.plan["task"], "J", svc=svc)
+        self.assertTrue(result["passed"])
+        prompt_paths = [c for c in calls if c.endswith(".md") or "advisor-prompt-" in c]
+        self.assertGreaterEqual(len(prompt_paths), 1)
+        # Second execute uses ephemeral advisor prompt.
+        self.assertEqual(calls.count("execute"), 2)
+        last_prompt = Path([c for c in calls if isinstance(c, str) and c.startswith("/") and "advisor-prompt-" in c][-1])
+        # file deleted after execute; check reinjected flag instead
+        self.assertTrue(result["reinjected"])
+        self.assertIn("WordTableImporter", result["advisor"]["instruction"])
 
     def test_formal_browser_environment_is_declared_but_never_redirected(self):
         adapter = SimpleNamespace(EXPECTED_CDP="http://127.0.0.1:9333")

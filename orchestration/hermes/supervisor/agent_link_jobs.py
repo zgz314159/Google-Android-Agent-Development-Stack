@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Persistent Agent Link jobs: Hermes review/dispatch terminal link.
+"""Persistent Agent Link jobs: Hermes review/dispatch + advisor dual-link.
 
-Two links stay separate:
-1) Hermes/Stack agent-link <-> Cursor terminal OR Codex terminal (reports + decide/ack).
-2) Hermes Bridge <-> Chrome ChatGPT (HERMES_TASK_V1 control/result only).
-Chrome ChatGPT must not be used as the review/dispatch path to Cursor or Codex.
+Corrected topology (2026-11-21):
+1) Dev: Cursor decide + local gate -> Hermes / Command Code / terminal (no HERMES_TASK_V1).
+2) Advisor: plain development report -> Chrome ChatGPT -> instructions reinjected into Hermes.
+3) Review: Cursor inbox is post-facto reports only (not a Chrome control relay).
 
-No new daemon or deployment framework. The operator freezes one scope; model text
-cannot introduce paths, commands, task identities, budgets, retries or promotion.
+Chrome must never receive HERMES_TASK_V1 / EXECUTE_CONTRACT challenge-response.
+No new daemon or deployment framework. Model text cannot introduce paths, budgets,
+task identities, retries or promotion.
 """
 import argparse
 import json
@@ -96,12 +97,11 @@ def load_review_binding():
 
 
 def report_message(plan, state):
-    return ("【Stack 自动汇报｜非新增授权｜链路1 Hermes↔审查终端】job_id=" + plan["job_id"]
+    return ("【Stack 自动汇报｜非新增授权｜事后审查｜cursor-inbox】job_id=" + plan["job_id"]
             + " report_sha256=" + state["report_sha256"]
-            + "。这是 Hermes/Stack 对 Cursor 或 Codex 审查终端的回报，不是 Chrome ChatGPT 中转。"
-            "请用 agent_link_jobs.py pending 或 cursor-inbox 读取冻结范围与回报，用 decide 写回决策；"
-            "宿主执行器再走链路2 Hermes↔Chrome ChatGPT 控制协议。桌面审查不承担 sudo。"
-            "模型回报本身不授予执行、重试、sudo或晋升权限；已消费任务不重放。")
+            + "。开发在 Hermes+Command Code+终端完成本地受权执行；Chrome ChatGPT 只收开发汇报并回顾问指令（直注回流），"
+            "禁止 HERMES_TASK_V1 控制块。本 cursor-inbox 仅事后汇报；用 pending/decide/ack 收口，不经网页中转控制协议。"
+            "桌面审查不承担 sudo。模型回报不授予执行、重试、sudo或晋升；已消费任务不重放。")
 
 
 def validate_review_thread_id(thread_id):
