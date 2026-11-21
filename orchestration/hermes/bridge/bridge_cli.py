@@ -421,6 +421,7 @@ def run_round(*, root: Path | None = None, read_fn=None, gate_fn=None,
               confirm_timeout_s: float = adapter.DEFAULT_CONFIRM_TIMEOUT_S,
               progress_fn=None, confirm_fn=None, entry_guard_fn=None) -> dict:
     """One round, under the single-worker lock."""
+    production_execute = execute_fn is None
     read_fn = read_fn or (lambda: adapter.read_latest_assistant())
     gate_fn = gate_fn or ce.gate
     execute_fn = execute_fn or (
@@ -442,6 +443,12 @@ def run_round(*, root: Path | None = None, read_fn=None, gate_fn=None,
         # It cannot replace any of the protocol/contract/replay/execution gates.
         if entry_guard_fn is not None:
             entry_guard_fn()
+        if production_execute:
+            try:
+                ce.require_launch_privilege()
+            except ce.ControlledLaunchError as exc:
+                return {'decision':'LAUNCH_BLOCKED','code':exc.code,'message':exc.message,
+                        'exit_code':EXIT_ERROR,'status':'NOT_STARTED'}
         return _round_impl(root=root, read_fn=read_fn, gate_fn=gate_fn,
                            execute_fn=execute_fn, send_fn=send_fn,
                            confirm_timeout_s=confirm_timeout_s,

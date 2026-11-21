@@ -86,6 +86,8 @@
 | SYS-10 | 自动汇报接口首次本地回报 JSON 不合规：已修复并验证 | 首次通信在严格解析处停止，未派发动作；分离输出模板与输入数据后，真实四消息往返 COMPLETE；14 项边界测试通过 | 只读报告审查已接通；不据此声称业务执行、当前桌面直连或通用自动接入通过 |
 | SYS-11 | 自动派发未声明正式 Chrome adapter 环境：已修复并真实验证 | 首次读取前 READ_FAILED；固定正式端点并拒绝冲突。用户授权后经 INITIAL_READ_RECOVERY 审计继续，实际控制发送及 ACCEPTED 成功 | 入口问题收口；原失败保留，不把后续业务超时归因于此 |
 | SYS-12 | Hermes bootstrap re-exec 丢失项目入口导入路径：已修复并真实验证 | 原重启 ModuleNotFoundError，未发送未消费；运行时选择提前且显式入口路径。23项针对性测试PASS，精确请求只读确认不存在后经 BOOTSTRAP_READ_CONTINUATION 续接同次尝试，实际进入EXECUTING | 已收口；未增加模型次数或任务预算。CAL-WORD-PARAGRAPH-001后续120秒超时根因仍UNKNOWN，与SYS-09同类现象但不能推定同一原因 |
+| SYS-13 | 当前执行环境NoNewPrivs=1禁止进入必需sudo wrapper：已确认权限阻断，未解除 | 当前工具进程与父shell均为1；固定summary命令exit1，sudo明确拒绝提权。本轮业务快速FAILED/1、cleanup UNKNOWN，原业务stderr缺失，不能冒充已读业务日志 | 生产run_round增加发送/状态/消费前检查，3项测试通过；不清标志、不换进程绕过。必须在实际允许既有wrapper的授权环境执行；当前已消费task不重放 |
+| SYS-14 | CAL-WORD-PARAGRAPH-DIAG-001结果回传SEND_UNCERTAIN：未解决 | 结果33b66caf…，一次发送后未精确确认，随后只读复核仍不在用户turn；Bridge ERROR/seq20/pending=true | 保留pending和链值，不重发、不resolve为已送达；阻断后续业务派发。当前报告e940cb31…已ack |
 
 问题如有状态变化，在此表更新，并在任务记录中留下变化依据。业务已完成而问题仍 UNKNOWN 时，可以保留 UNKNOWN；不要为了让整表变绿而重跑任务。
 
@@ -134,6 +136,27 @@ Word `.docx` 导入；离线契约已 READY（manifest `639ed1fe…`），root �
 ```
 
 ## 8. 简短任务记录
+
+### 2026-11-21 CAL-WORD-PARAGRAPH-DIAG-001 实际入口失败与权限阻断
+
+- **准备与恢复**：用户root准备成功，安装三SHA/owner/mode及task白名单实际匹配。初次发送前9333
+  refused，未发送未消费；专用profile无进程后按既有路径一次恢复Chrome/Harness，固定标签1个且
+  已登录、无生成，精确控制请求不存在。扩展既有审计恢复只接受确切refused错误并拒绝任何发送
+  记录，25项针对性检查通过。原失败报告f4046836…保留并ack，同任务/seq20/manifest/预算继续。
+- **实际执行结果**：控制发送后ACCEPTED，受控入口FAILED/exit1，未超时，cleanup UNKNOWN。
+  结果回传SEND_UNCERTAIN，result33b66caf…；独立只读canonical确认仍不存在，未重发/resolve。
+  Bridge ERROR/seq20/pending=true；身份消费，job HUMAN_REQUIRED，report e940cb31…已ack。
+- **业务/设备**：worktree status空，要求的导入器/测试均不存在。业务FAILED，宿主验收NOT_RUN，
+  Windows NOT_RUN。Bridge的EXECUTING是控制器标签，缺独立证据证明Hermes业务进程/模型实际启动。
+- **真实权限证据**：固定summary只尝试一次，sudo因NoNewPrivs拒绝提权（exit1），并未运行汇总器；
+  本工具进程及父shellNoNewPrivs=1。当前通道不能进入必需root wrapper。原业务stderr未保留，
+  不将此新诊断错误回填为当时业务日志；分阶段执行原因尚缺独立证据，旧超时根因也不据此回写。
+- **必要修正与边界**：生产run_round增加发送/状态/消费前权限检查，3项检查验证阻断时无浏览器调用、
+  无state/journal写入/消费；不更改NNP/权限，不通过外部进程绕过。源代码仅批准Stack副本。
+  真实环境阻断未解除，不继续消费身份。新增SYS-13/14，已收口传输/隔离检查未重开。
+- **证据与下一步**：项目外controlled/CAL-WORD-PARAGRAPH-DIAG-001下保留结果、诊断尝试及错误、
+  进程权限和只读回传确认。用户普通终端可只读同一固定摘要入口并落盘；不重跑业务、不补模型次数。
+  需要允许既有wrapper的真实授权环境，以及对未确认回传的明确处理范围。现未请求/执行重发。
 
 ### 2026-11-21 新授权带诊断Word业务执行：离线准备
 

@@ -99,6 +99,21 @@ class ControlledLaunchError(GateError):
     """The pre-registered controlled Hermes task cannot be used."""
 
 
+def require_launch_privilege():
+    """Reject a process that cannot enter the mandatory sudo wrapper; never lift NNP."""
+    if os.geteuid() == 0:
+        return
+    try:
+        status=Path('/proc/self/status').read_text()
+    except OSError as exc:
+        raise ControlledLaunchError('E_LAUNCH_PRIVILEGE_UNKNOWN',
+            'Cannot verify NoNewPrivs for the mandatory sudo root wrapper') from exc
+    values=[line.split(':',1)[1].strip() for line in status.splitlines() if line.startswith('NoNewPrivs:')]
+    if values != ['0']:
+        raise ControlledLaunchError('E_LAUNCH_NO_NEW_PRIVS' if values == ['1'] else 'E_LAUNCH_PRIVILEGE_UNKNOWN',
+            'The execution context forbids the required sudo root wrapper (NoNewPrivs='+','.join(values)+')')
+
+
 # --------------------------------------------------------------------------- #
 # Path gate
 # --------------------------------------------------------------------------- #

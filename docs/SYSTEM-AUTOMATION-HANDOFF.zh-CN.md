@@ -25,6 +25,35 @@
 
 ### 最新进度（2026-11-21 自动汇报接入）
 
+**本轮最新失败与实际权限阻断（覆盖下方准备状态）**：用户已成功root准备，三项安装SHA/归属/模式、
+精确诊断白名单均实际匹配。初报自动生成后第一次派发在发送前因9333未监听READ_FAILED，未消费。
+按用户已有恢复授权，确认专用profile无进程后一次启动Chrome恢复原会话、一次恢复Harness；固定标签
+恰好1个、composer=true/login=false/streaming=false，精确控制请求不存在。受审查入口扩展仅允许此
+确切Connection refused，且只要同序号有任何SEND_ATTEMPT便拒绝；25项针对性检查通过，保留原失败
+f4046836…并ack，经INITIAL_READ_RECOVERY沿用原seq20、任务、manifest、120秒预算继续。
+
+随后控制请求实际发送、ACCEPTED seq20；受控入口返回FAILED/exit1、timed_out=false，cleanup UNKNOWN。
+结果回传SEND_UNCERTAIN，result_sha `33b66cafddce038ccbb251873c87f5ddb242ee4ff29e9f52d4c950b242ee0042`。
+只读精确确认canonical结果仍不在用户消息中，未重发/未resolve/未直接改状态。Bridge ERROR/seq20/
+pending=true，身份已消费；job HUMAN_REQUIRED，失败report e940cb31646204be77d2ba71baa8101f28359aa9826060d4a448477eaac58b2e已ack。
+worktree无改动，两个要求文件均不存在；业务FAILED，宿主验收/Windows NOT_RUN。是否实际进入Hermes
+业务进程未得到独立证据，不凭Bridge EXECUTING标签认定模型已运行。
+
+**新确认阻断**：当前Codex工具执行进程及父shell `/proc/status` NoNewPrivs=1。按约定只调用一次固定
+诊断summary入口，sudo立即拒绝提权（exit1），汇总器未运行。不能放宽此标志、换外部进程绕过或声称
+阶段诊断已取回；原业务stderr未持久化，不能把本次诊断错误回填为当时读到的业务日志。该事实与
+业务入口快速exit1相符；至少已确定当前通道无法进入必须的root wrapper，原始阶段仍缺证据。
+新增发送前权限检查：生产run_round在状态/浏览器/消费之前拒绝NoNewPrivs或UNKNOWN，不改权限；
+3项针对性检查通过，防止继续消耗新身份。需要真正允许既有wrapper的授权执行环境，不能由本进程
+清除NoNewPrivs。当前任务不自动重跑，未创建新身份，未重发不确定结果。
+
+证据在 `/home/zhong/EXE/RILI/artifacts/controlled/CAL-WORD-PARAGRAPH-DIAG-001/`：
+controlled-result.json、phase-summary-attempt.json（提权失败、空摘要，不是成功）、
+phase-summary.stderr.txt、execution-context.json、pending-confirmation.json。
+下一只读步骤可由用户普通终端调用同一已安装、白名单允许的diagnostic-summary并把stdout/stderr/exit
+直接落到phase-summary-terminal.*；这不运行模型，不重复业务身份。后台只在新文件到达后核对一次。
+没有新的执行环境与适用授权前，不再tick当前终止job。下方“尚缺root”等均为历史快照。
+
 **新一轮已有明确用户授权，正在等待root准备**：用户随后明确要求“那开始：下一轮真实执行需启用
 现有分阶段诊断，并明确授权新的执行范围和预算；已消费任务保持不重放”。本轮据此冻结
 `CAL-WORD-PARAGRAPH-DIAG-001`／job `CAL-WORD-PARAGRAPH-DIAG-001-AUTO`，一次120秒
