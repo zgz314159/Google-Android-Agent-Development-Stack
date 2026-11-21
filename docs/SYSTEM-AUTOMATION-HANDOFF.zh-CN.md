@@ -25,6 +25,16 @@
 
 ### 最新进度（2026-11-21 自动汇报接入）
 
+**普通终端诊断已实际读取并收口**：用户执行同一固定只读summary后，后台文件已到达，退出码2；
+stderr为`DIAG_SUMMARY_FAILED reason=FileNotFoundError`，stdout为空。本次不是成功读取到空事件集，
+而是汇总器未找到所需诊断路径/文件。exit文件SHA
+`53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3`，stderr SHA
+`4920df928214f8bc8e6170f7d2c3d9c903b713f14e21a63323058a23b5d58fd0`；已核对一次，不再等待或重读通知。
+未获得sandbox_prep_begin或模型/工具阶段证据，不确认Hermes启动，不把当前权限故障回写为旧超时根因。
+本次诊断排查收口，无需继续要求用户运行诊断命令。真正下一步是具备允许既有root wrapper的授权
+执行环境，以及明确处理SEND_UNCERTAIN/pending的范围；当前进程不能清NNP或换进程绕过。三个已消费
+业务身份都保持停止，不再创建任务试错。业务FAILED、宿主/Windows NOT_RUN，未重发/resolve，原失败保留。
+
 **本轮最新失败与实际权限阻断（覆盖下方准备状态）**：用户已成功root准备，三项安装SHA/归属/模式、
 精确诊断白名单均实际匹配。初报自动生成后第一次派发在发送前因9333未监听READ_FAILED，未消费。
 按用户已有恢复授权，确认专用profile无进程后一次启动Chrome恢复原会话、一次恢复Harness；固定标签

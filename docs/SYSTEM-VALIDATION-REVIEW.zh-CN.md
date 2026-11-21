@@ -137,6 +137,19 @@ Word `.docx` 导入；离线契约已 READY（manifest `639ed1fe…`），root �
 
 ## 8. 简短任务记录
 
+### 2026-11-21 普通终端阶段摘要读取结果（已收口）
+
+- **自动接收**：用户执行固定只读summary后，直接读取stdout/stderr/exit三个项目外文件，无需复制
+  内容。真实rc=2，stderr `DIAG_SUMMARY_FAILED reason=FileNotFoundError`（45字节），stdout为空。
+  exit SHA `53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3`，stderr SHA
+  `4920df928214f8bc8e6170f7d2c3d9c903b713f14e21a63323058a23b5d58fd0`，stdout SHA e3b0c442…。
+- **结论边界**：摘要所需诊断路径/文件未找到，不能写成成功读取到空事件集；未获得sandbox、模型或
+  工具阶段证据。它与入口未正常启动的现象相符，但不能独立确定具体失败位置或回填前两轮超时原因。
+  当前工具NoNewPrivs阻止必需sudo已另有直接证据；用户普通终端调用则已实际进入汇总器。
+- **收口/下一方向**：诊断文件已消费记录，不重复请求命令，不再扩展诊断。需要允许既有wrapper的真实
+  授权执行环境及对未确认回传的明确处理范围，不通过换进程绕过限制。当前queue无待办，业务FAILED、
+  宿主验收/Windows NOT_RUN，SEND_UNCERTAIN/pending不变；未重发/resolve/重跑/另建身份。无新增代码问题。
+
 ### 2026-11-21 CAL-WORD-PARAGRAPH-DIAG-001 实际入口失败与权限阻断
 
 - **准备与恢复**：用户root准备成功，安装三SHA/owner/mode及task白名单实际匹配。初次发送前9333
