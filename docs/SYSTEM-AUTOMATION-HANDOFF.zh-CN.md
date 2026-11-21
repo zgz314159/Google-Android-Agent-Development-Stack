@@ -25,6 +25,8 @@
 
 ### 最新进度（2026-11-21 自动汇报接入）
 
+**CURSOR-001 已冻结等待 root**：承接 ABS-001 已写出的 WordParagraphImporter，新身份 CAL-WORD-PARAGRAPH-CURSOR-001 / job …-CURSOR-001-AUTO；manifest `b18da9fe…`，plan `db9169a4…`，worktree HEAD `47a09d60…`，`--check` PASS。审查通道仅 Cursor inbox（Codex 已关）。业务执行仍 NOT_RUN。
+
 **Cursor 收件箱双通道已接入**：`agent-link/review-binding.json` 现为 `channels=[cursor_inbox,codex]`、`required=[cursor_inbox]`。notify 必写 `agent-link/cursor-inbox/`（含 LATEST/WAKE）；Codex 仍可副投但不阻断 Cursor 审查。新增 `publish-cursor-inbox` 可对已 WAITING_REVIEW 报告补投本会话，不重发 Codex、不改通知状态。ABS-001 初报已补投并 decide execute_contract→READY；38 项相关测试通过，Stack 本提交。
 
 **Cursor 接手：绝对路径提示已加强，新任务已冻结等待 root**：用户分享对话后由 Cursor
