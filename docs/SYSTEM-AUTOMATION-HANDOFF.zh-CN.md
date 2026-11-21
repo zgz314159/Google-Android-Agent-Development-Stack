@@ -25,6 +25,20 @@
 
 ### 最新进度（2026-11-21 自动汇报接入）
 
+**Cursor 接手：绝对路径提示已加强，新任务已冻结等待 root**：用户分享对话后由 Cursor
+会话接手未完成的 SYS-16。仅文字说明路径基准仍不足以让模型跳过寻址；生成器现将
+`source_root`/`read_first`/`allowed`/`forbidden` 写成绝对路径，包成员统一写为
+`$HERMES_CONTRACT_PACKAGE/...`，并禁止 `find`/`ls` 定位契约。相关 CLI/build 共 13 项通过；
+Stack 提交 `1677f82`。新业务身份 `CAL-WORD-PARAGRAPH-ABS-001` / job
+`CAL-WORD-PARAGRAPH-ABS-001-AUTO` 已 submit 为 WAITING_PREPARATION；worktree
+`/var/tmp/RILI-WPF-V2/WORD-PARAGRAPH-ABS-001/project` HEAD
+`591e9ac132bbf654f1605aa95793cf2b1f72c372`，manifest
+`96d144ecbc936b234fd13511c98e98f2dfbca668fcfb57fa4dc9e00515955f9a`，五门 READY；plan_sha256
+`6774ea931bc04532322891ac7abcc8aa438dc6fdceadf49b76030a67d01839d9`；`--check` 与
+DIAG_INPUTS_OK 已通过。旧四个失败身份不重放。业务执行/宿主验收/Windows 仍 NOT_RUN，
+待用户普通终端一次 root prepare --diagnostics 后接 host-run；本会话经 agent_link decide/ack
+审查，不自动延长或另建替代任务。
+
 **guard请求已核对，本轮查因不再等待用户读取**：新提取exit0/stderr空，输出SHA
 `794007fa623220f3c4dd7f3ade2551bf54b9cb2c5a1876624d00a8dcf225e65f`；原capture SHA
 `cf770cb02da82e326a829cada5a934880c072b5284fc7ea2d308f7c4c527a27a`，11条、无坏行，全部真实请求

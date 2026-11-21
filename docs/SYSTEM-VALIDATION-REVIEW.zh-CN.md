@@ -89,7 +89,7 @@
 | SYS-13 | 桌面NNP子进程承担需要sudo的宿主执行：已修复，宿主真实入口验证通过 | 用户启动HOST-001的host-run，seq21真实受控执行；摘要确认sandbox准备、模型响应及工具事件，固定summary读取exit0 | 入口阻断收口；业务随后120秒超时，无代码，不能将入口通过当业务通过。不清NNP或自动拉起外部进程绕过 |
 | SYS-14 | 结果停在composer，Enter未完成提交：已修复并真实验证 | 完整616字符canonical仍为草稿，用户turn无该结果，同form唯一可用发送按钮存在。改物理单击且保留exact确认；用户明确授权一次补发后原resolver真实CONFIRMED_SENT，resend_count=1 | Bridge WAITING_FOR_GPT/seq21/pending=false，回传阻断收口；FAILED/1原业务结果不变，未重跑Hermes。证据send-resolution.json及journal |
 | SYS-15 | 普通宿主PATH无codex，初报通知未启动却误标发送不确定：已修复，原报告通知已恢复 | 初报6918a73e…保留；CLI绝对定位、NOT_SENT区分及精确恢复，36项测试通过，普通终端类似环境真实QUEUED且new_model_call=false；用户重启后HOST-001已实际执行并自动回报失败 | 通知入口收口，不重复root/报告生成/恢复；本轮业务超时另记SYS-16。真正不确定发送不适用此恢复 |
-| SYS-16 | HOST-001 超时无业务改动：路径交接缺口已修复源码，完整超时根因仍UNKNOWN | 工具4次ERROR/16次OK；11条相关guard请求均rc0，反复出现契约相对名/find/ls词，未逐字匹配冻结CLI。静态复现启动cwd无法直接解析提示相对路径；原生成器补路径基准及一次定位/批量读取，12项相关检查通过 | 已完成现有记录提取，不追加诊断设施；缺原始错误文本/工具内部cwd，不能断言每个错误都由路径造成。修复后真实开发NOT_RUN；旧任务不重放、不自动换身份 |
+| SYS-16 | HOST-001 超时无业务改动：路径交接已加强为绝对路径提示，完整超时根因仍UNKNOWN；修复后真实开发待 ABS-001 | 工具4次ERROR/16次OK；11条guard请求rc0且反复相对名/find/ls。生成器现烘焙绝对 source_root/read_first 与 `$HERMES_CONTRACT_PACKAGE/...`，13项相关检查通过；Stack `1677f82`。新任务 CAL-WORD-PARAGRAPH-ABS-001 已冻结 WAITING_PREPARATION，旧身份不重放 | 阻断已消费 HOST-001；下一验证走 ABS-001 单次120秒+宿主>=4项测试。未获 PREP_COMPLETE 前不调用模型；不能把源码修复说成业务通过 |
 
 问题如有状态变化，在此表更新，并在任务记录中留下变化依据。业务已完成而问题仍 UNKNOWN 时，可以保留 UNKNOWN；不要为了让整表变绿而重跑任务。
 
@@ -138,6 +138,18 @@ Word `.docx` 导入；离线契约已 READY（manifest `639ed1fe…`），root �
 ```
 
 ## 8. 简短任务记录
+
+### 2026-11-21 ABS-001 准备：绝对路径提示加强，等待 root
+
+日期／任务／业务目标：CAL-WORD-PARAGRAPH-ABS-001；验证 SYS-16 绝对路径提示修复后的 Word 段落导入。
+预先约定的独立验收：宿主 WordParagraphImportTests 实际执行 >=4 且全通过；源码差异与断言核对；Windows NOT_RUN。
+实际结果：发送／执行／清理／回传／独立验收均 NOT_RUN。离线：契约 READY、`--check` PASS、job WAITING_PREPARATION。
+已证明的范围／证据摘要：Stack `1677f82` 烘焙绝对 source_root/read_first 与 `$HERMES_CONTRACT_PACKAGE/...`；13 项相关检查通过；manifest `96d144ec…`；plan `6774ea93…`。
+本轮系统问题：SYS-16 源码加强，修复后真实开发仍待本任务；完整 HOST-001 超时因果仍 UNKNOWN。
+修复生效位置：Stack 源码已提交；可信安装／登记 NOT_RUN；真实验证 NOT_RUN。
+未覆盖：Hermes 执行、业务产物、宿主验收、Windows。
+收口决定：有依据地继续；停在用户 root 认证前。
+下一步：用户执行已交付的 prepare+host-run；本会话 decide/ack；旧四个失败身份不重放。
 
 ### 2026-11-21 HOST-001 真实执行：超时，自动回报已接收
 
