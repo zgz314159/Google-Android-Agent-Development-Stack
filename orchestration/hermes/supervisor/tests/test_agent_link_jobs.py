@@ -521,6 +521,40 @@ results=Path(sys.argv[sys.argv.index('--results-directory')+1])
         self.assertEqual(Worker.calls,2)
         self.assertEqual(jobs.load('J')[2]['notification_recovery_history'][0]['phase'],'QUEUED')
 
+    def _write_binding(self, channels, required):
+        directory = self.base/"agent-link"
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory/"review-binding.json").write_text(
+            json.dumps({"channels": channels, "required": required}) + "\n")
+
+    def test_cursor_inbox_required_succeeds_even_if_codex_fails(self):
+        self._write_binding(["cursor_inbox", "codex"], ["cursor_inbox"])
+        jobs.submit(self.plan)
+        def fail_codex(thread, message):
+            self.sends.append((thread, message))
+            return {"returncode": 1}
+        jobs.step("J", worker_factory=Worker, queue=fail_codex, prepare=lambda _: True)
+        state = jobs.load("J")[2]
+        self.assertEqual(state["status"], "WAITING_REVIEW")
+        self.assertEqual(state["notification"], "QUEUED")
+        self.assertTrue(state["notification_channels"]["cursor_inbox"]["ok"])
+        self.assertFalse(state["notification_channels"]["codex"]["ok"])
+        latest = self.base/"agent-link"/"cursor-inbox"/"LATEST.json"
+        self.assertTrue(latest.is_file())
+        payload = json.loads(latest.read_text())
+        self.assertEqual(payload["job_id"], "J")
+        self.assertEqual(payload["report_sha256"], state["report_sha256"])
+        self.assertIn("cursor-inbox", payload["message"])
+
+    def test_publish_cursor_inbox_redelivers_waiting_review_without_codex(self):
+        jobs.submit(self.plan); self.step()
+        before = jobs.load("J")[2]["notification"]
+        result = jobs.publish_cursor_inbox("J")
+        self.assertEqual(result["status"], "CURSOR_INBOX_WRITTEN")
+        self.assertEqual(jobs.load("J")[2]["notification"], before)
+        self.assertTrue(Path(result["path"]).is_file())
+        self.assertTrue(Path(result["latest"]).is_file())
+
 
 if __name__ == "__main__":
     unittest.main()

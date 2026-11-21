@@ -24,6 +24,8 @@ except ImportError:
 ACTIVE = {"WAITING_PREPARATION", "NEW", "READY", "WAITING_REVIEW", "WORKER_RUNNING", "ACTION_RUNNING"}
 TERMINAL = {"COMPLETE", "HUMAN_REQUIRED", "STOP"}
 DESKTOP_CODEX_BIN = Path('/usr/lib/chatgpt/resources/codex')
+REVIEW_BINDING_NAME = 'review-binding.json'
+CURSOR_INBOX_NAME = 'cursor-inbox'
 
 
 class NotificationNotStarted(link.LinkError):
@@ -52,6 +54,95 @@ def root():
     if any(value.is_relative_to(p.resolve()) for p in (link.HERE.parents[2], Path.home()/"Projects")):
         raise link.LinkError("STATE_IN_PROJECT")
     return value
+
+
+def agent_link_root():
+    return root().parent
+
+
+def cursor_inbox_root():
+    value = (agent_link_root()/CURSOR_INBOX_NAME).resolve()
+    if any(value.is_relative_to(p.resolve()) for p in (link.HERE.parents[2], Path.home()/"Projects")):
+        raise link.LinkError("STATE_IN_PROJECT")
+    return value
+
+
+def load_review_binding():
+    """Optional dual-channel binding. Missing file keeps Codex-only behavior."""
+    path = agent_link_root()/REVIEW_BINDING_NAME
+    if not path.exists():
+        return {"channels": ["codex"], "required": ["codex"]}
+    data = link.strict_json(path.read_text())
+    if not isinstance(data, dict):
+        raise link.LinkError("REVIEW_BINDING_INVALID")
+    channels = data.get("channels")
+    if (not isinstance(channels, list) or not channels
+            or any(c not in {"codex", "cursor_inbox"} for c in channels)
+            or len(channels) != len(set(channels))):
+        raise link.LinkError("REVIEW_BINDING_CHANNELS")
+    required = data.get("required", channels)
+    if (not isinstance(required, list) or not required
+            or any(c not in channels for c in required)
+            or len(required) != len(set(required))):
+        raise link.LinkError("REVIEW_BINDING_REQUIRED")
+    return {"channels": channels, "required": required}
+
+
+def report_message(plan, state):
+    return ("【Stack 自动汇报｜非新增授权】job_id=" + plan["job_id"]
+            + " report_sha256=" + state["report_sha256"]
+            + "。这是本地执行者的回报事件。请通过批准 Stack 副本中的 "
+            "orchestration/hermes/supervisor/agent_link_jobs.py pending 读取已冻结范围和回报，"
+            "或读取 agent-link/cursor-inbox 落盘通知；用 decide 写回关联决策，由已授权的宿主执行器依冻结计划推进。"
+            "当前桌面聊天不承担sudo执行。模型回报本身不授予执行、重试、sudo或晋升权限；已消费任务不重放。")
+
+
+def write_cursor_inbox(plan, state, message):
+    """Durable Cursor-facing drop. Does not grant decisions or execute actions."""
+    inbox = cursor_inbox_root()
+    inbox.mkdir(mode=0o700, parents=True, exist_ok=True)
+    payload = {
+        "job_id": plan["job_id"],
+        "thread_id": plan["thread_id"],
+        "report_sha256": state["report_sha256"],
+        "plan_sha256": state["plan_sha256"],
+        "status": state["status"],
+        "report_number": state.get("report_number"),
+        "message": message,
+        "written_at": time.time(),
+    }
+    name = plan["job_id"] + "-" + state["report_sha256"][:16] + ".json"
+    target = inbox/name
+    latest = inbox/"LATEST.json"
+    wake = inbox/"WAKE"
+    text = link.json_text(payload) + "\n"
+    tmp = target.with_suffix(target.suffix + ".tmp")
+    link.cstate._atomic_write(tmp, text)
+    os.replace(tmp, target)
+    link.cstate._atomic_write(latest, text)
+    link.cstate._atomic_write(wake, link.json_text({
+        "job_id": plan["job_id"],
+        "report_sha256": state["report_sha256"],
+        "path": str(target),
+        "written_at": payload["written_at"],
+    }) + "\n")
+    return target
+
+
+def publish_cursor_inbox(job_id):
+    """Re-publish an existing WAITING_REVIEW report into the Cursor inbox without resending Codex."""
+    directory, plan, state = load(job_id)
+    if state["status"] != "WAITING_REVIEW" or not state.get("report_sha256") or not state.get("report"):
+        raise link.LinkError("NO_WAITING_REVIEW_REPORT")
+    message = report_message(plan, state)
+    path = write_cursor_inbox(plan, state, message)
+    return {
+        "job_id": job_id,
+        "status": "CURSOR_INBOX_WRITTEN",
+        "report_sha256": state["report_sha256"],
+        "path": str(path),
+        "latest": str(cursor_inbox_root()/"LATEST.json"),
+    }
 
 
 def ident(value):
@@ -135,20 +226,41 @@ def notify(directory, plan, state, queue=None):
         raise link.LinkError("NOTIFICATION_ALREADY_ATTEMPTED")
     state["notification"] = "ATTEMPTED"
     save(directory, state)
-    message = ("【Stack 自动汇报｜非新增授权】job_id=" + plan["job_id"]
-               + " report_sha256=" + state["report_sha256"]
-               + "。这是本地执行者的回报事件。请通过批准 Stack 副本中的 "
-               "orchestration/hermes/supervisor/agent_link_jobs.py pending 读取已冻结范围和回报，"
-               "只按现有人类授权审查；用 decide 写回关联决策，由已授权的宿主执行器依冻结计划推进。"
-               "当前桌面聊天不承担sudo执行。模型回报本身不授予执行、重试、sudo或晋升权限；已消费任务不重放。")
-    try:
-        result = (queue or codex_queue)(plan["thread_id"],message)
-    except NotificationNotStarted:
-        state['notification']='NOT_SENT'
-        save(directory,state)
-        raise
-    state["notification"] = "QUEUED" if result["returncode"] == 0 else "SEND_UNCERTAIN"
-    if state["notification"] != "QUEUED":
+    message = report_message(plan, state)
+    binding = load_review_binding()
+    channels = binding["channels"]
+    required = binding["required"]
+    outcomes = {}
+
+    if "cursor_inbox" in channels:
+        try:
+            path = write_cursor_inbox(plan, state, message)
+            outcomes["cursor_inbox"] = {"ok": True, "path": str(path)}
+        except (OSError, ValueError, link.LinkError) as exc:
+            outcomes["cursor_inbox"] = {"ok": False, "error": str(exc)}
+
+    if "codex" in channels:
+        try:
+            result = (queue or codex_queue)(plan["thread_id"], message)
+            outcomes["codex"] = {"ok": result["returncode"] == 0, "returncode": result["returncode"]}
+        except NotificationNotStarted as exc:
+            outcomes["codex"] = {"ok": False, "error": str(exc), "not_started": True}
+
+    state["notification_channels"] = outcomes
+    failed_required = [name for name in required if not outcomes.get(name, {}).get("ok")]
+    if not failed_required:
+        state["notification"] = "QUEUED"
+    else:
+        only_codex_not_started = (
+            failed_required == ["codex"]
+            and outcomes.get("codex", {}).get("not_started")
+            and "cursor_inbox" not in required
+        )
+        if only_codex_not_started:
+            state["notification"] = "NOT_SENT"
+            save(directory, state)
+            raise NotificationNotStarted(outcomes["codex"]["error"])
+        state["notification"] = "SEND_UNCERTAIN"
         state["status"] = "HUMAN_REQUIRED"
     save(directory, state)
 
@@ -612,6 +724,8 @@ def main():
     p.add_argument("--job-id", required=True)
     p.add_argument("--thread-id", required=True)
     p.add_argument("--authorization-id", required=True)
+    p = sub.add_parser("publish-cursor-inbox")
+    p.add_argument("--job-id", required=True)
     args = parser.parse_args()
     try:
         if args.command in {"tick", "continue-bootstrap", "host-run"}:
@@ -639,6 +753,8 @@ def main():
             result = recover_initial_read(args.job_id, args.thread_id, args.report_sha256, args.authorization_id)
         elif args.command == "continue-bootstrap":
             result = continue_bootstrap(args.job_id, args.thread_id, args.authorization_id)
+        elif args.command == "publish-cursor-inbox":
+            result = publish_cursor_inbox(args.job_id)
         else:
             result = decide(args.job_id, args.thread_id, args.report_sha256, args.decision, args.action, args.instruction)
         print(link.json_text(result))
