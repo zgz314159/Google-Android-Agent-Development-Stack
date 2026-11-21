@@ -101,11 +101,12 @@
 
 当前实际业务目标（2026-11-21 起）：**Windows 离线任务日历 WPF V2.0**
 （业务仓 `/home/zhong/EXE/OfflineTaskCalendar_WPF`）。Word `.docx` 段落+表格导入
-已在 disposable worktree 实现；`CAL-WORD-DRAFT-002-AUTO` 为 COMPLETE，
-execute SUCCESS/0、cleanup CONFIRMED、宿主验收 15/15。独立宿主复验 Word 定向
-14/14；全量 Core 47/47、Infrastructure 60/61，唯一失败是基线也可复现的日期相关
-测试缺陷（VerticalSliceTests:76），不是 Word 回归。正式 main 仍 832836e，未晋升；
-Windows 实机 NOT_RUN。`CAL-WPF-002` 已被实际工作超越，未登记、未执行。
+与注入时钟的日期测试修复均已在 disposable worktree 完成：
+`CAL-WORD-DRAFT-002-AUTO` COMPLETE（host 15/15），
+`CAL-VS-CLOCK-001-AUTO` COMPLETE（SUCCESS/0，host 5/5）。
+项目外合并验证：Core 47/47、Infrastructure 61/61、Word 定向 14/14 全绿。
+正式 main 仍 832836e，未晋升；Windows 实机 NOT_RUN。
+`CAL-WPF-002` 已被实际工作超越，未登记、未执行。
 **不预创建 006，不把再次执行同一编译 fixture 当作默认下一目标。**
 
 | 用户真正需要的工作 | 本轮应回答的问题 | 可独立判断的验收例子 |
@@ -143,6 +144,33 @@ Windows 实机 NOT_RUN。`CAL-WPF-002` 已被实际工作超越，未登记、�
 ```
 
 ## 8. 简短任务记录
+
+### 2026-11-21 CAL-VS-CLOCK-001 与 Word 合并全绿
+
+- **业务结果**：`CAL-VS-CLOCK-001-AUTO` 状态 `COMPLETE`；`execute_contract`
+  `SUCCESS`/exit 0；host acceptance `5/5 passed`；修复为 `TaskDraft.Build` 增加可选
+  `now`，测试注入固定时钟，消除日期相关失败。
+- **独立验收**：定向 `VerticalSliceTests` **5/5**；该 worktree 全量 Core **47/47**、
+  Infrastructure **36/36**。
+- **合并验证**（项目外副本）：把 Word 工作tree 与 CLOCK 修复的两处文件合并后，
+  Core **47/47**、Infrastructure **61/61**、Word 定向 **14/14** 全绿。
+- **执行路径**：`LOCAL_AUTHORIZED` 本地 host-run（send NOT_APPLICABLE_LOCAL）；
+  `CAL-WORD-WIRE-001` 另有 Bridge SUCCESS seq25。
+- **系统问题**：无新增系统代码缺陷；CAL-VS-CLOCK-001 修复了此前的日期相关业务测试缺陷。
+- **正式树/Windows**：main 仍 `832836e`，未晋升；Windows 实机 NOT_RUN。
+- **收口决定**：合并状态已验证，但不自动晋升；晋升与 Windows 实机需单独授权/资源。
+
+```text
+日期／任务／业务目标：2026-11-21／CAL-VS-CLOCK-001＋Word／日期测试修复与合并验收
+预先约定的独立验收：VerticalSliceTests 5/5；合并后全量回归与 Word 定向
+实际结果：execute SUCCESS/0；host 5/5；合并 47+61+14 全绿
+已证明的范围／证据摘要：CAL-VS-CLOCK-001 job state/acceptance；项目外合并副本日志
+本轮系统问题：无新增系统缺陷；日期测试缺陷已修复
+修复生效位置：worktree 内 TaskDraft/VerticalSliceTests；未晋升
+未覆盖或无法证明的部分：Windows 实机；正式晋升；Bridge RESULT for CLOCK
+收口决定：保留验证结果，不自动晋升
+下一步：用户授权晋升或 Windows 实机
+```
 
 ### 2026-11-21 Word 导入本地受控闭环与独立验收
 
