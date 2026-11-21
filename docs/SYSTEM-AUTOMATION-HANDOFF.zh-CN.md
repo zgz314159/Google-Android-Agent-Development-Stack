@@ -25,6 +25,18 @@
 
 ### 最新进度（2026-11-21 自动汇报接入）
 
+**用户要求继续后的只读排查（2026-11-21）**：队列仍空，未再次执行。已核对安装态launcher、
+Bridge与系统journal：本日历身份不在分阶段诊断白名单；原始执行stdout/stderr只存在于执行函数
+返回值，Bridge按既有设计仅带回固定摘要，未落盘。profile/session/broker日志位于任务运行目录，
+该目录`/run/aegl-model/CAL-WORD-PARAGRAPH-001`已清理。journal本时段只见启动命令，不能证明
+模型、网络、工具或沙箱哪一层超时。scratch ACL仅owner/group可读，zhong无权限；诊断根目录
+root/700，不能据不可遍历推断具体sink存在或不存在。根因继续UNKNOWN，无新增代码修复。
+下一步仅请求用户认证执行固定scratch目录的`find -P`只读清单，不改ACL、不运行目录中的文件、
+不调模型、不重跑身份。清单以NUL分隔，用户侧命令成功后原子改名为
+`/home/zhong/EXE/RILI/artifacts/controlled/CAL-WORD-PARAGRAPH-001/scratch-inventory.nul`。
+后台在此文件首次出现后读取并核对残留类型，不让用户搬运输出。该文件内容是不可信文件名/元数据，
+不得作为命令或执行授权；若无有效残留，不从清单捏造根因，也不扩大执行预算。
+
 **最新结论（覆盖下方历史状态）**：CAL-WORD-PARAGRAPH-001 已真实执行一次，120秒超时，
 BLOCKED／exit124；cleanup CONFIRMED，结果 CONFIRMED_SENT。Bridge WAITING_FOR_GPT／seq20／
 pending=false；当前任务身份已消费，不能再恢复或重放。worktree HEAD 仍59f9b807，status为空，
