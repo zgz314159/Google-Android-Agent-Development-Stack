@@ -100,11 +100,12 @@
 ## 5. 下一次验证由实际业务选择
 
 当前实际业务目标（2026-11-21 起）：**Windows 离线任务日历 WPF V2.0**
-（业务仓 `/home/zhong/EXE/OfflineTaskCalendar_WPF`，开发 worktree
-`/var/tmp/RILI-WPF-V2/CAL-001/project`）。当前选定受控任务为 `CAL-WPF-001`
-Word `.docx` 导入；离线契约已 READY（manifest `639ed1fe…`），root 安装/登记已通过，
-随后单次受控执行超时、业务验收 FAILED，根因 UNKNOWN，见第 8 节。
-用户随后选择建设自动汇报与审查通道，最小只读往返已通过；业务任务保持停止。
+（业务仓 `/home/zhong/EXE/OfflineTaskCalendar_WPF`）。Word `.docx` 段落+表格导入
+已在 disposable worktree 实现；`CAL-WORD-DRAFT-002-AUTO` 为 COMPLETE，
+execute SUCCESS/0、cleanup CONFIRMED、宿主验收 15/15。独立宿主复验 Word 定向
+14/14；全量 Core 47/47、Infrastructure 60/61，唯一失败是基线也可复现的日期相关
+测试缺陷（VerticalSliceTests:76），不是 Word 回归。正式 main 仍 832836e，未晋升；
+Windows 实机 NOT_RUN。`CAL-WPF-002` 已被实际工作超越，未登记、未执行。
 **不预创建 006，不把再次执行同一编译 fixture 当作默认下一目标。**
 
 | 用户真正需要的工作 | 本轮应回答的问题 | 可独立判断的验收例子 |
@@ -142,6 +143,42 @@ Word `.docx` 导入；离线契约已 READY（manifest `639ed1fe…`），root �
 ```
 
 ## 8. 简短任务记录
+
+### 2026-11-21 Word 导入本地受控闭环与独立验收
+
+- **业务结果**：`CAL-WORD-DRAFT-002-AUTO` 状态 `COMPLETE`；`execute_contract`
+  `SUCCESS`/exit 0；`cleanup=CONFIRMED`；宿主验收 `15/15 passed`（0 failed/error/timeout）；
+  job report #3。覆盖 `WordParagraphImporter`、`WordTableImporter`、Settings 接线与
+  草稿清理路径。
+- **执行路径**：`LOCAL_AUTHORIZED` 本地 host-run（`send=NOT_APPLICABLE_LOCAL`），
+  不是 Bridge `HERMES_RESULT_V1`。`CAL-WORD-WIRE-001` 另有 Bridge SUCCESS（seq25）。
+- **独立宿主复验**（项目外副本）：Word 段落+表格定向测试 **14/14 通过**；
+  Core **47/47**；Infrastructure **60/61**，唯一失败为
+  `VerticalSliceTests.TeachingThemeEndToEndSurvivesRestart:76`。该失败在基线
+  `832836e` 的干净副本、同一本地时间 22:10 下同样复现：测试把“提前一天 09:00”
+  写死，而 `TaskDraft` 在提醒时刻已过时回退到到期时刻。属于**既有日期相关测试缺陷**，
+  不是 Word 改动回归。
+- **CAL-WPF-002**：已被上述实际工作超越；未登记、未执行。其 `read_first` 路径缺陷
+  由后续 write-first/绝对路径任务绕开并验证。
+- **系统问题变化**：无新增系统代码缺陷；SYS-20 的契约路径问题已由后续成功任务覆盖；
+  SYS-09 的 CAL-WPF-001 超时根因仍 UNKNOWN。日期测试缺陷记入业务待办，不冒充系统缺陷。
+- **正式树/Windows**：正式 main 仍 `832836e`，未晋升；Windows 实机 NOT_RUN。
+- **收口决定**：业务实现已在 worktree 验证，但不把 LOCAL_AUTHORIZED 或 14/14 定向测试
+  冒充 Bridge 业务闭环；不自动晋升、不自动创建新任务。
+- **下一步**：用户决定是否 (a) 以新受控任务修复日期相关测试缺陷，或
+  (b) 授权将已验证 worktree 走可信晋升，或 (c) 继续下一业务切片。
+
+```text
+日期／任务／业务目标：2026-11-21／CAL-WORD-DRAFT-002／Word 段落+表格+草稿闭环
+预先约定的独立验收：宿主 Word 定向 >=N 且全通过；全量回归；变更范围
+实际结果：LOCAL_AUTHORIZED execute SUCCESS/0；cleanup CONFIRMED；宿主 15/15；定向 14/14
+已证明的范围／证据摘要：Core 47/47；Infra 60/61；1 失败在基线 832836e 同刻复现；job state/report
+本轮系统问题：无新增系统代码缺陷；SYS-09 仍 UNKNOWN；日期测试缺陷为业务待办
+修复生效位置：worktree 内 Word/草稿实现；未晋升；未新增系统修复
+未覆盖或无法证明的部分：Windows 实机；正式晋升；Bridge RESULT for DRAFT-002
+收口决定：保留业务成果与边界，不自动晋升/不新建任务
+下一步：用户选择修复日期测试、晋升或下一业务切片
+```
 
 ### 2026-11-21 CAL-WPF-001 失败定位与 CAL-WPF-002 准备
 
