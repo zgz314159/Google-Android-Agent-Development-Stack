@@ -239,65 +239,70 @@ def chatgpt_advise(task, job_id, *, execution_result=None, svc=None):
     Must never send or accept HERMES_TASK_V1 control envelopes.
     """
     svc = svc or services()
-    configure_browser_env(svc.adapter)
-    facts = {}
-    if isinstance(execution_result, dict):
-        br = execution_result.get("bridge_result") or {}
-        facts = {
-            "outcome": br.get("outcome") or (br.get("result") or {}).get("outcome"),
-            "exit_code": br.get("exit_code") if br.get("exit_code") is not None
-            else (br.get("result") or {}).get("exit_code"),
-            "cleanup": (br.get("diagnostic") or {}).get("cleanup"),
-        }
-    diff = _worktree_diff_summary(task, svc)
-    report = (
-        "【Stack 开发汇报｜顾问链｜非控制协议】\n"
-        f"job_id={job_id}\n"
-        f"task_id={task['task_id']}\n"
-        f"project={task['project']}\n"
-        f"max_runtime_s={task['max_runtime_s']}\n"
-        f"execution_facts={link.json_text(facts)}\n"
-        f"worktree_diff_stat:\n{diff}\n\n"
-        "请只分析并给出下一步开发指令（中文或英文均可）。\n"
-        "禁止输出任何 Hermes 任务控制信封或协议控制块。\n"
-        "不要改 task_id、路径、预算或要求晋升正式仓；指令须落在既有契约 allowed_paths 内。\n"
-    )
-    if _contains_control_block(report):
-        raise link.LinkError("ADVISOR_REPORT_CONTAINS_CONTROL_BLOCK")
+    try:
+        configure_browser_env(svc.adapter)
+        facts = {}
+        if isinstance(execution_result, dict):
+            br = execution_result.get("bridge_result") or {}
+            facts = {
+                "outcome": br.get("outcome") or (br.get("result") or {}).get("outcome"),
+                "exit_code": br.get("exit_code") if br.get("exit_code") is not None
+                else (br.get("result") or {}).get("exit_code"),
+                "cleanup": (br.get("diagnostic") or {}).get("cleanup"),
+            }
+        diff = _worktree_diff_summary(task, svc)
+        report = (
+            "【Stack 开发汇报｜顾问链｜非控制协议】\n"
+            f"job_id={job_id}\n"
+            f"task_id={task['task_id']}\n"
+            f"project={task['project']}\n"
+            f"max_runtime_s={task['max_runtime_s']}\n"
+            f"execution_facts={link.json_text(facts)}\n"
+            f"worktree_diff_stat:\n{diff}\n\n"
+            "请只分析并给出下一步开发指令（中文或英文均可）。\n"
+            "禁止输出任何 Hermes 任务控制信封或协议控制块。\n"
+            "不要改 task_id、路径、预算或要求晋升正式仓；指令须落在既有契约 allowed_paths 内。\n"
+        )
+        if _contains_control_block(report):
+            raise link.LinkError("ADVISOR_REPORT_CONTAINS_CONTROL_BLOCK")
 
-    previous = svc.adapter.read_latest_assistant()["sha256"]
-    journal = getattr(svc.state, "journal_append", None)
-    if callable(journal):
-        journal({"event": "CHATGPT_ADVISE_SEND_ATTEMPTED", "task_id": task["task_id"], "job_id": job_id})
-    sent = svc.adapter.send_once(report, job_id, exact=False)
-    if sent.get("status") not in {"CONFIRMED_SENT", "ALREADY_PRESENT"}:
-        raise link.LinkError("ADVISOR_SEND_UNCERTAIN_NO_RESEND")
-    response = svc.adapter.wait_for_new_assistant(previous, timeout=120)
-    if response.get("status") != "NEW_ASSISTANT":
-        raise link.LinkError("ADVISOR_RESPONSE_TIMEOUT_NO_RETRY")
-    text = response.get("text") or ""
-    if _contains_control_block(text):
+        previous = svc.adapter.read_latest_assistant()["sha256"]
+        journal = getattr(svc.state, "journal_append", None)
         if callable(journal):
-            journal({"event": "ADVISOR_CONTROL_BLOCK_REJECTED", "task_id": task["task_id"], "job_id": job_id})
-        raise link.LinkError("ADVISOR_REPLY_CONTAINS_CONTROL_BLOCK")
-    # Prefer extract_control_message NO_CONTROL; if ACCEPTED somehow, reject.
-    extracted = svc.protocol.extract_control_message(text)
-    no_control = getattr(svc.protocol, "S_NO_CONTROL", "NO_CONTROL_MESSAGE")
-    if extracted.get("status") != no_control:
-        raise link.LinkError("ADVISOR_REPLY_CONTAINS_CONTROL_BLOCK")
-    instruction = text.strip()
-    if not instruction:
-        raise link.LinkError("ADVISOR_REPLY_EMPTY")
-    if callable(journal):
-        journal({"event": "CHATGPT_ADVISE_RECEIVED", "task_id": task["task_id"], "job_id": job_id,
-                 "instruction_sha256": link.digest(instruction)})
-    return {
-        "passed": True,
-        "instruction": instruction,
-        "send": sent,
-        "report_sha256": link.digest(report),
-        "instruction_sha256": link.digest(instruction),
-    }
+            journal({"event": "CHATGPT_ADVISE_SEND_ATTEMPTED", "task_id": task["task_id"], "job_id": job_id})
+        sent = svc.adapter.send_once(report, job_id, exact=False)
+        if sent.get("status") not in {"CONFIRMED_SENT", "ALREADY_PRESENT"}:
+            raise link.LinkError("ADVISOR_SEND_UNCERTAIN_NO_RESEND")
+        response = svc.adapter.wait_for_new_assistant(previous, timeout=120)
+        if response.get("status") != "NEW_ASSISTANT":
+            raise link.LinkError("ADVISOR_RESPONSE_TIMEOUT_NO_RETRY")
+        text = response.get("text") or ""
+        if _contains_control_block(text):
+            if callable(journal):
+                journal({"event": "ADVISOR_CONTROL_BLOCK_REJECTED", "task_id": task["task_id"], "job_id": job_id})
+            raise link.LinkError("ADVISOR_REPLY_CONTAINS_CONTROL_BLOCK")
+        extracted = svc.protocol.extract_control_message(text)
+        no_control = getattr(svc.protocol, "S_NO_CONTROL", "NO_CONTROL_MESSAGE")
+        if extracted.get("status") != no_control:
+            raise link.LinkError("ADVISOR_REPLY_CONTAINS_CONTROL_BLOCK")
+        instruction = text.strip()
+        if not instruction:
+            raise link.LinkError("ADVISOR_REPLY_EMPTY")
+        if callable(journal):
+            journal({"event": "CHATGPT_ADVISE_RECEIVED", "task_id": task["task_id"], "job_id": job_id,
+                     "instruction_sha256": link.digest(instruction)})
+        return {
+            "passed": True,
+            "instruction": instruction,
+            "send": sent,
+            "report_sha256": link.digest(report),
+            "instruction_sha256": link.digest(instruction),
+        }
+    except link.LinkError:
+        raise
+    except Exception as exc:
+        # AdapterError / browser CDP failures must become LinkError so jobs leave ACTION_RUNNING.
+        raise link.LinkError("ADVISOR_BROWSER_UNAVAILABLE:" + type(exc).__name__ + ":" + str(exc)) from exc
 
 
 def execute_contract(task, job_id, *, svc=None, advisor_instruction=None, with_advisor=True):

@@ -422,7 +422,7 @@ def step(job_id, *, worker_factory=None, queue=None, execute=None, acceptance=No
                 report(directory, plan, state, {"action": action, "result": result}, worker_factory=worker_factory, queue=queue)
             else:
                 raise link.LinkError("UNKNOWN_JOB_STATE")
-        except (link.LinkError, OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
+        except (link.LinkError, OSError, ValueError, KeyError, subprocess.SubprocessError, RuntimeError) as exc:
             state.update(status="STOP" if str(exc) == "USER_STOP_REQUESTED" else "HUMAN_REQUIRED", error=str(exc))
             if isinstance(exc,NotificationNotStarted):
                 state['notification']='NOT_SENT'
