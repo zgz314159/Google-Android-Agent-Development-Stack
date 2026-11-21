@@ -89,6 +89,9 @@
 | SYS-13 | 桌面NNP子进程承担需要sudo的宿主执行：已修复，宿主真实入口验证通过 | 用户启动HOST-001的host-run，seq21真实受控执行；摘要确认sandbox准备、模型响应及工具事件，固定summary读取exit0 | 入口阻断收口；业务随后120秒超时，无代码，不能将入口通过当业务通过。不清NNP或自动拉起外部进程绕过 |
 | SYS-14 | 结果停在composer，Enter未完成提交：已修复并真实验证 | 完整616字符canonical仍为草稿，用户turn无该结果，同form唯一可用发送按钮存在。改物理单击且保留exact确认；用户明确授权一次补发后原resolver真实CONFIRMED_SENT，resend_count=1 | Bridge WAITING_FOR_GPT/seq21/pending=false，回传阻断收口；FAILED/1原业务结果不变，未重跑Hermes。证据send-resolution.json及journal |
 | SYS-15 | 普通宿主PATH无codex，初报通知未启动却误标发送不确定：已修复，原报告通知已恢复 | 初报6918a73e…保留；CLI绝对定位、NOT_SENT区分及精确恢复，36项测试通过，普通终端类似环境真实QUEUED且new_model_call=false；用户重启后HOST-001已实际执行并自动回报失败 | 通知入口收口，不重复root/报告生成/恢复；本轮业务超时另记SYS-16。真正不确定发送不适用此恢复 |
+| SYS-19 | CURSOR-004 受控闭环业务验收通过（write-first+300s） | Hermes SUCCESS/0 seq24；host WordParagraphImportTests executed=6/passed=6；job COMPLETE；控制块作废说明与 recover-control-differs 已用 | 业务源码仅在 disposable worktree；正式 main 仍 832836e；Windows NOT_RUN；晋升需另授 |
+| SYS-18 | 连续超时几乎无写盘：提示前载探路；已改为 write-first+绝对包路径；CURSOR-004 300s | CURSOR-003：read/terminal 多、write_file=0；HOST guard CWD_RELATIVE 探包。build_contract 硬顺序写后验；计划预算允许120/300 | 系统修复≠业务通过；待 root prepare+host-run CURSOR-004 |
+| SYS-17 | CURSOR-001 CONTROL_DIFFERS 卡死 Bridge ERROR：已审计恢复；CURSOR-002 冻结 | seq23 发送后控制块不一致、无 ACCEPTED；`recover-control-differs` 单测通过并已授权恢复；CURSOR-002 check PASS，thread_id=cursor-inbox | 系统恢复不等于业务通过；待 root prepare+host-run；旧失败身份不重放 |
 | SYS-16 | HOST-001 超时无业务改动：路径交接已加强为绝对路径提示，完整超时根因仍UNKNOWN；修复后真实开发待 ABS-001 | 工具4次ERROR/16次OK；11条guard请求rc0且反复相对名/find/ls。生成器现烘焙绝对 source_root/read_first 与 `$HERMES_CONTRACT_PACKAGE/...`，13项相关检查通过；Stack `1677f82`。新任务 CAL-WORD-PARAGRAPH-ABS-001 已冻结 WAITING_PREPARATION，旧身份不重放 | 阻断已消费 HOST-001；下一验证走 ABS-001 单次120秒+宿主>=4项测试。未获 PREP_COMPLETE 前不调用模型；不能把源码修复说成业务通过 |
 
 问题如有状态变化，在此表更新，并在任务记录中留下变化依据。业务已完成而问题仍 UNKNOWN 时，可以保留 UNKNOWN；不要为了让整表变绿而重跑任务。

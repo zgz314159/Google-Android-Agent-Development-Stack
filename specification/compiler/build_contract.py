@@ -133,11 +133,20 @@ def _under_root(root: str | None, rel: str) -> str:
     return os.path.abspath(os.path.join(root, rel))
 
 
+def _abs_package(contract_package: str | None, package_dir: str | None) -> str | None:
+    for candidate in (contract_package, package_dir):
+        if isinstance(candidate, str) and candidate.strip() and os.path.isabs(candidate):
+            return os.path.abspath(candidate)
+    return None
+
+
 def render_prompt(
     contract: dict,
     *,
     source_root: str | None = None,
     package_dir: str | None = None,
+    contract_package: str | None = None,
+    cli_cwd: str | None = None,
 ) -> str:
     tasks = contract["tasks"]
     task_lines = "\n".join(
@@ -145,6 +154,7 @@ def render_prompt(
         for task in tasks
     )
     root = _resolve_source_root(source_root, package_dir)
+    pkg = _abs_package(contract_package, package_dir)
     allowed = "\n".join(
         f"  - `{_under_root(root, path)}`" if root else f"  - {path}"
         for path in contract["allowed_paths"]
@@ -176,6 +186,46 @@ def render_prompt(
             "- Resolve `read_first`, allowed paths and forbidden paths against `source_root` "
             "from that package's `project-context.json`, not against the current working directory.\n"
         )
+    if isinstance(cli_cwd, str) and cli_cwd.strip() and os.path.isabs(cli_cwd):
+        cwd_line = (
+            f"- Frozen CLI cwd (absolute): `{os.path.abspath(cli_cwd)}`. "
+            "Keep this cwd for declared CLI checks; do not `cd` around to discover it.\n"
+        )
+    else:
+        cwd_line = (
+            "- Keep the registered launch working directory for CLI checks unless the frozen "
+            "command explicitly changes it. Frozen CLI paths like `src/...` are relative to "
+            "that launch cwd.\n"
+        )
+    if pkg:
+        package_lines = (
+            f"- Frozen contract package (absolute): `{pkg}`.\n"
+            "- Gate already validated this package; do NOT recompute manifest hashes, and do NOT "
+            "run `find`/`ls`/`pwd`/`cd` to locate the package.\n"
+            f"- Batch-read with `read_file` only these absolute members: "
+            f"`{pkg}/READY.json`, `{pkg}/implementation-contract.json`, "
+            f"`{pkg}/project-context.json`, `{pkg}/tasks.md`, `{pkg}/verification-intent.json`.\n"
+            "- Skip requirements.md / acceptance.md / design.md / DESIGN.md / manifest.json "
+            "unless a CONTRACT_GAP requires one named file.\n"
+        )
+        contract_ref = f"`{pkg}/implementation-contract.json`"
+        ready_ref = f"`{pkg}/READY.json`"
+    else:
+        package_lines = (
+            "- The launcher sets `HERMES_CONTRACT_PACKAGE` to the absolute read-only package. "
+            "Resolve package members under that directory, never under cwd. If unset, emit "
+            "`CONTRACT_GAP` and STOP; do not scan the repository.\n"
+            "  Obtain that directory once using `printf '%s\\n' \"$HERMES_CONTRACT_PACKAGE\"`.\n"
+            "- Then batch-read only: `\"$HERMES_CONTRACT_PACKAGE/READY.json\"`, "
+            "`\"$HERMES_CONTRACT_PACKAGE/implementation-contract.json\"`, "
+            "`\"$HERMES_CONTRACT_PACKAGE/project-context.json\"`, "
+            "`\"$HERMES_CONTRACT_PACKAGE/tasks.md\"`, "
+            "`\"$HERMES_CONTRACT_PACKAGE/verification-intent.json\"`.\n"
+            "- Do not run `find`/`ls` to locate the contract package. Do not recompute "
+            "manifest hashes; gate already validated them.\n"
+        )
+        contract_ref = "`$HERMES_CONTRACT_PACKAGE/implementation-contract.json`"
+        ready_ref = "`$HERMES_CONTRACT_PACKAGE/READY.json`"
     intent = contract["verification_intent"]
     if intent.get("engine") == "cli":
         checks = "\n".join(
@@ -187,7 +237,8 @@ def render_prompt(
             )
             for check in intent.get("cli_checks", [])
         ) or "  - (none declared; contract is invalid)"
-        verify_steps = f"""1. Run every CLI check below exactly as declared, in order.
+        verify_steps = f"""1. Run every CLI check below exactly as declared, in order, ONLY AFTER the
+   required allowed-path source/test files from section 3 already exist on disk.
 2. Record evidence only in the files and format required by the frozen contract. Put expected results, failure conditions, and supplemental reporting in the FINAL ASSISTANT RESPONSE unless the contract explicitly requires them in an artifact.
 3. A zero process exit alone is NOT a PASS; the expected result must be observed in the actual output.
 4. If any check fails: STOP, report the failure, and do not synthesize or repair evidence.
@@ -196,7 +247,7 @@ def render_prompt(
 CLI checks:
 {checks}"""
     else:
-        verify_steps = f"""1. Run the targeted tests named in `tasks.md`.
+        verify_steps = f"""1. Run the targeted tests named in `tasks.md` ONLY AFTER section-3 writes exist.
 2. Build the Verification Plan (engine `{intent['engine']}`, journey `{intent['journey_id']}`).
 3. Run the deterministic Verification Layer exactly once.
 4. On PASS: make NO further tool call, search, read, audit, repeated verification or exploratory check. Produce the Phase C report in the FINAL ASSISTANT RESPONSE using only evidence already collected in this session, emit the compact final task result, and STOP immediately.
@@ -207,33 +258,24 @@ You are the execution agent for a FROZEN Implementation Contract. Work from the 
 and the listed `read_first` files. Do not re-do reconnaissance, re-choose architecture, or
 re-plan decisions this contract has already frozen.
 
-## Path bases (before reading files)
-- The controlled launcher sets `HERMES_CONTRACT_PACKAGE` to the absolute, read-only
-  contract package directory. Resolve ALL package member names below under that directory,
-  not under the current working directory. If it is unavailable, emit `CONTRACT_GAP` and STOP;
-  do not scan the repository to find the contract.
-  Obtain that directory once using `printf '%s\\n' "$HERMES_CONTRACT_PACKAGE"`.
-  Then batch-read only: `"$HERMES_CONTRACT_PACKAGE/READY.json"`,
-  `"$HERMES_CONTRACT_PACKAGE/manifest.json"`,
-  `"$HERMES_CONTRACT_PACKAGE/implementation-contract.json"`,
-  `"$HERMES_CONTRACT_PACKAGE/project-context.json"`, and the other package members listed
-  below. Do not run `find`/`ls` to locate the contract package.
-{source_root_line}- Keep the registered launch working directory for CLI checks unless the frozen command
-  explicitly changes it. Reading the package or source_root does not change the CLI workdir.
-  Frozen CLI commands that use paths like `src/...` are already relative to that launch cwd.
+## Hard order (do not reorder)
+1. Minimal package confirm (section 0) — at most a few `read_file` calls.
+2. Read ONLY the listed `read_first` source files (section 2).
+3. WRITE / patch the allowed task files immediately (section 3). The first mutating tool
+   call after `read_first` must create or update an allowed source/test file.
+4. Run CLI checks only after those writes exist (section 6).
+5. Forbidden before the first write: `find`, recursive `ls`, `locate`, package discovery,
+   hash recomputation, and reading extra markdown beyond section 0/2.
 
-## 0. Verify the frozen contract
-- Contract: `$HERMES_CONTRACT_PACKAGE/implementation-contract.json` (contract_id `{contract['contract_id']}`, version `{contract['contract_version']}`)
-- Package manifest: `$HERMES_CONTRACT_PACKAGE/manifest.json` — sha256 of every authored artifact
-- Recompute the manifest hashes. If any artifact differs, emit `CONTRACT_CHANGED` and STOP
-  (unless this session was explicitly launched with `--accept-contract-update`).
-- Confirm `$HERMES_CONTRACT_PACKAGE/READY.json` reports `status == READY`.
+## Path bases
+{package_lines}{source_root_line}{cwd_line}
+## 0. Minimal package confirm
+- Contract: {contract_ref} (contract_id `{contract['contract_id']}`, version `{contract['contract_version']}`)
+- Confirm {ready_ref} reports `status == READY`. Do not recompute hashes.
 
-## 1. Read, in this order
-1. `$HERMES_CONTRACT_PACKAGE/implementation-contract.json`
-2. `$HERMES_CONTRACT_PACKAGE/project-context.json` (then ONLY the `read_first` files it lists)
-3. `$HERMES_CONTRACT_PACKAGE/requirements.md`, `$HERMES_CONTRACT_PACKAGE/acceptance.md`, `$HERMES_CONTRACT_PACKAGE/design.md`, `$HERMES_CONTRACT_PACKAGE/DESIGN.md`, `$HERMES_CONTRACT_PACKAGE/tasks.md`
-4. `$HERMES_CONTRACT_PACKAGE/verification-intent.json`
+## 1. Optional contract text (skip unless needed)
+- Prefer the implementation-contract JSON + `tasks.md` already listed above.
+- Open requirements/acceptance/design ONLY for a named CONTRACT_GAP.
 
 ## 2. Recon budget
 - `broad repo scan = forbidden`.
@@ -243,7 +285,7 @@ re-plan decisions this contract has already frozen.
   dependency, or compile evidence that requires one extra file. Record `EXTRA_RECON_REASON`
   (file + why) for every extension.
 
-## 3. Execute tasks in dependency order
+## 3. Execute tasks in dependency order (WRITE NEXT)
 {task_lines}
 
 ## 4. Boundaries
@@ -298,6 +340,8 @@ def main(argv: list[str] | None = None) -> int:
                 contract,
                 source_root=pc.get("source_root"),
                 package_dir=pkg,
+                contract_package=pc.get("contract_package"),
+                cli_cwd=pc.get("cli_cwd"),
             )
         )
     os.replace(tmp, prompt_path)

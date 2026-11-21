@@ -52,10 +52,29 @@ def configure_browser_env(adapter, environ=None):
     env.setdefault("BU_CDP_URL", expected)
 
 
-def control_request(candidate, job_id):
-    return ("这是已由用户限定授权且完成可信登记的单次执行请求。请只输出恰好一个 "
-            "HERMES_TASK_V1 控制块，其 JSON 必须逐字段等于下面对象；不要改身份、路径、预算或链值。\n"
-            "request_id=" + job_id + "\n" + link.json_text(candidate))
+def control_request(candidate, job_id, *, sequence_void_note=None):
+    text = ("这是已由用户限定授权且完成可信登记的单次执行请求。请只输出恰好一个 "
+            "HERMES_TASK_V1 控制块，其 JSON 必须逐字段等于下面对象；不要改身份、路径、预算或链值。\n")
+    if sequence_void_note:
+        text += sequence_void_note + "\n"
+    return text + "request_id=" + job_id + "\n" + link.json_text(candidate)
+
+
+def sequence_void_note(sequence, journal):
+    """When Bridge kept sequence after CONTROL_DIFFERS, ChatGPT must re-emit for the new task."""
+    if not any(e.get("event") == "CONTROL_REQUEST_SEND_ATTEMPTED" and e.get("sequence") == sequence
+               for e in journal):
+        return None
+    if not any(e.get("event") == "READ_FAILED" and e.get("message") == "CONTROL_DIFFERS_FROM_AUTHORIZATION"
+               for e in journal):
+        return None
+    if any(e.get("event") == "ACCEPTED" and e.get("sequence") == sequence for e in journal):
+        return None
+    return (
+        "Bridge 事实：本 sequence 先前控制尝试未被 ACCEPTED，任务身份未消费；"
+        "同一 sequence/nonce/in_reply_to 必须用于下面这个授权对象，这不是分叉。"
+        "请忽略先前未获 Bridge ACCEPTED 的助手控制块，只输出下面对象的精确控制块。"
+    )
 
 
 def task_check(task, svc=None):
@@ -97,7 +116,10 @@ def execute_contract(task, job_id, *, svc=None):
 
     def control():
         previous = svc.adapter.read_latest_assistant()["sha256"]
-        request = control_request(authorized, job_id)
+        read_journal = getattr(svc.state, "read_journal", None)
+        journal = read_journal() if callable(read_journal) else []
+        note = sequence_void_note(authorized["sequence"], journal)
+        request = control_request(authorized, job_id, sequence_void_note=note)
         svc.state.journal_append({"event": "CONTROL_REQUEST_SEND_ATTEMPTED", "task_id": task["task_id"],
                                   "sequence": authorized["sequence"], "job_id": job_id})
         sent = svc.adapter.send_once(request, job_id, exact=True)
@@ -108,6 +130,13 @@ def execute_contract(task, job_id, *, svc=None):
             raise link.LinkError("CONTROL_RESPONSE_TIMEOUT_NO_RETRY")
         extracted = svc.protocol.extract_control_message(response.get("text"))
         if extracted.get("status") != "ACCEPTED" or extracted.get("task") != authorized:
+            svc.state.journal_append({
+                "event": "CONTROL_AUTHORIZATION_MISMATCH",
+                "extract_status": extracted.get("status"),
+                "task_id": task["task_id"],
+                "sequence": authorized["sequence"],
+                "job_id": job_id,
+            })
             raise link.LinkError("CONTROL_DIFFERS_FROM_AUTHORIZATION")
         return response
 

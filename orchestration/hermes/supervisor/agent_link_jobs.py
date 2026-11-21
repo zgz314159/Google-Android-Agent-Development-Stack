@@ -195,8 +195,9 @@ def validate_plan(p):
     if task is not None:
         if set(task) != {"task_id", "project", "contract_package", "contract_manifest_sha256", "max_runtime_s"}:
             raise link.LinkError("TASK_FIELDS")
-        if task["max_runtime_s"] != 120 or type(task["max_runtime_s"]) is not int:
-            raise link.LinkError("TASK_BUDGET_MUST_BE_120")
+        # Bounded allowlist only; 300 is the user-authorized raise for write-first calendar work.
+        if type(task["max_runtime_s"]) is not int or task["max_runtime_s"] not in {120, 300}:
+            raise link.LinkError("TASK_BUDGET_NOT_ALLOWED")
         if (not isinstance(task["task_id"], str) or not isinstance(task["project"], str)
                 or not Path(task["contract_package"]).is_absolute()
                 or not re.fullmatch(r"[0-9a-f]{64}", task["contract_manifest_sha256"])):

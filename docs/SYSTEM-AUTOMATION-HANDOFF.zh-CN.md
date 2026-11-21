@@ -39,6 +39,16 @@
 
 ### 最新进度（2026-11-21 自动汇报接入）
 
+**CURSOR-004 业务验收通过**：Hermes SUCCESS/0（seq24）；宿主 WordParagraphImportTests executed=6/passed=6；job COMPLETE。Windows NOT_RUN。write-first+300s 验证成立。
+
+下一动作：在用户明确授权后，将 disposable worktree 验收通过的 `WordParagraphImporter.cs` + `WordParagraphImportTests.cs` 走可信晋升到正式仓；Windows 实机仍 NOT_RUN，另开授权。正式 main 保持只读直至晋升。
+
+**CURSOR-003 超时根因已证并修复；CURSOR-004 已冻结（300s）**：CURSOR-003 控制通过后 120s 超时，phase-summary 显示大量 read/terminal、**0 次 write_file**；提示生成器改为 write-first、烘焙绝对 contract_package/cli_cwd、取消哈希重算；计划允许 `{120,300}`。新身份 …-CURSOR-004，manifest `3f37297d…`，plan `6ca4bdfe…`，HEAD `dd6e7a2b…`，`--check` PASS。
+
+**CURSOR-002 CONTROL_DIFFERS 根因已定位；CURSOR-003 已冻结**：ChatGPT 拒绝对未消费的 seq23 输出不同 task_id；Bridge 已再恢复；控制请求增加作废说明。新身份 …-CURSOR-003 / plan 待宿主命令；`--check` PASS；Codex 关。
+
+**Bridge CONTROL_DIFFERS 已恢复；CURSOR-002 已冻结等待 root**：CURSOR-001 在 seq23 发送控制请求后 `CONTROL_DIFFERS_FROM_AUTHORIZATION`（身份未消费、无 ACCEPTED）；已落地 `recover-control-differs` 并将 Bridge `ERROR→WAITING_FOR_GPT`（授权 `USER-20261121-CONTROL-DIFFERS-CURSOR-001`）。新身份 CAL-WORD-PARAGRAPH-CURSOR-002 / job …-CURSOR-002-AUTO；manifest `616d61ce…`，plan `4f7b9511…`，worktree HEAD `ce6c6116…`，`thread_id=cursor-inbox`，`--check` PASS。Codex 通道保持关闭。业务执行仍 NOT_RUN。
+
 **CURSOR-001 已冻结等待 root**：承接 ABS-001 已写出的 WordParagraphImporter，新身份 CAL-WORD-PARAGRAPH-CURSOR-001 / job …-CURSOR-001-AUTO；manifest `b18da9fe…`，plan `db9169a4…`，worktree HEAD `47a09d60…`，`--check` PASS。审查通道仅 Cursor inbox（Codex 已关）。业务执行仍 NOT_RUN。
 
 **Cursor 收件箱双通道已接入**：`agent-link/review-binding.json` 现为 `channels=[cursor_inbox,codex]`、`required=[cursor_inbox]`。notify 必写 `agent-link/cursor-inbox/`（含 LATEST/WAKE）；Codex 仍可副投但不阻断 Cursor 审查。新增 `publish-cursor-inbox` 可对已 WAITING_REVIEW 报告补投本会话，不重发 Codex、不改通知状态。ABS-001 初报已补投并 decide execute_contract→READY；38 项相关测试通过，Stack 本提交。

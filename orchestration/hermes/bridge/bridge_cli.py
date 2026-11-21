@@ -4,6 +4,7 @@
     python3 bridge_cli.py round                   # LATCH/RECONCILE -> READ -> VALIDATE -> maybe EXECUTE -> REPORT -> STOP
     python3 bridge_cli.py recover                 # official bounded recovery (RECOVERY_REQUIRED only)
     python3 bridge_cli.py recover-preconsume      # clear ONE retryable PRE-CONSUME rejection (ERROR -> WAITING_FOR_GPT)
+    python3 bridge_cli.py recover-control-differs # clear ERROR after CONTROL_DIFFERS with no ACCEPTED (no send)
     python3 bridge_cli.py resolve-send-uncertain  # HUMAN-ONLY resolution of a SEND_UNCERTAIN pending result
     python3 bridge_cli.py status                  # print the persistent chain state
 
@@ -599,6 +600,60 @@ def initial_read_failure_is_presend(record):
     }
 
 
+def recover_control_differs(*, authorization_id, expected_state_sha256, rejection_sha256, root=None):
+    """Audited ERROR -> WAITING_FOR_GPT after CONTROL_DIFFERS with no ACCEPTED.
+
+    Link-2 only. Does not send, rewind chain values, write pending, or execute.
+    Eligible only when the last journal event is READ_FAILED /
+    CONTROL_DIFFERS_FROM_AUTHORIZATION, the expected_sequence has no ACCEPTED /
+    RESULT / STOPPED, and the task identity for that chain slot is unconsumed.
+    A later execute may send again for the same sequence under a new authorization.
+    """
+    if not isinstance(authorization_id, str) or not re.fullmatch(r"[A-Za-z0-9._:-]{1,128}", authorization_id):
+        raise ValueError("RECOVERY_AUTHORIZATION_REQUIRED")
+    directory = Path(root) if root is not None else bs.state_dir()
+    with bs.bridge_lock(root):
+        path = directory / bs.STATE_FILE
+        if not path.is_file():
+            raise ValueError("RECOVERY_STATE_ABSENT")
+        raw = proto.load_json_strict(path.read_text())
+        if proto.canonical_sha256(raw) != expected_state_sha256 or raw.get("status") != "ERROR":
+            raise ValueError("RECOVERY_STATE_MISMATCH")
+        if (directory / bs.PENDING_FILE).exists() or bs.unresolved_accepted(root):
+            raise ValueError("RECOVERY_UNRESOLVED_OR_PENDING")
+        journal = bs.read_journal(root)
+        if any(e.get("event") == "CONTROL_DIFFERS_RECOVERY"
+               and e.get("authorization_id") == authorization_id for e in journal):
+            raise ValueError("RECOVERY_ALREADY_USED")
+        last = journal[-1] if journal else {}
+        if (proto.canonical_sha256(last) != rejection_sha256
+                or last.get("event") != "READ_FAILED"
+                or last.get("message") != "CONTROL_DIFFERS_FROM_AUTHORIZATION"):
+            raise ValueError("RECOVERY_NOT_CONTROL_DIFFERS")
+        sequence = raw["expected_sequence"]
+        if any(e.get("event") in PRECONSUME_TERMINAL_EVENTS and e.get("sequence") == sequence
+               for e in journal):
+            raise ValueError("RECOVERY_SEQUENCE_ALREADY_TERMINAL")
+        # Attempted send is expected for this failure mode; ACCEPTED must still be absent.
+        if not any(e.get("event") == "CONTROL_REQUEST_SEND_ATTEMPTED"
+                   and e.get("sequence") == sequence for e in journal):
+            raise ValueError("RECOVERY_SEND_ATTEMPT_MISSING")
+        bs.journal_append({
+            "event": "CONTROL_DIFFERS_RECOVERY",
+            "authorization_id": authorization_id,
+            "rejection_sha256": rejection_sha256,
+            "state_sha256": expected_state_sha256,
+            "sequence": sequence,
+            "from_status": "ERROR",
+            "to_status": "WAITING_FOR_GPT",
+            "note": "clears latch only; does not resend or rewind chain",
+        }, root)
+        state = bs.BridgeState(raw, path)
+        state.set_status("WAITING_FOR_GPT")
+        return {"decision": "CONTROL_DIFFERS_RECOVERED", "sequence": sequence,
+                "authorization_id": authorization_id, "status": "WAITING_FOR_GPT"}
+
+
 def recover_initial_read_failure(*, task, expected_state_sha256, rejection_sha256,
                                  authorization_id, root=None, gate_fn=None, bootstrap_request_absent=False):
     """Audited one-shot recovery ONLY for exact known pre-send CDP failures.
@@ -940,6 +995,25 @@ def _cmd_recover_preconsume(args) -> int:
     return int(result.get("exit_code", EXIT_ERROR))
 
 
+def _cmd_recover_control_differs(args) -> int:
+    root = bs.state_dir()
+    raw = proto.load_json_strict((root / bs.STATE_FILE).read_text())
+    journal = bs.read_journal()
+    last = journal[-1] if journal else {}
+    try:
+        result = recover_control_differs(
+            authorization_id=args.authorization_id,
+            expected_state_sha256=proto.canonical_sha256(raw),
+            rejection_sha256=proto.canonical_sha256(last),
+        )
+    except ValueError as exc:
+        _emit({"decision": "RECOVERY_REJECTED", "error": str(exc), "exit_code": EXIT_REJECTED})
+        return EXIT_REJECTED
+    result["exit_code"] = EXIT_OK
+    _emit(result)
+    return EXIT_OK
+
+
 def _cmd_resolve_send_uncertain(args) -> int:
     result = resolve_send_uncertain(resend_once=args.resend_once, reason=args.reason,
                                     confirm_timeout_s=args.confirm_timeout)
@@ -998,6 +1072,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_pre.add_argument("--envelope-sha256", required=True)
     p_pre.add_argument("--reason-code", default=PRECONSUME_RECOVERY_REASON_DEFAULT)
     p_pre.set_defaults(func=_cmd_recover_preconsume)
+    p_diff = sub.add_parser(
+        "recover-control-differs",
+        help="clear ERROR after CONTROL_DIFFERS with no ACCEPTED (no send, no rewind)")
+    p_diff.add_argument("--authorization-id", required=True)
+    p_diff.set_defaults(func=_cmd_recover_control_differs)
     p_resolve = sub.add_parser("resolve-send-uncertain")
     p_resolve.add_argument("--resend-once", action="store_true")
     p_resolve.add_argument("--reason", default="")

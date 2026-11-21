@@ -123,6 +123,8 @@ class CliContractTest(unittest.TestCase):
     def test_absolute_source_root_is_baked_into_prompt_paths(self):
         pkg = make_cli_package(self.tmp.name)
         task_root = os.path.join(self.tmp.name, 'TASK-ROOT')
+        runtime_pkg = os.path.join(self.tmp.name, 'trusted-pkg')
+        cli_cwd = os.path.join(task_root, 'project')
         report = support.run_pipeline(pkg)
         self.assertEqual(report['status'], 'READY', report['errors'])
         contract = json.loads(support.read(os.path.join(pkg, 'implementation-contract.json')))
@@ -132,15 +134,23 @@ class CliContractTest(unittest.TestCase):
             contract,
             source_root=task_root,
             package_dir=pkg,
+            contract_package=runtime_pkg,
+            cli_cwd=cli_cwd,
         )
         abs_read = os.path.abspath(os.path.join(task_root, 'project/app/Main.kt'))
         abs_allowed = os.path.abspath(os.path.join(task_root, 'project'))
+        abs_pkg = os.path.abspath(runtime_pkg)
         self.assertIn(f'Frozen `source_root` absolute path: `{os.path.abspath(task_root)}`', prompt)
+        self.assertIn(f'Frozen contract package (absolute): `{abs_pkg}`', prompt)
+        self.assertIn(f'Frozen CLI cwd (absolute): `{os.path.abspath(cli_cwd)}`', prompt)
         self.assertIn(f'`{abs_read}`', prompt)
         self.assertIn(f'`{abs_allowed}`', prompt)
+        self.assertIn(f'`{abs_pkg}/READY.json`', prompt)
+        self.assertIn('Hard order (do not reorder)', prompt)
+        self.assertIn('WRITE / patch the allowed task files immediately', prompt)
+        self.assertIn('Do not recompute hashes', prompt)
+        self.assertNotIn('Recompute the manifest hashes', prompt)
         self.assertIn('Do not reinterpret those absolute paths relative to cwd.', prompt)
-        self.assertIn('Do not run `find`/`ls` to locate the contract package.', prompt)
-        self.assertIn('`$HERMES_CONTRACT_PACKAGE/READY.json`', prompt)
         self.assertNotIn('  1. project/app/Main.kt\n', prompt)
 
     def test_prompt_is_contract_first_for_evidence(self):
