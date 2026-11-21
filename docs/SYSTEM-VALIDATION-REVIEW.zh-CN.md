@@ -84,6 +84,7 @@
 | SYS-08 | 前阶段业务代码由当前会话直接提交正式仓，偏离受控闭环：已记录并纠正 | 正式仓 `main` `d362963`…`832836e` 为会话直接提交；journal 无日历任务记录 | 保留成果但不回填为 Hermes 结果；正式仓只读，新工作只在 CAL-001 worktree，交付走可信晋升 |
 | SYS-09 | CAL-WPF-001 单次受控执行 120 秒超时且 worktree 无变更：UNKNOWN | round `BLOCKED`/exit 124/timed_out；cleanup CONFIRMED；result CONFIRMED_SENT；worktree status 空；无任务级诊断（不在 launcher 白名单），scratch aegl-ai 750 不可读 | 阻断该业务任务；不重跑、不 recover、不新建任务。下一步是否启用既有诊断或另开任务由用户决定 |
 | SYS-10 | 自动汇报接口首次本地回报 JSON 不合规：已修复并验证 | 首次通信在严格解析处停止，未派发动作；分离输出模板与输入数据后，真实四消息往返 COMPLETE；14 项边界测试通过 | 只读报告审查已接通；不据此声称业务执行、当前桌面直连或通用自动接入通过 |
+| SYS-11 | 自动派发未声明正式 Chrome adapter 环境：源码已修复，真实验证未完成 | CAL-WORD-PARAGRAPH-001-AUTO 在首次读取前 READ_FAILED，缺 BU_CDP_URL；无控制发送/Hermes/新身份消费。修复固定正式端点配置且保留冲突拒绝，16 项测试 PASS | 当前 Bridge ERROR/seq19。既有 preconsume 恢复只覆盖 CONTRACT_REJECTED，不涵盖 READ_FAILED；本轮停止，待用户决定继续与可信恢复范围，不直接改 state、不重试 |
 
 问题如有状态变化，在此表更新，并在任务记录中留下变化依据。业务已完成而问题仍 UNKNOWN 时，可以保留 UNKNOWN；不要为了让整表变绿而重跑任务。
 
@@ -132,6 +133,23 @@ Word `.docx` 导入；离线契约已 READY（manifest `639ed1fe…`），root �
 ```
 
 ## 8. 简短任务记录
+
+### 2026-11-21 CAL-WORD-PARAGRAPH-001 自动派发入口失败
+
+- **授权与准备**：本轮用户已明确授权日历实际开发与自动接力；用户 root 命令成功，安装/登记/gate
+  PASS，不再缺 root。原 120 秒执行预算与失败即停条件保持不变。
+- **实际链路**：准备就绪后本地初报自动生成并排入当前聊天；当前聊天审查并写回 execute_contract。
+  Bridge 首次读取前抛 AdapterError：`BU_CDP_URL must equal http://127.0.0.1:9333`；
+  返回 READ_FAILED、包装 exit 1。它不是 Hermes 退出码：Hermes 未启动、控制请求未发送、身份未消费。
+  失败已自动排入当前聊天并 ack；job HUMAN_REQUIRED。Bridge ERROR/seq19/pending=false。
+- **业务与设备**：worktree git status 为空，正式 main 仍 832836e；未产生段落导入器或测试，
+  业务/宿主验收 NOT_RUN，Windows NOT_RUN。原 CAL-WPF-001 的失败不变。
+- **系统问题与修复**：新增 SYS-11，明确是本次接入缺少正式 adapter 环境。仅在入口补齐缺省的
+  固定 EXPECTED_CDP；错误端点或 BU_CDP_WS 仍拒绝，检查提前在 Bridge 状态修改之前。
+  16 项针对性测试通过；源码修复不冒充已安装或真实重试通过。
+- **收口决定**：本轮失败停止，未重试、未 recover、未改 state、未另建身份。原因明确，值得只修
+  接线后继续；但已有 recover-preconsume 仅支持 CONTRACT_REJECTED，不支持本次 READ_FAILED，
+  不能直接套用。下一步由用户决定是否继续及允许的可信恢复范围，不新增诊断/部署框架。
 
 ### 2026-11-21 日历真实自动开发接力：段落导入准备
 

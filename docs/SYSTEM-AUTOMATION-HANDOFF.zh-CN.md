@@ -25,6 +25,19 @@
 
 ### 最新进度（2026-11-21 自动汇报接入）
 
+**本轮最新停止（root 已完成，派发入口失败）**：用户已完成 `CAL-WORD-PARAGRAPH-001` 的 root
+安装/登记/真实 gate；自动接力初报生成并进入当前聊天，当前聊天写回 execute_contract 后，正式 Bridge
+在首次 Chrome 读取前因缺 `BU_CDP_URL=http://127.0.0.1:9333` 返回 READ_FAILED。
+job `CAL-WORD-PARAGRAPH-001-AUTO` 已 HUMAN_REQUIRED 并确认收到失败回报；没有发送控制请求、
+没有启动 Hermes、没有新业务修改或宿主验收。journal 只有新增 READ_FAILED，新任务身份未消费；
+Bridge 当前 ERROR／seq19／last_task_id=CAL-WPF-001／pending=false，不能当仍 WAITING_FOR_GPT。
+
+源码已补齐正式 adapter 所需环境，并将不匹配端点/BU_CDP_WS 提前拒绝在状态修改之前；16 项针对性
+测试通过。未做真实重试、recover、直接改 state 或创建替代身份。值得继续的依据是明确的入口接线
+缺陷；但现有 recover-preconsume 只覆盖 CONTRACT_REJECTED，不覆盖本次 READ_FAILED。
+下一步须先由用户决定继续与可信恢复范围，不能绕过该失败门禁；不能用“身份尚未消费”自动再发一次。
+以下准备记录为历史过程，不再表示当前仍缺 root。
+
 **当前用户新要求：回到日历真实开发验证。** 用户已明确要求“通过系统开发日历 → 汇报自动到当前
 本地 Codex 界面 → 审查指令自动交回系统继续”，不是再做只读演示。本轮据此准备一个新的、有价值的
 小切片 `CAL-WORD-PARAGRAPH-001`：Word body-level 段落导入，仅导入器和测试，不含表格/UI/依赖。

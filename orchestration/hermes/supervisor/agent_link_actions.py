@@ -43,6 +43,15 @@ def preparation_ready(task, svc=None):
     return True
 
 
+def configure_browser_env(adapter, environ=None):
+    """Declare the existing formal adapter endpoint, never relax its checks."""
+    env = os.environ if environ is None else environ
+    expected = adapter.EXPECTED_CDP
+    if env.get("BU_CDP_URL") not in (None, expected) or env.get("BU_CDP_WS"):
+        raise link.LinkError("FORMAL_BROWSER_ENDPOINT_MISMATCH")
+    env.setdefault("BU_CDP_URL", expected)
+
+
 def task_check(task, svc=None):
     svc = svc or services()
     state_dir = svc.state.state_dir()
@@ -73,6 +82,7 @@ def execute_contract(task, job_id, *, svc=None):
 
     def guard():
         authorized.update(task_check(task, svc))
+        configure_browser_env(svc.adapter)
 
     def control():
         previous = svc.adapter.read_latest_assistant()["sha256"]

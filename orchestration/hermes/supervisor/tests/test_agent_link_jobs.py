@@ -176,7 +176,7 @@ class JobTests(unittest.TestCase):
                               cli=SimpleNamespace(run_round=run_round))
         svc.protocol = SimpleNamespace(validate_task=lambda *a: {"status": "ACCEPTED"},
             extract_control_message=lambda text: {"status": "ACCEPTED", "task": json.loads(text)})
-        svc.adapter = SimpleNamespace(read_latest_assistant=lambda: {"sha256": "old"},
+        svc.adapter = SimpleNamespace(EXPECTED_CDP="http://127.0.0.1:9333", read_latest_assistant=lambda: {"sha256": "old"},
             send_once=lambda text, *a, **k: (calls.append("send") or {"status": "CONFIRMED_SENT"}),
             wait_for_new_assistant=lambda *a, **k: {"status": "NEW_ASSISTANT", "text": json.dumps(actions.task_check(self.plan["task"], svc))})
         return svc, calls
@@ -193,6 +193,17 @@ class JobTests(unittest.TestCase):
         self.assertTrue(result["passed"])
         self.assertLess(calls.index("gate"), calls.index("send"))
         self.assertEqual(calls.count("round"), 1)
+
+    def test_formal_browser_environment_is_declared_but_never_redirected(self):
+        adapter = SimpleNamespace(EXPECTED_CDP="http://127.0.0.1:9333")
+        env = {}
+        actions.configure_browser_env(adapter, env)
+        self.assertEqual(env, {"BU_CDP_URL": "http://127.0.0.1:9333"})
+        for bad in ({"BU_CDP_URL": "http://127.0.0.1:9222"}, {"BU_CDP_WS": "ws://other"}):
+            before = dict(bad)
+            with self.assertRaisesRegex(link.LinkError, "ENDPOINT_MISMATCH"):
+                actions.configure_browser_env(adapter, bad)
+            self.assertEqual(bad, before)
 
     def test_bridge_entry_guard_runs_before_state_or_startup_reconciliation(self):
         svc = actions.services()
