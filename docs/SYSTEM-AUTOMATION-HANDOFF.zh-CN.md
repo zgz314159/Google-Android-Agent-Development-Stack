@@ -25,6 +25,27 @@
 
 ### 最新进度（2026-11-21 自动汇报接入）
 
+**本轮root已成功，初报CLI定位故障已修复，当前READY等待宿主恢复**：用户已执行组合命令，root
+REGISTER/GATE/PREP_COMPLETE成功，安装三SHA匹配。普通宿主初报模型已生成正确REPORT，但初报入队
+因PATH找不到`codex`抛FileNotFoundError，未启动通知进程，旧代码误标SEND_UNCERTAIN并结束host-run。
+原报告SHA `6918a73e378e49f7bd6af4b516af373fa9d9d3c90a8b1c2c155891656a389571`，无actions/results，
+业务身份未消费，Bridge仍WAITING_FOR_GPT/seq21/pending=false，Hermes和120秒业务预算未动。
+
+- 修复在原入口：CLI解析优先显式`--codex-bin`、CODEX_APP_RUNTIME_CLI_PATH、PATH，再兼容本机已安装
+  桌面CLI `/usr/lib/chatgpt/resources/codex`；host-run在调用报告模型前检查Codex/Command Code可执行文件。
+  队列启动前失败单独NOT_SENT且保留已生成报告；真正已启动的发送不确定仍拒绝自动重试。
+- 新增受限recover-notification-start，仅接受初报、空动作/结果、固定报告hash/源hash、准确ENOENT或
+  NOT_SENT事实、未消费且gate通过、原窗口剩余足够、未用恢复额度。保留完整失败快照，只用已保存REPORT
+  重新通知，不重调模型、不改契约/计划/链值。宿主未来遇此已知故障可在原窗口等恢复，不提前退出。
+  36项队列/宿主针对性检查通过；clean PATH/无CODEX环境的官方queue --help实际通过。
+- 当前恢复已实际执行：在普通终端类似环境（去CODEX环境、保留NNP限制）用官方绝对CLI，将同一REPORT
+  QUEUED成功，new_model_call=false；notification_recovery_history保留ENOENT。当前聊天已核对原授权、
+  report/plan及真实安装/manifest/root gate，decide execute_contract写为READY，actions_done仍空。
+- 用户只需普通终端重启同一host-run（可显式--codex-bin /usr/lib/chatgpt/resources/codex），不用重跑root
+  prepare、不创建新任务、不重新生成报告。原宿主已退出，桌面不能代为绕过NNP启动它。planSHA、manifest、
+  单次120秒/清理10秒和原deadline全部不变。后续仍由宿主执行/读取诊断/验收，桌面只审查决定。
+当前业务/宿主业务验收/Windows均NOT_RUN；下方“等待root认证”等已为历史，不能再次要求用户准备。
+
 **新的真实开发验证已获授权并冻结，等待用户一次普通终端启动**：用户在宿主核验通过后明确要求
 “那开始：接下来需要验证修复后的真实开发流程”。本轮task `CAL-WORD-PARAGRAPH-HOST-001`，job
 `CAL-WORD-PARAGRAPH-HOST-001-AUTO`；只开发原Word段落导入器和>=4项确定性测试，单次Hermes120秒、

@@ -431,7 +431,7 @@ results=Path(sys.argv[sys.argv.index('--results-directory')+1])
                 self.decision('inspect_evidence') if not state['actions_done'] else self.decision(decision='COMPLETE')
         real_step=jobs.step
         with patch.object(svc.ce,'require_launch_privilege'),patch.object(jobs.time,'sleep',side_effect=review), \
-                patch.object(jobs,'step',side_effect=lambda job: real_step(job,worker_factory=Worker,queue=self.queue)):
+                patch.object(jobs,'step',side_effect=lambda job,**kw: real_step(job,worker_factory=Worker,queue=self.queue)):
             result=jobs.host_run('J',THREAD,sha)
         self.assertEqual(result['status'],'COMPLETE')
         self.assertEqual(jobs.load('J')[2]['actions_done'],['inspect_evidence'])
@@ -457,6 +457,69 @@ results=Path(sys.argv[sys.argv.index('--results-directory')+1])
         self.assertEqual(argv,['sudo','-n','--',svc.ce.CONTROLLED_WRAPPER,'--diagnostic-summary','--task-id','FRESH'])
         self.assertEqual((directory/'phase-summary.txt').read_text(),proc.stdout)
         self.assertEqual(json.loads((directory/'phase-summary-attempt.json').read_text())['exit_code'],0)
+
+    def test_desktop_cli_resolution_works_without_terminal_path(self):
+        binary=self.base/'codex';binary.write_text('#!/bin/sh\nexit 0\n');binary.chmod(0o755)
+        with patch.dict(os.environ,{},clear=True),patch.object(jobs.shutil,'which',return_value=None),patch.object(jobs,'DESKTOP_CODEX_BIN',binary):
+            self.assertEqual(jobs.codex_executable(),str(binary.resolve()))
+            with self.assertRaises(jobs.NotificationNotStarted):
+                jobs.codex_executable('/missing/explicit-codex')
+
+    def test_missing_queue_entry_preserves_initial_report_and_never_repeats_worker(self):
+        jobs.submit(self.plan)
+        def missing(*args): raise jobs.NotificationNotStarted('CODEX_QUEUE_EXECUTABLE_MISSING_NOT_SENT')
+        result=jobs.step('J',worker_factory=Worker,queue=missing)
+        state=jobs.load('J')[2]
+        self.assertEqual(result['notification'],'NOT_SENT')
+        self.assertIn('local_report',state['report'])
+        self.assertEqual(state['report_number'],1)
+        self.step()
+        self.assertEqual(Worker.calls,1)
+
+    def test_initial_notification_recovery_reuses_saved_report_and_preserves_failure(self):
+        jobs.submit(self.plan);self.step()
+        d,_,state=jobs.load('J');sha=state['report_sha256'];report=state['report']
+        state.update(status='HUMAN_REQUIRED',notification='SEND_UNCERTAIN',error="[Errno 2] No such file or directory: 'codex'")
+        jobs.save(d,state)
+        r=jobs.recover_notification_start('J',THREAD,sha,'USER-PRESEND',queue=self.queue)
+        after=jobs.load('J')[2]
+        self.assertEqual(r['status'],'WAITING_REVIEW')
+        self.assertFalse(r['new_model_call'])
+        self.assertEqual(after['report'],report)
+        self.assertEqual(after['report_sha256'],sha)
+        self.assertEqual(Worker.calls,1)
+        self.assertEqual(after['notification_recovery_history'][0]['previous']['error'],state['error'])
+        with self.assertRaisesRegex(link.LinkError,'NOT_ELIGIBLE'):
+            jobs.recover_notification_start('J',THREAD,sha,'USER-AGAIN',queue=self.queue)
+
+    def test_uncertain_started_queue_is_not_notification_start_recovery(self):
+        jobs.submit(self.plan);self.step()
+        d,_,state=jobs.load('J');sha=state['report_sha256']
+        state.update(status='HUMAN_REQUIRED',notification='SEND_UNCERTAIN',error='queue timed out after process started')
+        jobs.save(d,state)
+        with self.assertRaisesRegex(link.LinkError,'NOT_ELIGIBLE'):
+            jobs.recover_notification_start('J',THREAD,sha,'USER-PRESEND',queue=self.queue)
+        self.assertFalse(jobs.load('J')[2].get('notification_recovery_history'))
+
+    def test_host_waits_for_proven_notification_repair_without_repeating_initial_model(self):
+        jobs.submit(self.plan);svc=actions.services();sha=jobs.load('J')[2]['plan_sha256']
+        real_step=jobs.step
+        def queue(thread,message):
+            if not jobs.load('J')[2].get('notification_recovery_history'):
+                raise jobs.NotificationNotStarted('CODEX_QUEUE_EXECUTABLE_MISSING_NOT_SENT')
+            return self.queue(thread,message)
+        def review(_):
+            state=jobs.load('J')[2]
+            if state['status']=='HUMAN_REQUIRED':
+                jobs.recover_notification_start('J',THREAD,state['report_sha256'],'USER-NOTIFY',queue=self.queue)
+            elif state['status']=='WAITING_REVIEW':
+                self.decision('inspect_evidence') if not state['actions_done'] else self.decision(decision='COMPLETE')
+        with patch.object(svc.ce,'require_launch_privilege'),patch.object(jobs.time,'sleep',side_effect=review), \
+                patch.object(jobs,'step',side_effect=lambda job,**kw:real_step(job,worker_factory=Worker,queue=queue)):
+            result=jobs.host_run('J',THREAD,sha)
+        self.assertEqual(result['status'],'COMPLETE')
+        self.assertEqual(Worker.calls,2)
+        self.assertEqual(jobs.load('J')[2]['notification_recovery_history'][0]['phase'],'QUEUED')
 
 
 if __name__ == "__main__":

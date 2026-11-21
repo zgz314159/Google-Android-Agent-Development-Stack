@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -22,6 +23,28 @@ except ImportError:
 
 ACTIVE = {"WAITING_PREPARATION", "NEW", "READY", "WAITING_REVIEW", "WORKER_RUNNING", "ACTION_RUNNING"}
 TERMINAL = {"COMPLETE", "HUMAN_REQUIRED", "STOP"}
+DESKTOP_CODEX_BIN = Path('/usr/lib/chatgpt/resources/codex')
+
+
+class NotificationNotStarted(link.LinkError):
+    """The queue executable was not started; no delivery attempt took place."""
+
+
+def codex_executable(explicit=None):
+    value=explicit or os.environ.get('CODEX_APP_RUNTIME_CLI_PATH') or shutil.which('codex') or DESKTOP_CODEX_BIN
+    if not value or not Path(value).is_absolute() or not Path(value).is_file() or not os.access(value,os.X_OK):
+        raise NotificationNotStarted('CODEX_QUEUE_EXECUTABLE_MISSING_NOT_SENT')
+    return str(Path(value).resolve())
+
+
+def codex_queue(thread_id, message, *, executable=None):
+    binary=codex_executable(executable)
+    try:
+        p=subprocess.run([binary,'queue','--thread',thread_id,'--message',message],
+                         capture_output=True,text=True,timeout=15)
+    except FileNotFoundError as exc:
+        raise NotificationNotStarted('CODEX_QUEUE_EXECUTABLE_MISSING_NOT_SENT') from exc
+    return {'returncode':p.returncode}
 
 
 def root():
@@ -118,12 +141,12 @@ def notify(directory, plan, state, queue=None):
                "orchestration/hermes/supervisor/agent_link_jobs.py pending 读取已冻结范围和回报，"
                "只按现有人类授权审查；用 decide 写回关联决策，由已授权的宿主执行器依冻结计划推进。"
                "当前桌面聊天不承担sudo执行。模型回报本身不授予执行、重试、sudo或晋升权限；已消费任务不重放。")
-    if queue is None:
-        p = subprocess.run(["codex", "queue", "--thread", plan["thread_id"], "--message", message],
-                           capture_output=True, text=True, timeout=15)
-        result = {"returncode": p.returncode}
-    else:
-        result = queue(plan["thread_id"], message)
+    try:
+        result = (queue or codex_queue)(plan["thread_id"],message)
+    except NotificationNotStarted:
+        state['notification']='NOT_SENT'
+        save(directory,state)
+        raise
     state["notification"] = "QUEUED" if result["returncode"] == 0 else "SEND_UNCERTAIN"
     if state["notification"] != "QUEUED":
         state["status"] = "HUMAN_REQUIRED"
@@ -262,6 +285,10 @@ def step(job_id, *, worker_factory=None, queue=None, execute=None, acceptance=No
                 raise link.LinkError("UNKNOWN_JOB_STATE")
         except (link.LinkError, OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
             state.update(status="STOP" if str(exc) == "USER_STOP_REQUESTED" else "HUMAN_REQUIRED", error=str(exc))
+            if isinstance(exc,NotificationNotStarted):
+                state['notification']='NOT_SENT'
+                save(directory,state)
+                return {'job_id':job_id,'status':state['status'],'notification':'NOT_SENT','error':str(exc)}
             if state.get("notification") in {"ATTEMPTED", "SEND_UNCERTAIN"}:
                 state["notification"] = "SEND_UNCERTAIN"
                 save(directory, state)
@@ -329,7 +356,7 @@ def collect_host_diagnostic(directory, task, svc):
         'sha256':link.digest(stdout),'task_id':task['task_id']})+'\n')
 
 
-def host_run(job_id, thread_id, plan_sha256, *, check_only=False):
+def host_run(job_id, thread_id, plan_sha256, *, check_only=False, codex_bin=None):
     """User-started, bounded operator process for ONE frozen job; no daemon/service."""
     if os.geteuid() == 0 or os.geteuid() != os.getuid():
         raise link.LinkError('HOST_RUN_REQUIRES_UNPRIVILEGED_OPERATOR')
@@ -343,6 +370,9 @@ def host_run(job_id, thread_id, plan_sha256, *, check_only=False):
     _, plan, state=load(job_id)
     if thread_id != plan['thread_id'] or plan_sha256 != state['plan_sha256']:
         raise link.LinkError('HOST_JOB_BINDING_MISMATCH')
+    binary=codex_executable(codex_bin)
+    if not shutil.which('command-code'):
+        raise link.LinkError('HOST_REPORT_WORKER_EXECUTABLE_MISSING')
     if check_only:
         return {'job_id':job_id,'status':state['status'],'host_context':'READY','execution_attempted':False}
     deadline=state['expires_at']
@@ -359,11 +389,17 @@ def host_run(job_id, thread_id, plan_sha256, *, check_only=False):
                 and failed.get('decision')=='READ_FAILED' and svc.cli.initial_read_failure_is_presend(failed)
                 and deadline-time.time()>=430 and len(state['actions_done'])+2<=plan['max_actions']
                 and not (directory/'stop.request').exists())
+            waiting_notification=(state['status']=='HUMAN_REQUIRED' and not state.get('notification_recovery_history')
+                and state.get('notification')=='NOT_SENT' and state.get('report_number')==1
+                and state.get('error')=='CODEX_QUEUE_EXECUTABLE_MISSING_NOT_SENT'
+                and not state.get('actions_done') and not state.get('results')
+                and deadline-time.time()>=430 and not (directory/'stop.request').exists())
+            waiting_repair=waiting_repair or waiting_notification
             if state['status'] in TERMINAL and not waiting_repair:
-                return {'job_id':job_id,'status':state['status'],'host_context':'READY'}
+                return {'job_id':job_id,'status':state['status'],'host_context':'READY','error':state.get('error')}
             if not waiting_repair:
                 action=(state.get('decision') or {}).get('action') if state['status']=='READY' else None
-                result=step(job_id)
+                result=step(job_id,queue=lambda thread,message:codex_queue(thread,message,executable=binary))
                 if action=='execute_contract':
                     after=load(job_id)[2]
                     diagnostic=after.get('results',{}).get('execute_contract',{}).get('bridge_result',{}).get('diagnostic',{})
@@ -383,6 +419,51 @@ def ack(job_id, thread_id, report_sha):
         state["delivered_to_thread"] = thread_id
         save(directory, state)
         return {"job_id": job_id, "status": state["status"], "receipt": "CONFIRMED"}
+
+
+def recover_notification_start(job_id, thread_id, report_sha, authorization_id, *, codex_bin=None, queue=None):
+    """Re-deliver only a proven pre-spawn failure, using the existing saved initial report."""
+    binary=codex_executable(codex_bin)
+    if not re.fullmatch(r'[A-Za-z0-9._:-]{1,128}',authorization_id):
+        raise link.LinkError('RECOVERY_AUTHORIZATION_REQUIRED')
+    with link.cstate.campaign_lock(root()/'worker'),link.cstate.campaign_lock(root()/ident(job_id)):
+        directory,plan,state=load(job_id)
+        legacy=(state.get('notification')=='SEND_UNCERTAIN'
+            and state.get('error')=="[Errno 2] No such file or directory: 'codex'")
+        known_not_sent=(state.get('notification')=='NOT_SENT'
+            and state.get('error')=='CODEX_QUEUE_EXECUTABLE_MISSING_NOT_SENT')
+        if (thread_id!=plan['thread_id'] or state['status']!='HUMAN_REQUIRED'
+                or report_sha!=state.get('report_sha256') or state.get('actions_done') or state.get('results')
+                or state.get('report_number')!=1 or not (legacy or known_not_sent)
+                or state.get('notification_recovery_history') or state.get('delivered_to_thread')
+                or (directory/'stop.request').exists() or state['expires_at']-time.time()<430):
+            raise link.LinkError('NOTIFICATION_START_RECOVERY_NOT_ELIGIBLE')
+        report=state.get('report',{})
+        if report.get('host_action_result')!={'action':'initial_report'} or link.digest(link.json_text(report))!=report_sha:
+            raise link.LinkError('SAVED_INITIAL_REPORT_MISMATCH')
+        parsed=link.check_message(link.json_text(report.get('local_report')),kind='REPORT',link_id=job_id,
+            sequence=1,previous=plan['evidence_sha256'])
+        if parsed['payload']['source_sha256']!=plan['evidence_sha256']:
+            raise link.LinkError('REPORT_SOURCE_MISMATCH')
+        link.read_evidence(plan['evidence'],plan['evidence_sha256'])
+        if plan['task'] is not None:
+            actions.task_check(plan['task'])
+        record={'authorization_id':authorization_id,'reason':'EXECUTABLE_NOT_FOUND_BEFORE_SPAWN',
+            'previous':{k:state.get(k) for k in ['status','error','notification','report_sha256']},'phase':'AUTHORIZED'}
+        state['notification_recovery_history']=[record]
+        state.update(status='WAITING_REVIEW',notification=None,delivered_to_thread=None)
+        state.pop('error',None)
+        save(directory,state)
+        try:
+            notify(directory,plan,state,queue=queue or (lambda thread,message:codex_queue(thread,message,executable=binary)))
+        except (link.LinkError,OSError,subprocess.SubprocessError) as exc:
+            state.update(status='HUMAN_REQUIRED',error=str(exc))
+            if state.get('notification')=='ATTEMPTED':state['notification']='SEND_UNCERTAIN'
+            record['phase']='DELIVERY_FAILED';save(directory,state)
+            raise link.LinkError('NOTIFICATION_RECOVERY_DELIVERY_FAILED') from exc
+        record['phase']=state['notification'];save(directory,state)
+        return {'job_id':job_id,'status':state['status'],'notification':state['notification'],
+                'report_sha256':report_sha,'new_model_call':False}
 
 
 def stop(job_id, thread_id):
@@ -499,6 +580,7 @@ def main():
     p.add_argument('--thread-id',required=True)
     p.add_argument('--plan-sha256',required=True)
     p.add_argument('--check-only',action='store_true')
+    p.add_argument('--codex-bin',type=Path,default=None)
     p = sub.add_parser("decide")
     p.add_argument("--job-id", required=True)
     p.add_argument("--thread-id", required=True)
@@ -512,6 +594,12 @@ def main():
     p.add_argument("--job-id", required=True)
     p.add_argument("--thread-id", required=True)
     p.add_argument("--report-sha256", required=True)
+    p = sub.add_parser('recover-notification-start')
+    p.add_argument('--job-id',required=True)
+    p.add_argument('--thread-id',required=True)
+    p.add_argument('--report-sha256',required=True)
+    p.add_argument('--authorization-id',required=True)
+    p.add_argument('--codex-bin',type=Path,default=None)
     p = sub.add_parser("stop")
     p.add_argument("--job-id", required=True)
     p.add_argument("--thread-id", required=True)
@@ -535,12 +623,16 @@ def main():
         elif args.command == "tick":
             result = tick()
         elif args.command == 'host-run':
-            result=host_run(args.job_id,args.thread_id,args.plan_sha256,check_only=args.check_only)
+            result=host_run(args.job_id,args.thread_id,args.plan_sha256,check_only=args.check_only,
+                            codex_bin=str(args.codex_bin) if args.codex_bin else None)
         elif args.command == "check-task":
             actions.task_check(link.strict_json(args.task_plan.read_text()))
             result = {"status": "TASK_PREFLIGHT_PASS_NO_EXECUTION"}
         elif args.command == "ack":
             result = ack(args.job_id, args.thread_id, args.report_sha256)
+        elif args.command == 'recover-notification-start':
+            result=recover_notification_start(args.job_id,args.thread_id,args.report_sha256,args.authorization_id,
+                codex_bin=str(args.codex_bin) if args.codex_bin else None)
         elif args.command == "stop":
             result = stop(args.job_id, args.thread_id)
         elif args.command == "recover-initial-read":

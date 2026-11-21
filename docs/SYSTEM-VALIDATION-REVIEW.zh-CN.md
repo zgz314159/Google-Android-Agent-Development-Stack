@@ -88,6 +88,7 @@
 | SYS-12 | Hermes bootstrap re-exec 丢失项目入口导入路径：已修复并真实验证 | 原重启 ModuleNotFoundError，未发送未消费；运行时选择提前且显式入口路径。23项针对性测试PASS，精确请求只读确认不存在后经 BOOTSTRAP_READ_CONTINUATION 续接同次尝试，实际进入EXECUTING | 已收口；未增加模型次数或任务预算。CAL-WORD-PARAGRAPH-001后续120秒超时根因仍UNKNOWN，与SYS-09同类现象但不能推定同一原因 |
 | SYS-13 | 桌面NNP子进程承担需要sudo的宿主执行：根因已定位，源码修复及宿主环境核验通过，真实业务验证未完成 | 进程链由桌面子进程开始NNP=1；新增原入口host-run绑定单job/thread/plan/deadline，桌面只审查。31项队列/宿主检查通过；桌面真实只读拒绝且state不变，用户普通终端只读host_context=READY/execution_attempted=false | 不清NNP或自动拉起外部进程绕过。环境READY不等于sudo/模型/业务验收通过；下一次仅按新适用授权和未消费身份在宿主真实执行，原失败不回填 |
 | SYS-14 | 结果停在composer，Enter未完成提交：已修复并真实验证 | 完整616字符canonical仍为草稿，用户turn无该结果，同form唯一可用发送按钮存在。改物理单击且保留exact确认；用户明确授权一次补发后原resolver真实CONFIRMED_SENT，resend_count=1 | Bridge WAITING_FOR_GPT/seq21/pending=false，回传阻断收口；FAILED/1原业务结果不变，未重跑Hermes。证据send-resolution.json及journal |
+| SYS-15 | 普通宿主PATH无codex，初报通知未启动却误标发送不确定：已修复，原报告通知已恢复 | 初报6918a73e…已生成，actions/results空，Popen因缺codex ENOENT，未有控制发送/身份消费。CLI绝对定位+模型前依赖检查、NOT_SENT区分及保存报告恢复；36项测试通过，普通终端类似环境真实QUEUED且new_model_call=false | root准备保持完成，同job/plan/manifest/deadline现READY。仅需重启原host-run；不重新root/调报告模型，不扩业务模型次数。真正不确定发送不适用此恢复 |
 
 问题如有状态变化，在此表更新，并在任务记录中留下变化依据。业务已完成而问题仍 UNKNOWN 时，可以保留 UNKNOWN；不要为了让整表变绿而重跑任务。
 
@@ -136,6 +137,21 @@ Word `.docx` 导入；离线契约已 READY（manifest `639ed1fe…`），root �
 ```
 
 ## 8. 简短任务记录
+
+### 2026-11-21 HOST-001 初报通知入口修复与同报告恢复
+
+- **实际状态**：用户root准备成功，组件REUSED、registry/gate/PREP_COMPLETE通过，三安装SHA匹配。
+  普通宿主生成了正确初报，随后因PATH找不到codex在通知进程启动前ENOENT，host-run返回HUMAN_REQUIRED。
+  初报6918a73e…保留，actions_done空、results空，Bridge seq21/pending=false；未消耗业务身份/120秒。
+- **必要修复**：原入口解析显式/应用环境/PATH/既有桌面安装CLI位置，宿主在报告模型前验证依赖。
+  启动前失败区分NOT_SENT并保留报告；新增精确有界通知恢复，核对初报hash、源hash、未消费/gate、
+  期限与一次额度，保留失败，不直接改state，不重新报告模型调用；真正SEND_UNCERTAIN不自动重试。
+  宿主在原窗口可以等待此类安全恢复。36项相关测试通过；实际clean环境queue帮助验证通过。
+- **真实恢复**：按用户已有安全故障恢复授权，recover-notification-start复用同一已校验REPORT，在无
+  CODEX环境的普通终端类似环境用官方绝对CLI真实QUEUED；new_model_call=false。原ENOENT快照保留。
+  当前聊天复核真实安装/manifest和原人类授权后decide execute_contract，状态READY，仍无动作消费。
+- **下一步与限制**：原宿主进程已经退出，只需普通终端重启同job的host-run；不重复root准备，不新建
+  身份/契约/预算，不在桌面绕过NNP。当前业务/宿主业务验收/Windows NOT_RUN，不能称真实开发已完成。
 
 ### 2026-11-21 新授权修复后真实开发：CAL-WORD-PARAGRAPH-HOST-001 准备
 
