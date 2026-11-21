@@ -86,7 +86,7 @@
 | SYS-10 | 自动汇报接口首次本地回报 JSON 不合规：已修复并验证 | 首次通信在严格解析处停止，未派发动作；分离输出模板与输入数据后，真实四消息往返 COMPLETE；14 项边界测试通过 | 只读报告审查已接通；不据此声称业务执行、当前桌面直连或通用自动接入通过 |
 | SYS-11 | 自动派发未声明正式 Chrome adapter 环境：已修复并真实验证 | 首次读取前 READ_FAILED；固定正式端点并拒绝冲突。用户授权后经 INITIAL_READ_RECOVERY 审计继续，实际控制发送及 ACCEPTED 成功 | 入口问题收口；原失败保留，不把后续业务超时归因于此 |
 | SYS-12 | Hermes bootstrap re-exec 丢失项目入口导入路径：已修复并真实验证 | 原重启 ModuleNotFoundError，未发送未消费；运行时选择提前且显式入口路径。23项针对性测试PASS，精确请求只读确认不存在后经 BOOTSTRAP_READ_CONTINUATION 续接同次尝试，实际进入EXECUTING | 已收口；未增加模型次数或任务预算。CAL-WORD-PARAGRAPH-001后续120秒超时根因仍UNKNOWN，与SYS-09同类现象但不能推定同一原因 |
-| SYS-13 | 桌面NNP子进程承担需要sudo的宿主执行：根因已定位，执行归属源码已修复，宿主正向核验待完成 | 进程链由桌面应用子进程开始NNP=1，Codex/shell继承；当前sudo直接拒绝。新增原入口host-run绑定单job/thread/plan/deadline，由用户显式启动普通宿主进程，桌面只审查；31项队列/宿主检查通过，桌面真实只读核验拒绝且state字节不变 | 不清NNP、不在桌面自动拉起外部进程绕过。待用户普通终端只读host-context核验，之后仅按新适用授权/未消费身份在宿主执行；原失败不回填 |
+| SYS-13 | 桌面NNP子进程承担需要sudo的宿主执行：根因已定位，源码修复及宿主环境核验通过，真实业务验证未完成 | 进程链由桌面子进程开始NNP=1；新增原入口host-run绑定单job/thread/plan/deadline，桌面只审查。31项队列/宿主检查通过；桌面真实只读拒绝且state不变，用户普通终端只读host_context=READY/execution_attempted=false | 不清NNP或自动拉起外部进程绕过。环境READY不等于sudo/模型/业务验收通过；下一次仅按新适用授权和未消费身份在宿主真实执行，原失败不回填 |
 | SYS-14 | 结果停在composer，Enter未完成提交：已修复并真实验证 | 完整616字符canonical仍为草稿，用户turn无该结果，同form唯一可用发送按钮存在。改物理单击且保留exact确认；用户明确授权一次补发后原resolver真实CONFIRMED_SENT，resend_count=1 | Bridge WAITING_FOR_GPT/seq21/pending=false，回传阻断收口；FAILED/1原业务结果不变，未重跑Hermes。证据send-resolution.json及journal |
 
 问题如有状态变化，在此表更新，并在任务记录中留下变化依据。业务已完成而问题仍 UNKNOWN 时，可以保留 UNKNOWN；不要为了让整表变绿而重跑任务。
@@ -136,6 +136,16 @@ Word `.docx` 导入；离线契约已 READY（manifest `639ed1fe…`），root �
 ```
 
 ## 8. 简短任务记录
+
+### 2026-11-21 用户普通终端宿主核验通过
+
+- **实际文件**：host-context-check.json，SHA
+  `8ccb13e2be7bd825bdde63f46b37bd0b155a2a4f0c6eefd66ffdcf51c05acf33`。
+  返回host_context=READY、execution_attempted=false；job绑定正确，status=HUMAN_REQUIRED保留旧失败状态。
+- **准确结论**：宿主只读权限前提/绑定核验通过，无模型调用、业务重跑或任务状态变更。SYS-13源码和
+  环境层核验通过，真实业务层仍未完成；SYS-14回传已实证收口。Bridge WAITING_FOR_GPT/seq21/pending=false。
+- **下一方向**：不再追加只读环境核验；在正常宿主进程按新的适用执行授权/未消费身份完成真实开发和
+  独立测试，才可报告整链业务成功。当前日历无新实现，宿主业务验收/Windows NOT_RUN，三个失败身份不重放。
 
 ### 2026-11-21 根因修复：结果提交已实证，宿主执行归属已修改
 

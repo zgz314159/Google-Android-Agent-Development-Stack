@@ -25,6 +25,15 @@
 
 ### 最新进度（2026-11-21 自动汇报接入）
 
+**宿主只读核验已通过**：用户普通终端生成host-context-check.json，已实际读取并核对：
+host_context=READY、execution_attempted=false、job_id=CAL-WORD-PARAGRAPH-DIAG-001-AUTO、
+status=HUMAN_REQUIRED；文件SHA `8ccb13e2be7bd825bdde63f46b37bd0b155a2a4f0c6eefd66ffdcf51c05acf33`。
+HUMAN_REQUIRED是旧失败job原有状态，不是宿主核验失败；没有调用模型、重跑业务或改变任务状态。
+该检查只证明宿主入口的权限前提和冻结绑定通过，不证明真实sudo执行/模型开发/业务测试已通过。
+回传已实证修复、宿主源码及环境核验通过；完整自动开发仍未完成真实业务验收。至此不再追加只读
+环境检查。下一业务验证必须在正常宿主进程按新适用授权与未消费身份执行，再完成独立测试；不能
+把旧任务重新标为READY。下方“宿主核验待执行”等为历史快照。
+
 **用户要求查根因后，已完成的修复（覆盖下方旧停止快照）**：
 
 1. **回传根因与真实修复**：只读现场显示完整canonical结果616字符仍在composer，用户turn中没有
@@ -44,7 +53,7 @@
    安全的发送前已知错误可在既有窗口等待审计恢复，消费失败/不确定发送等仍退出，不补模型次数。
 3. **实际验证与限制**：提交按钮4项、现有发送/精确确认/resolver相关26项、队列/宿主31项，共61项通过。
    现有normal-path测试stub缺task_id关键字参数已按已生效接口修正，未放宽断言。桌面真实host-run
-   --check-only拒绝E_LAUNCH_NO_NEW_PRIVS，job字节不变。普通终端正向host-context核验尚待用户执行；
+   --check-only拒绝E_LAUNCH_NO_NEW_PRIVS，job字节不变。普通终端正向host-context核验现已READY；
    该核验绑定当前已失败job，仅只读、不调模型/不重跑。当前三个业务身份均仍消费失败，业务源码无实现，
    宿主业务验收/Windows NOT_RUN。不得把源码/上下文检查当真实业务成功，也不自动新建下一任务。
 
