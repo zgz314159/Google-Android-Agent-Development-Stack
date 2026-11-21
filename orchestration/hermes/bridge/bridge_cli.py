@@ -418,7 +418,7 @@ def _round_impl(*, root: Path | None, read_fn, gate_fn, execute_fn, send_fn,
 def run_round(*, root: Path | None = None, read_fn=None, gate_fn=None,
               execute_fn=None, send_fn=None,
               confirm_timeout_s: float = adapter.DEFAULT_CONFIRM_TIMEOUT_S,
-              progress_fn=None, confirm_fn=None) -> dict:
+              progress_fn=None, confirm_fn=None, entry_guard_fn=None) -> dict:
     """One round, under the single-worker lock."""
     read_fn = read_fn or (lambda: adapter.read_latest_assistant())
     gate_fn = gate_fn or ce.gate
@@ -436,6 +436,11 @@ def run_round(*, root: Path | None = None, read_fn=None, gate_fn=None,
                                                    exact=True)
     )
     with bs.bridge_lock(root):
+        # Outer automation can enforce its frozen, task-specific authorization
+        # BEFORE startup reconciliation, browser sends or any state mutation.
+        # It cannot replace any of the protocol/contract/replay/execution gates.
+        if entry_guard_fn is not None:
+            entry_guard_fn()
         return _round_impl(root=root, read_fn=read_fn, gate_fn=gate_fn,
                            execute_fn=execute_fn, send_fn=send_fn,
                            confirm_timeout_s=confirm_timeout_s,

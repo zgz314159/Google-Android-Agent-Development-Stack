@@ -25,6 +25,29 @@
 
 ### 最新进度（2026-11-21 自动汇报接入）
 
+**第二阶段（本轮）**：用户进一步明确要求继续接通业务派发、后台运行与当前聊天。
+新增 `agent_link_jobs.py`／`agent_link_actions.py`；业务派发通过原 Bridge，新的 entry guard
+在锁内、启动恢复或状态修改前拒绝未授权／已消费身份。dotnet 宿主验收采用外部副本、只读宿主
+沙箱和真实 TRX 非零测试计数。14 项新增测试通过（含真实 Bubblewrap 写入边界）；真实 CAL-WPF-001 预检查被
+`TASK_ALREADY_CONSUMED_NO_RETRY` 拒绝，未触发 gate／Chrome／round，Bridge state/journal 不变。
+
+当前聊天直连使用正式 `codex queue`，不需要打开 control socket。nonce 探针及本地自动汇报
+已实际进入当前聊天；receipt 位于外部 state 的 `agent-link/current-chat-probe.json`。
+当前接力任务 `STACK-CURRENT-CHAT-AUTO-20261121` 的 plan 中 `task=null`，只授权核对原失败报告一次，
+两份本地回报均通过正式 queue 实际到达本聊天，本聊天已审查、写回一次核对指令并最终决定 COMPLETE。
+源报告哈希与权限未变，初报中“清理／回传”的标签也经核对纠正；没有人工复制粘贴。
+旧回报哈希去重，不重复派发。当前 job 已 COMPLETE，只有一次 inspect_evidence，没有业务执行。
+
+应用 heartbeat “Stack 当前聊天自动接力”（ID `stack`）已 ACTIVE，每分钟检查当前聊天队列。
+无变化保持安静；只推进冻结范围内且确有用户授权的动作。应用和电脑需运行，不声称 OS 开机常驻。
+首轮后台消费与回报尚待实际回执，不以保存调度配置冒充已发生的后台执行。用户停止时可暂停 heartbeat
+或请求 `stop` 阻止下一动作；已开始的受控步骤沿用原预算和清理，不强杀特权监督进程。
+
+业务动作代码与离线门禁已经接入；**没有新鲜、未消费的业务单次执行授权，故新业务成功实证与
+真实 dotnet 业务验收本轮 NOT_RUN**。不得用本次接入授权重跑 CAL-WPF-001、生成 CAL-WPF-002，
+或将普通会话开发当系统成功。源码仍只在批准 Stack 开发副本，未正式晋升或 root 安装。
+以下条目保留上一轮独立会话通信基线，不能将其中“尚未接通”的历史描述当作本轮新状态。
+
 - 用户已完成 CAL-WPF-001 的 root 准备；单次真实业务任务随后 BLOCKED / exit 124（120 秒超时），
   清理和回传确认。无业务改动、WordImportTests 0 匹配，业务验收 FAILED，根因 SYS-09 UNKNOWN；
   Bridge 已推进到 seq 19。不得再把 root 登记当作本项目当前阻断，也不得自动重跑或创建 CAL-WPF-002。
