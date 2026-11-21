@@ -25,6 +25,16 @@
 
 ### 最新进度（2026-11-21 自动汇报接入）
 
+**用户要求继续查根因，已修正现有摘要的工具结果遗漏，尚待读取真实结果**：AEGL现有
+`recovery/iap_diag_summary.py`补充严格整行解析broker已采集的tool/status/error/duration/exit固定字段，
+不输出命令、结果正文或原始arg；10项相关检查通过。源码SHA
+`26f1cbbb937c582a793abec01540cd3a7222c0d89b99bc2ac2707780fc5d21bf`。
+prepare同步固定新摘要SHA，仅接受已安装旧版或新版，未执行安装或重新登记。
+当前桌面实测NoNewPrivs=1，root诊断目录700，不能自行提权读取；尚未得到本轮工具状态，业务超时
+根因仍UNKNOWN。交付用户普通终端只读提取：root进程单次读取并验证该源码字节哈希，在内存中执行
+同一任务绑定摘要器，结果写回job外部state目录`phase-summary-tools.txt`；不安装、不运行模型、不改链值。
+用户认证后读取新文件继续定位。未重跑/新增任务；此前旧摘要与失败记录保持原样。
+
 **HOST-001 已实际执行并超时，覆盖下方 READY 等待快照**：用户普通终端重启同一 host-run 后，
 当前聊天已审核的 execute_contract 被宿主取走；seq21 实际 ACCEPTED，单次120秒返回
 BLOCKED/exit124，timed_out=true，清理CONFIRMED，结果CONFIRMED_SENT，Bridge现

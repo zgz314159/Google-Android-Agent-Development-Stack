@@ -141,6 +141,12 @@ Word `.docx` 导入；离线契约已 READY（manifest `639ed1fe…`），root �
 
 ### 2026-11-21 HOST-001 真实执行：超时，自动回报已接收
 
+- **继续查因（用户随后要求）**：确认broker已采集工具固定状态/错误类别/退出码/耗时，旧summary
+  未输出这些字段，导致现摘要不能判断工具是否成功。仅修正现有AEGL摘要器的严格固定格式解析，
+  10项相关检查通过，源码SHA `26f1cbbb937c582a793abec01540cd3a7222c0d89b99bc2ac2707780fc5d21bf`；
+  prepare同步新版pin并精确接受已安装前版，未执行安装。新摘要不导出命令/正文/凭据，不改变采集、
+  沙箱或工具门禁。本桌面NoNewPrivs=1，尚不能读取root/700原sink；需用户普通终端进行一次
+  校验源码字节哈希的只读提取，输出`phase-summary-tools.txt`。原超时根因仍UNKNOWN，不声称已修好业务。
 - **授权与实际结果**：用户普通终端重启已冻结host-run，自动取已审核execute_contract；seq21
   ACCEPTED后单次120秒BLOCKED/exit124，timed_out=true，清理CONFIRMED，结果CONFIRMED_SENT。
   结果SHA `cea206120c0eac532b476e3f79236d60bca451168d3c51e4aa6988cc90b0a345`；Bridge现
