@@ -274,7 +274,8 @@ class JobTests(unittest.TestCase):
         bridge = self.base/'read-recovery'
         fake = SimpleNamespace(adapter=svc.adapter,
             state=SimpleNamespace(state_dir=lambda: bridge, read_journal=lambda: svc.state.read_journal(bridge)),
-            cli=SimpleNamespace(recover_initial_read_failure=lambda **k: {"decision":"INITIAL_READ_RECOVERED"}))
+            cli=SimpleNamespace(initial_read_failure_is_presend=svc.cli.initial_read_failure_is_presend,
+                recover_initial_read_failure=lambda **k: {"decision":"INITIAL_READ_RECOVERED"}))
         jobs.recover_initial_read('J', THREAD, sha, 'USER-ONCE', svc=fake)
         _, _, restored = jobs.load('J')
         self.assertEqual(restored['actions_done'], ['execute_contract'])
@@ -298,6 +299,27 @@ class JobTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'NOT_INITIAL_CDP'):
             svc.cli.recover_initial_read_failure(**kwargs)
         self.assertEqual(json.loads((d/'state.json').read_text()), raw)
+
+    def test_connection_refused_recovery_preserves_chain(self):
+        svc,d,state,kwargs=self.recovery_fixture()
+        failure={'event':'READ_FAILED','error':'RuntimeError','message':
+            'fatal: BU_CDP_URL=http://127.0.0.1:9333 unreachable after 30s: <urlopen error [Errno 111] Connection refused> -- '
+            'is the dedicated automation Chrome running? Launch it with --remote-debugging-port=<port> --user-data-dir=<dedicated dir>'}
+        svc.state.journal_append(failure,d)
+        kwargs['rejection_sha256']=link.digest(link.json_text(svc.state.read_journal(d)[-1]))
+        svc.cli.recover_initial_read_failure(**kwargs)
+        expected=dict(state);expected['status']='WAITING_FOR_GPT'
+        self.assertEqual(json.loads((d/'state.json').read_text()),expected)
+
+    def test_even_known_failure_cannot_recover_after_send_attempt(self):
+        svc,d,state,kwargs=self.recovery_fixture()
+        failure=svc.state.read_journal(d)[-1]
+        svc.state.journal_append({'event':'CONTROL_REQUEST_SEND_ATTEMPTED','sequence':state['expected_sequence']},d)
+        svc.state.journal_append(failure,d)
+        kwargs['rejection_sha256']=link.digest(link.json_text(svc.state.read_journal(d)[-1]))
+        with self.assertRaisesRegex(ValueError,'SEND_ATTEMPT_PRESENT'):
+            svc.cli.recover_initial_read_failure(**kwargs)
+        self.assertEqual(json.loads((d/'state.json').read_text()),state)
 
     def test_bootstrap_continuation_preserves_chain_and_consumption(self):
         svc, d, state, kwargs = self.recovery_fixture()

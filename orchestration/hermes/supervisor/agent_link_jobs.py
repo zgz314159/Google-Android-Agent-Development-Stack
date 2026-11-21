@@ -331,8 +331,7 @@ def recover_initial_read(job_id, thread_id, report_sha, authorization_id, *, svc
         failed = state.get("results", {}).get("execute_contract", {}).get("bridge_result", {})
         if (thread_id != plan["thread_id"] or state["status"] != "HUMAN_REQUIRED"
                 or report_sha != state["report_sha256"] or plan["task"] is None
-                or failed.get("decision") != "READ_FAILED" or failed.get("error") != "AdapterError"
-                or failed.get("message") != "BU_CDP_URL must equal " + svc.adapter.EXPECTED_CDP
+                or failed.get("decision") != "READ_FAILED" or not svc.cli.initial_read_failure_is_presend(failed)
                 or "result" in failed or (directory/"stop.request").exists()):
             raise link.LinkError("RECOVERY_NOT_ELIGIBLE")
         if state.get("recovery_history"):

@@ -581,9 +581,20 @@ PRECONSUME_RECOVERY_REASON_DEFAULT = "E_EXT_WORKTREE_GIT"
 PRECONSUME_TERMINAL_EVENTS = ("ACCEPTED", "RESULT", "STOPPED")
 
 
+def initial_read_failure_is_presend(record):
+    """Known initial configuration/connect failures; send journal is checked separately."""
+    return (record.get('error'), record.get('message')) in {
+        ('AdapterError', 'BU_CDP_URL must equal '+adapter.EXPECTED_CDP),
+        ('RuntimeError', 'fatal: BU_CDP_URL='+adapter.EXPECTED_CDP+
+         ' unreachable after 30s: <urlopen error [Errno 111] Connection refused> -- '
+         'is the dedicated automation Chrome running? Launch it with '
+         '--remote-debugging-port=<port> --user-data-dir=<dedicated dir>'),
+    }
+
+
 def recover_initial_read_failure(*, task, expected_state_sha256, rejection_sha256,
                                  authorization_id, root=None, gate_fn=None, bootstrap_request_absent=False):
-    """Audited one-shot recovery ONLY for the pre-send missing-CDP rejection.
+    """Audited one-shot recovery ONLY for exact known pre-send CDP failures.
 
     No model, browser operation, send, task consumption or chain rewind. The
     operator supplies a task-specific authorization and exact failure snapshots.
@@ -609,10 +620,12 @@ def recover_initial_read_failure(*, task, expected_state_sha256, rejection_sha25
         eligible = ((last.get("event") == "INITIAL_READ_RECOVERY" and last.get("task_id") == task["task_id"]
                      and last.get("sequence") == raw["expected_sequence"])
                     if bootstrap_request_absent else
-                    (last.get("event") == "READ_FAILED" and last.get("error") == "AdapterError"
-                     and last.get("message") == "BU_CDP_URL must equal " + adapter.EXPECTED_CDP))
+                    (last.get("event") == "READ_FAILED" and initial_read_failure_is_presend(last)))
         if proto.canonical_sha256(last) != rejection_sha256 or not eligible:
             raise ValueError("RECOVERY_NOT_INITIAL_CDP_FAILURE")
+        if any(e.get('event') == 'CONTROL_REQUEST_SEND_ATTEMPTED'
+               and e.get('sequence') == raw['expected_sequence'] for e in journal):
+            raise ValueError('RECOVERY_SEND_ATTEMPT_PRESENT_NO_RESEND')
         if bs.is_consumed(task["task_id"], raw["expected_sequence"], raw["expected_nonce"], root):
             raise ValueError("RECOVERY_TASK_ALREADY_CONSUMED")
         candidate = {"protocol": "HERMES_TASK_V1", **task, "action": "EXECUTE_CONTRACT", "risk": "LOW",
