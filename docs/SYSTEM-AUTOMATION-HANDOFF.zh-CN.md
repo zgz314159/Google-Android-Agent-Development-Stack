@@ -25,6 +25,22 @@
 
 ### 最新进度（2026-11-21 自动汇报接入）
 
+**HOST-001 已实际执行并超时，覆盖下方 READY 等待快照**：用户普通终端重启同一 host-run 后，
+当前聊天已审核的 execute_contract 被宿主取走；seq21 实际 ACCEPTED，单次120秒返回
+BLOCKED/exit124，timed_out=true，清理CONFIRMED，结果CONFIRMED_SENT，Bridge现
+WAITING_FOR_GPT/seq22/pending=false。任务身份及预算已消费，不重放、延长或自动创建替代任务。
+失败报告 `c7b57f1439d6187ece2d42a738d26f57bec2adafaef487efc4652383152e4877` 已由当前聊天 ack；
+job HUMAN_REQUIRED。worktree仍f18b30f、status为空，两个要求源码/测试文件均不存在；业务FAILED，
+宿主业务验收NOT_RUN，Windows NOT_RUN，正式main仍832836e未修改。
+
+宿主一次读取既有阶段摘要成功（exit0，SHA `58360e87578a1523a4fc50bd3b4ba5453e8a2ce71716bc53ee669ea6f936716d`）。
+308条元数据证明sandbox准备/启动请求、14次完整模型响应、20对工具pre/post事件、11次guard返回0；
+第15次上游请求收到HTTP200响应头后未记录body完成即到期。由此确认本轮已越过旧NNP执行入口阻断，
+并非没有接通模型。不能把guard返回0或工具post事件当业务命令成功；现安装summary不输出arg内
+工具status/error/exit/duration，scratch当前不可读，故“为何反复调用而无代码”的根因仍UNKNOWN。
+不据最后一个未完成响应推定网络是根因，也不回填旧超时原因。不为补证重跑业务或新建诊断框架。
+当前已无可派发授权动作；下一方向仅限既有证据与权限内查明工具执行失败/无产物原因。
+
 **本轮root已成功，初报CLI定位故障已修复，当前READY等待宿主恢复**：用户已执行组合命令，root
 REGISTER/GATE/PREP_COMPLETE成功，安装三SHA匹配。普通宿主初报模型已生成正确REPORT，但初报入队
 因PATH找不到`codex`抛FileNotFoundError，未启动通知进程，旧代码误标SEND_UNCERTAIN并结束host-run。

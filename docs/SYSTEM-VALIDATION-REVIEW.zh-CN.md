@@ -86,9 +86,10 @@
 | SYS-10 | 自动汇报接口首次本地回报 JSON 不合规：已修复并验证 | 首次通信在严格解析处停止，未派发动作；分离输出模板与输入数据后，真实四消息往返 COMPLETE；14 项边界测试通过 | 只读报告审查已接通；不据此声称业务执行、当前桌面直连或通用自动接入通过 |
 | SYS-11 | 自动派发未声明正式 Chrome adapter 环境：已修复并真实验证 | 首次读取前 READ_FAILED；固定正式端点并拒绝冲突。用户授权后经 INITIAL_READ_RECOVERY 审计继续，实际控制发送及 ACCEPTED 成功 | 入口问题收口；原失败保留，不把后续业务超时归因于此 |
 | SYS-12 | Hermes bootstrap re-exec 丢失项目入口导入路径：已修复并真实验证 | 原重启 ModuleNotFoundError，未发送未消费；运行时选择提前且显式入口路径。23项针对性测试PASS，精确请求只读确认不存在后经 BOOTSTRAP_READ_CONTINUATION 续接同次尝试，实际进入EXECUTING | 已收口；未增加模型次数或任务预算。CAL-WORD-PARAGRAPH-001后续120秒超时根因仍UNKNOWN，与SYS-09同类现象但不能推定同一原因 |
-| SYS-13 | 桌面NNP子进程承担需要sudo的宿主执行：根因已定位，源码修复及宿主环境核验通过，真实业务验证未完成 | 进程链由桌面子进程开始NNP=1；新增原入口host-run绑定单job/thread/plan/deadline，桌面只审查。31项队列/宿主检查通过；桌面真实只读拒绝且state不变，用户普通终端只读host_context=READY/execution_attempted=false | 不清NNP或自动拉起外部进程绕过。环境READY不等于sudo/模型/业务验收通过；下一次仅按新适用授权和未消费身份在宿主真实执行，原失败不回填 |
+| SYS-13 | 桌面NNP子进程承担需要sudo的宿主执行：已修复，宿主真实入口验证通过 | 用户启动HOST-001的host-run，seq21真实受控执行；摘要确认sandbox准备、模型响应及工具事件，固定summary读取exit0 | 入口阻断收口；业务随后120秒超时，无代码，不能将入口通过当业务通过。不清NNP或自动拉起外部进程绕过 |
 | SYS-14 | 结果停在composer，Enter未完成提交：已修复并真实验证 | 完整616字符canonical仍为草稿，用户turn无该结果，同form唯一可用发送按钮存在。改物理单击且保留exact确认；用户明确授权一次补发后原resolver真实CONFIRMED_SENT，resend_count=1 | Bridge WAITING_FOR_GPT/seq21/pending=false，回传阻断收口；FAILED/1原业务结果不变，未重跑Hermes。证据send-resolution.json及journal |
-| SYS-15 | 普通宿主PATH无codex，初报通知未启动却误标发送不确定：已修复，原报告通知已恢复 | 初报6918a73e…已生成，actions/results空，Popen因缺codex ENOENT，未有控制发送/身份消费。CLI绝对定位+模型前依赖检查、NOT_SENT区分及保存报告恢复；36项测试通过，普通终端类似环境真实QUEUED且new_model_call=false | root准备保持完成，同job/plan/manifest/deadline现READY。仅需重启原host-run；不重新root/调报告模型，不扩业务模型次数。真正不确定发送不适用此恢复 |
+| SYS-15 | 普通宿主PATH无codex，初报通知未启动却误标发送不确定：已修复，原报告通知已恢复 | 初报6918a73e…保留；CLI绝对定位、NOT_SENT区分及精确恢复，36项测试通过，普通终端类似环境真实QUEUED且new_model_call=false；用户重启后HOST-001已实际执行并自动回报失败 | 通知入口收口，不重复root/报告生成/恢复；本轮业务超时另记SYS-16。真正不确定发送不适用此恢复 |
+| SYS-16 | HOST-001 已进入模型/工具阶段但120秒超时、无业务改动：UNKNOWN | seq21 BLOCKED/124，清理和回传确认；阶段摘要exit0，14次完整模型响应、20对工具事件、11次guard返回0；worktree干净且要求文件不存在 | 原任务已消费并ack，不重跑/延预算/换身份。摘要未输出工具status/error/exit，scratch不可读，不能确诊为何无产物或将HTTP200当业务成功；下一方向为现有权限内核对工具失败证据 |
 
 问题如有状态变化，在此表更新，并在任务记录中留下变化依据。业务已完成而问题仍 UNKNOWN 时，可以保留 UNKNOWN；不要为了让整表变绿而重跑任务。
 
@@ -137,6 +138,25 @@ Word `.docx` 导入；离线契约已 READY（manifest `639ed1fe…`），root �
 ```
 
 ## 8. 简短任务记录
+
+### 2026-11-21 HOST-001 真实执行：超时，自动回报已接收
+
+- **授权与实际结果**：用户普通终端重启已冻结host-run，自动取已审核execute_contract；seq21
+  ACCEPTED后单次120秒BLOCKED/exit124，timed_out=true，清理CONFIRMED，结果CONFIRMED_SENT。
+  结果SHA `cea206120c0eac532b476e3f79236d60bca451168d3c51e4aa6988cc90b0a345`；Bridge现
+  WAITING_FOR_GPT/seq22/pending=false。失败report `c7b57f1439d6187ece2d42a738d26f57bec2adafaef487efc4652383152e4877`
+  已由当前聊天ack，job HUMAN_REQUIRED，未下发host_acceptance。
+- **业务**：worktree HEAD仍f18b30f，git status为空；WordParagraphImporter.cs与WordParagraphImportTests.cs
+  均不存在。业务FAILED，无新增实现；宿主独立业务验收NOT_RUN，Windows NOT_RUN。正式main仍832836e。
+- **系统已证明范围**：宿主执行入口、受控执行/清理/结果回传及当前聊天接收已发生；宿主按既有固定
+  wrapper读取阶段摘要一次成功，exit0，摘要SHA `58360e87578a1523a4fc50bd3b4ba5453e8a2ce71716bc53ee669ea6f936716d`。
+  308条元数据含sandbox准备/启动请求、14次完整模型响应、20对工具pre/post、11次guard返回0。
+  第15次请求最后记录HTTP200响应头，无body完成事件；这些计数不是新增Hermes执行授权。
+- **根因边界**：SYS-13宿主入口真实验证收口；新增SYS-16 UNKNOWN。当前summary丢弃arg内工具状态、
+  错误类别、命令退出码和耗时，scratch无读取权限；不能认定20次工具成功，也不能确诊无代码的原因。
+  不推定最后未完成响应就是根因，不回填旧任务。自动回报/审查通道接通不等于自动业务开发验收通过。
+- **收口/下一步**：本轮失败停止，身份与120秒预算已消费；不重放、延长、另建替代任务或直接会话补代码。
+  后续仅在既有权限和证据内查明工具执行无产物原因；不自动建设新诊断设施。
 
 ### 2026-11-21 HOST-001 初报通知入口修复与同报告恢复
 
