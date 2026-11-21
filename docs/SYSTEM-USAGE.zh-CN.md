@@ -336,3 +336,43 @@ bubblewrap、setpriv、ACL、独立服务身份及 Linux namespace 支持。Andr
 
 本轮只读诊断与离线检查的具体范围、剩余问题见
 [定点验证记录](VALIDATION-2026-11-11.md)。
+
+## 9. 本地 AI 与 Codex 自动交换汇报（2026-11-21）
+
+批准开发副本新增 `orchestration/hermes/supervisor/agent_link.py`。它通过 Command Code
+的非交互 JSON 接口和 Codex 官方 App Server stdio 接口，完成“本地报告 → Codex 审查指令 →
+本地核对回报 → Codex 最终审查”。本机当前桌面聊天没有开放默认 control socket；用户已选择
+先用独立 Codex 审查会话。它不接管原来正在交互的 Command Code 会话。
+
+这是**只读报告审查版本**。当前唯一宿主动作是 `inspect_evidence`：读取调用方指定且固定
+SHA-256 的报告；模型提供的路径、shell 文字和新动作不能被派发。Command Code 使用项目拥有的
+`agent_link_worker.mjs` 显式禁用全部工具，并保留 plan 权限模式；Codex 使用只读沙箱，
+任何需要客户端批准的请求都会停止。它不调用 Bridge、不发送 Chrome、不执行 Hermes、
+不 sudo、不晋升、不重跑失败任务；业务开发仍需走第 6 节的既有可信链路。
+
+调用方在授权范围内提供通信 ID、报告绝对路径和实际 SHA-256：
+
+```text
+python3 orchestration/hermes/supervisor/agent_link.py
+  --link-id <本次通信标识>
+  --evidence <报告绝对路径>
+  --evidence-sha256 <报告实际SHA-256>
+  --worker-model <已选择的Command-Code模型>
+```
+
+上面是参数说明，不是需要用户拼装执行的新前置。实际模型通信会产生模型请求，不能用来做
+无模型健康检查；本机实测沿用 `deepseek/deepseek-v4.1-flash`。Codex 沿用本机已配置的模型。
+依赖现有 `codex`、`command-code` 和 Node；不导入工具安装目录下的项目源码，不新增 Python 依赖。
+
+默认总时限 600 秒、两次本地回报与两次审查、最多一次报告核对；上限不是 CAL-WPF-001 的业务
+执行预算。沿用 supervisor 的单持有者锁和原子写入。运行状态位于
+`~/.local/state/google-android-agent-stack/supervisor/agent-link/<通信ID>/state.json`，
+不在正式树或 Projects。协议检查 link_id、sequence、in_reply_to、精确字段与动作白名单；
+只接收已完成回合的最终消息。格式错误、证据变化、权限需求、超时或上限立即停止，
+相同通信 ID 不会自动恢复或重发。
+
+实测会话为“Stack 自动审查：报告通信验证”，通信 ID
+`STACK-REPORT-LINK-FORMAT-FIX-20261121`，最终 `COMPLETE`。此前一次本地回报 JSON 不合规
+被拒收；收紧输出模板后完成真实往返，保留失败事实。14 项边界测试和独立宿主核对通过。
+这里只证明只读报告审查的自动往返，尚不证明自动业务开发、当前桌面聊天直连、原交互会话接管、
+后台常驻或跨项目完整自动接入。源码仍在批准开发副本，未做正式源码晋升或可信安装。

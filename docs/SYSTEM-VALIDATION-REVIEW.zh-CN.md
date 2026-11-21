@@ -83,6 +83,7 @@
 | SYS-07 | 新业务受控接入缺少 root 契约安装/登记能力：已收口 | 用户执行 root 准备成功；registry 条目、trusted manifest、worktree owner、BASE_COMMIT 已核对 | 不再阻断 CAL-WPF-001；保留为其他新项目接入的前置说明 |
 | SYS-08 | 前阶段业务代码由当前会话直接提交正式仓，偏离受控闭环：已记录并纠正 | 正式仓 `main` `d362963`…`832836e` 为会话直接提交；journal 无日历任务记录 | 保留成果但不回填为 Hermes 结果；正式仓只读，新工作只在 CAL-001 worktree，交付走可信晋升 |
 | SYS-09 | CAL-WPF-001 单次受控执行 120 秒超时且 worktree 无变更：UNKNOWN | round `BLOCKED`/exit 124/timed_out；cleanup CONFIRMED；result CONFIRMED_SENT；worktree status 空；无任务级诊断（不在 launcher 白名单），scratch aegl-ai 750 不可读 | 阻断该业务任务；不重跑、不 recover、不新建任务。下一步是否启用既有诊断或另开任务由用户决定 |
+| SYS-10 | 自动汇报接口首次本地回报 JSON 不合规：已修复并验证 | 首次通信在严格解析处停止，未派发动作；分离输出模板与输入数据后，真实四消息往返 COMPLETE；14 项边界测试通过 | 只读报告审查已接通；不据此声称业务执行、当前桌面直连或通用自动接入通过 |
 
 问题如有状态变化，在此表更新，并在任务记录中留下变化依据。业务已完成而问题仍 UNKNOWN 时，可以保留 UNKNOWN；不要为了让整表变绿而重跑任务。
 
@@ -91,8 +92,10 @@
 当前实际业务目标（2026-11-21 起）：**Windows 离线任务日历 WPF V2.0**
 （业务仓 `/home/zhong/EXE/OfflineTaskCalendar_WPF`，开发 worktree
 `/var/tmp/RILI-WPF-V2/CAL-001/project`）。当前选定受控任务为 `CAL-WPF-001`
-Word `.docx` 导入；离线契约已 READY（manifest `639ed1fe…`），但受控执行仍受
-root 契约安装/登记阻断，见第 8 节记录。**不预创建 006，不把再次执行同一编译 fixture 当作默认下一目标。**
+Word `.docx` 导入；离线契约已 READY（manifest `639ed1fe…`），root 安装/登记已通过，
+随后单次受控执行超时、业务验收 FAILED，根因 UNKNOWN，见第 8 节。
+用户随后选择建设自动汇报与审查通道，最小只读往返已通过；业务任务保持停止。
+**不预创建 006，不把再次执行同一编译 fixture 当作默认下一目标。**
 
 | 用户真正需要的工作 | 本轮应回答的问题 | 可独立判断的验收例子 |
 |---|---|---|
@@ -129,6 +132,28 @@ root 契约安装/登记阻断，见第 8 节记录。**不预创建 006，不�
 ```
 
 ## 8. 简短任务记录
+
+### 2026-11-21 本地 AI ⇄ Codex 自动汇报最小闭环
+
+- **目标与预定验收**：用户授权建设自动报告与审查通道，接受独立 Codex 审查会话。
+  本地 AI 自动提交现有失败报告，Codex 给出一次限定只读核对指令，本地 AI 自动接收并回报，
+  Codex 最终收口；全过程无需用户搬运消息，不重跑 CAL-WPF-001。
+- **实际结果**：官方 App Server stdio + Command Code JSON 接口完成四条消息、一次固定报告读取，
+  最终 `COMPLETE`。通信标识 `STACK-REPORT-LINK-FORMAT-FIX-20261121`，
+  审查会话 `01a1fb78-0ec7-7320-8253-8e21ee691917`。14 项边界测试通过；独立核对报告哈希、
+  回报事实和四消息结构一致，Bridge 仍 seq 19，正式仓与日历 worktree HEAD/状态未变化。
+- **实际问题**：默认 Codex control socket 不存在，按用户选择使用独立会话，未绕用内部 IPC；
+  首次通信因本地 JSON 回报不合规被拒收（原通信记录保留），修正输出模板后验证通过，记 SYS-10。
+  启动时另有一次哈希参数笔误，在创建状态或模型调用前被拒绝并更正；不是业务重跑。
+- **源码／安装／验证**：新增 `supervisor/agent_link.py`、`agent_link_worker.mjs` 与对应测试，
+  复用既有 supervisor 锁与原子状态写入；源码仅在批准 Stack 开发副本。未正式晋升、未可信安装。
+  已完成真实只读模型通信；传输队列处理、严格类型与持久化防重入另有针对性离线测试。
+- **三类结论**：通信最小闭环 PASS；日历业务仍 FAILED/BLOCKED、exit 124、Word 测试 0；
+  原业务受控链路没有新增执行；Windows 实机 NOT_RUN；SYS-09 根因仍 UNKNOWN。
+- **未覆盖**：自动派发业务动作、当前桌面聊天直连、原交互会话接管、常驻服务、任意项目接入。
+  当前只允许 `inspect_evidence`；本地端禁用工具，审查端使用只读沙箱，不执行回复中的 shell 文本。
+- **收口与下一方向**：本次通信验收收口；后续复用通道承接明确授权的既有可信动作，
+  沿用原契约、沙箱、预算与失败停手条件。没有重跑旧任务、修改正式树或新增诊断框架。
 
 ### 2026-11-21 CAL-WPF-001 首次受控执行（FAILED / BLOCKED）
 

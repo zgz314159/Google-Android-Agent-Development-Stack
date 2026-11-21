@@ -23,6 +23,28 @@
 
 ## 当前业务与已知事实
 
+### 最新进度（2026-11-21 自动汇报接入）
+
+- 用户已完成 CAL-WPF-001 的 root 准备；单次真实业务任务随后 BLOCKED / exit 124（120 秒超时），
+  清理和回传确认。无业务改动、WordImportTests 0 匹配，业务验收 FAILED，根因 SYS-09 UNKNOWN；
+  Bridge 已推进到 seq 19。不得再把 root 登记当作本项目当前阻断，也不得自动重跑或创建 CAL-WPF-002。
+- 用户明确转向建设“本地 AI 自动汇报 → Codex 审查 → 自动接收指令与回报”的能力，并接受先使用
+  独立 Codex 审查会话。本轮在批准 Stack 开发副本实现只读最小版本
+  `orchestration/hermes/supervisor/agent_link.py` 和项目拥有的工具禁用 mod。
+- Codex 默认 control socket 不存在；未尝试绕用桌面内部 IPC，也未改配置开放接口。独立审查通过
+  官方 App Server stdio；本地端为 Command Code 1.91.1，沿用 DeepSeek 模型，在新通信会话中运行，
+  没有接管原交互进程或并行修改其业务文件。
+- 真实自动往返已 COMPLETE：通信 `STACK-REPORT-LINK-FORMAT-FIX-20261121`，
+  Codex 会话 `01a1fb78-0ec7-7320-8253-8e21ee691917`（“Stack 自动审查：报告通信验证”），
+  Command Code 会话 `06e0ba1d-9902-4cb1-9c83-e9289fc195ef`。四条关联消息，一次固定报告读取；
+  14 项边界测试及独立核对 PASS。首次通信因本地回报 JSON 不合规而停止，模板修正后才通过，
+  不是 CAL-WPF-001 业务重试；未新增 Bridge 任务、未消费新序号。
+- 当前只允许 `inspect_evidence`，不能将模型文本直接作为 shell 执行；它尚未接入自动业务动作、
+  后台常驻、原交互会话接管或当前桌面聊天直连。不得把本次通信成功写成业务成功或通用接入完成。
+- 运行记录在 Stack 外部 state 的 `supervisor/agent-link/<通信ID>/state.json`；源码与文档在
+  批准开发副本，未晋升正式树、未可信安装。下一方向是复用这条通道接入明确授权的既有受控动作，
+  保留原契约／安装／沙箱／失败门禁；不以通信改造为由重开 005 或扩建诊断。
+
 - 业务目标：Windows 离线任务日历 WPF V2，C#／WPF／.NET 10；保留旧版功能，按六张 UI 图实现。任务包：`/home/zhong/EXE/RILI/DeepSeek_WPF_TaskCalendar_V2`。
 - 正式业务仓：`/home/zhong/EXE/OfflineTaskCalendar_WPF`；批准 worktree：`/var/tmp/RILI-WPF-V2/CAL-001/project`；运行产物：`/home/zhong/EXE/RILI/artifacts`。
 - Stack 开发副本：`/var/tmp/IAP-CONTROL-DEV/stack`；AEGL 开发副本：`/var/tmp/IAP-CONTROL-DEV/aegl`。不要修改正式系统仓或未跟踪的旧 004 文件。
@@ -34,9 +56,11 @@
 
 ## 接下来怎样继续
 
-用户已把集中纠正指令交给另一执行者（DeepSeek），可能正在工作。新对话先读取用户最新回传及本仓最新状态；不知道执行者进度时先做只读核对，不重复安装、发送、登记或执行，不并发修改同一文件。
+DeepSeek 的 CAL-WPF-001 失败报告已回传，任务已停止。当前用户选择的工作是上节自动汇报通道；
+新对话先核对最新回传、仓状态和其他执行者进度，不重复安装、发送、登记或执行，不并发修改同一文件。
 
-当前优先：保留业务成果，纠正文档和开发位置，完成离线契约与现有可信接入，选择一个尚未完成且 Ubuntu 可验收的小型日历功能，通过真实系统闭环执行。Word .docx 导入仅是此前候选，先确认是否已完成，不固定为新任务。
+当前优先：收口已经通过的只读自动汇报验证，保留 CAL-WPF-001 失败与 UNKNOWN；后续只按用户选择
+接入已有可信动作或处理有价值的实际阻断。Word 导入尚未实现，不自动再发一轮。
 
 此后判断能否把接入流程用于其他授权项目：本项目成功不代表通用化完成；通用化不能变成脱离真实业务的基础设施扩建。
 
