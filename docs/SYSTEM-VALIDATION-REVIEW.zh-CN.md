@@ -141,6 +141,15 @@ Word `.docx` 导入；离线契约已 READY（manifest `639ed1fe…`），root �
 
 ### 2026-11-21 HOST-001 真实执行：超时，自动回报已接收
 
+- **工具结果实证及必要修复**：用户认证只读提取成功，exit0/stderr空；新摘要SHA
+  `1f82794897256d052fb6739082c85bd794bcc43676fa7432c3185672590a69f6`。20个post有4个ERROR：
+  terminal三次exit1/2/1、read_file一次；其余16个OK，无write_file/patch事件。不能据此断言terminal
+  是否尝试写入。静态确认启动cwd与提示包文件/源码相对路径基准不同，直接按cwd解析均不存在；
+  提示生成器已明确HERMES_CONTRACT_PACKAGE、source_root及登记CLI cwd，11项既有相关检查通过。
+  未修改旧冻结包；此确定缺口与本轮4个错误的因果仍UNKNOWN，不能说完整根因已修好。
+  复用现有guard请求字段提取器，精确registry绑定--task，固定类别/命令hash/声明文件基准提示输出，
+  3项检查通过；源码SHA `83b5744de11095d1b4b30e6154b0ea6f3cad6ae39f1037d9fe5ff82ad6ca4cbd`。
+  待普通终端认证读取已有guard-capture，落盘guard-request-summary.json并自动回执；不调模型/重跑。
 - **继续查因（用户随后要求）**：确认broker已采集工具固定状态/错误类别/退出码/耗时，旧summary
   未输出这些字段，导致现摘要不能判断工具是否成功。仅修正现有AEGL摘要器的严格固定格式解析，
   10项相关检查通过，源码SHA `26f1cbbb937c582a793abec01540cd3a7222c0d89b99bc2ac2707780fc5d21bf`；

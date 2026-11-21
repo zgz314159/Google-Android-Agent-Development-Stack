@@ -25,6 +25,22 @@
 
 ### 最新进度（2026-11-21 自动汇报接入）
 
+**工具结果已读取；路径提示缺口已修复源码，因果核对仍待既有请求记录**：用户认证后的
+phase-summary-tools提取exit0、stderr空，SHA `1f82794897256d052fb6739082c85bd794bcc43676fa7432c3185672590a69f6`。
+20个post中4个ERROR（terminal三次exit1/2/1，read_file一次）、16个OK；无write_file/patch事件。
+工具返回快，不能据此认定工具卡死；terminal是否尝试写入仍须核对实际请求，不能只凭工具名判断。
+静态核对确认：sandbox启动cwd为登记worktree，而提示中包文件仅给相对名、read_first给相对source_root
+的project/src路径；这些路径若直接相对cwd读取全部不存在。提示生成器已明确包目录来自
+HERMES_CONTRACT_PACKAGE、源码路径相对project-context.source_root、CLI保持登记cwd；11项既有相关
+检查通过。此为确定的提示路径基准缺口修复，尚不能证明它就是本轮4次错误及总超时的唯一原因。
+未重新生成/改写已消费任务的契约、manifest、state或预算，业务仍FAILED，宿主/Windows NOT_RUN。
+
+为核对真实调用，复用AEGL现有read_004_guard_args.py的固定字段提取，新增精确已登记--task模式；
+只输出guard判定、命令hash、固定参数及声明文件引用基准/固定词提示，不输出完整命令、正文或凭据。
+3项针对性检查通过，源码SHA `83b5744de11095d1b4b30e6154b0ea6f3cad6ae39f1037d9fe5ff82ad6ca4cbd`。
+需用户普通终端一次认证读取同一旧任务的guard-capture，落盘guard-request-summary.json并官方queue
+自动回执；无安装、模型或业务重跑。未获得该记录前不把4个tool_error自动判定为路径错误。
+
 **用户要求继续查根因，已修正现有摘要的工具结果遗漏，尚待读取真实结果**：AEGL现有
 `recovery/iap_diag_summary.py`补充严格整行解析broker已采集的tool/status/error/duration/exit固定字段，
 不输出命令、结果正文或原始arg；10项相关检查通过。源码SHA

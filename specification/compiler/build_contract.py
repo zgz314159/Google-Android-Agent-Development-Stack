@@ -156,6 +156,16 @@ You are the execution agent for a FROZEN Implementation Contract. Work from the 
 and the listed `read_first` files. Do not re-do reconnaissance, re-choose architecture, or
 re-plan decisions this contract has already frozen.
 
+## Path bases (before reading files)
+- The controlled launcher sets `HERMES_CONTRACT_PACKAGE` to the absolute, read-only
+  contract package directory. Resolve ALL package member names below under that directory,
+  not under the current working directory. If it is unavailable, emit `CONTRACT_GAP` and STOP;
+  do not scan the repository to find the contract.
+- Resolve `read_first`, allowed paths and forbidden paths against `source_root` from that
+  package's `project-context.json`, not against the current working directory.
+- Keep the registered launch working directory for CLI checks unless the frozen command
+  explicitly changes it. Reading the package or source_root does not change the CLI workdir.
+
 ## 0. Verify the frozen contract
 - Contract: `implementation-contract.json` (contract_id `{contract['contract_id']}`, version `{contract['contract_version']}`)
 - Package manifest: `manifest.json` — sha256 of every authored artifact
