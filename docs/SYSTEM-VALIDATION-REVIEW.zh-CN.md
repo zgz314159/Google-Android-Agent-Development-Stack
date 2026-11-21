@@ -661,3 +661,11 @@
 - **系统问题变化**：SYS-01—03 对应修复已用于本轮，保持收口；SYS-04 本次经授权恢复；SYS-05—06 保留证据限制。没有据此新增源码修复或验证框架。
 - **决定**：任务与独立业务验收通过，收口。不重跑 005，不自动创建 006。
 - **下一步**：等待用户选择实际业务目标；只把真正阻止该目标的问题列为前置条件。
+
+### 2026-11-21 CAL-INTEGRATE dual-link drain
+
+- **Root cause of “automation stopped”**: queue empty after COMPLETE; `continue` previously `exec`’d host-run and could not drain further items.
+- **Fix**: `dual-link-operator.sh continue` now drains the queue and treats non-COMPLETE as failure.
+- **CAL-INTEGRATE-001**: HUMAN_REQUIRED/timeout 124 — Hermes sandbox cannot read `~/EXE/RILI/artifacts` (staged home). External reference paths are not a valid controlled-session input.
+- **CAL-INTEGRATE-002**: LOCAL_AUTHORIZED COMPLETE; execute SUCCESS/0; host_acceptance **19/19**; Word+VerticalSlice ported from in-tree `_reference/`. Formal main still `832836e`, not promoted.
+
