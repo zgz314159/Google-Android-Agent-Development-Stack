@@ -34,6 +34,15 @@ def contract_gate(task, svc):
         raise link.LinkError("CONTRACT_GATE_REJECTED:" + str(exc.code)) from exc
 
 
+def preparation_ready(task, svc=None):
+    svc = svc or services()
+    registry = json.loads(Path(svc.ce.CONTROLLED_TASK_REGISTRY).read_text())
+    if task["task_id"] not in registry:
+        return False
+    task_check(task, svc)
+    return True
+
+
 def task_check(task, svc=None):
     svc = svc or services()
     state_dir = svc.state.state_dir()

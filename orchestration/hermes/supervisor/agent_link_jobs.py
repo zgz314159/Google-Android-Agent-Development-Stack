@@ -19,7 +19,7 @@ except ImportError:
     import agent_link as link
     import agent_link_actions as actions
 
-ACTIVE = {"NEW", "READY", "WAITING_REVIEW", "WORKER_RUNNING", "ACTION_RUNNING"}
+ACTIVE = {"WAITING_PREPARATION", "NEW", "READY", "WAITING_REVIEW", "WORKER_RUNNING", "ACTION_RUNNING"}
 TERMINAL = {"COMPLETE", "HUMAN_REQUIRED", "STOP"}
 
 
@@ -96,12 +96,13 @@ def submit(plan):
             raise link.LinkError("JOB_ALREADY_EXISTS_NO_RESTART")
         frozen = link.json_text(plan)+"\n"
         link.cstate._atomic_write(directory/"plan.json", frozen)
-        state = {"job_id": plan["job_id"], "plan_sha256": link.digest(frozen), "status": "NEW",
+        initial = "WAITING_PREPARATION" if plan["task"] is not None else "NEW"
+        state = {"job_id": plan["job_id"], "plan_sha256": link.digest(frozen), "status": initial,
                  "expires_at": time.time()+plan["max_wall_seconds"], "actions_done": [],
                  "worker_session_id": None, "report_number": 0, "report": None,
                  "report_sha256": None, "notification": None, "decision": None, "results": {}}
         save(directory, state)
-    return {"job_id": plan["job_id"], "status": "NEW", "state": str(directory/"state.json")}
+    return {"job_id": plan["job_id"], "status": initial, "state": str(directory/"state.json")}
 
 
 def notify(directory, plan, state, queue=None):
@@ -199,7 +200,7 @@ def decide(job_id, thread_id, report_sha, decision, action, instruction):
         return {"job_id": job_id, "status": state["status"]}
 
 
-def step(job_id, *, worker_factory=None, queue=None, execute=None, acceptance=None):
+def step(job_id, *, worker_factory=None, queue=None, execute=None, acceptance=None, prepare=None):
     directory = root()/ident(job_id)
     with link.cstate.campaign_lock(directory):
         directory, plan, state = load(job_id)
@@ -214,6 +215,11 @@ def step(job_id, *, worker_factory=None, queue=None, execute=None, acceptance=No
                 raise link.LinkError("INTERRUPTED_NO_AUTO_RECOVERY")
             if state["status"] == "WAITING_REVIEW":
                 return {"job_id": job_id, "status": state["status"]}
+            if state["status"] == "WAITING_PREPARATION":
+                if not (prepare or actions.preparation_ready)(plan["task"]):
+                    return {"job_id": job_id, "status": "WAITING_PREPARATION"}
+                state["status"] = "NEW"
+                save(directory, state)
             if state["status"] == "NEW":
                 report(directory, plan, state, {"action": "initial_report"}, worker_factory=worker_factory, queue=queue)
             elif state["status"] == "READY":

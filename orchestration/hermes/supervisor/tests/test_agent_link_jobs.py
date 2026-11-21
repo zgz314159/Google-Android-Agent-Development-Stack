@@ -51,7 +51,7 @@ class JobTests(unittest.TestCase):
         return {"returncode": 0}
 
     def step(self, **kwargs):
-        return jobs.step("J", worker_factory=Worker, queue=self.queue, **kwargs)
+        return jobs.step("J", worker_factory=Worker, queue=self.queue, prepare=lambda _: True, **kwargs)
 
     def decision(self, action=None, decision="CONTINUE", sha=None, thread=THREAD):
         _, _, s = jobs.load("J")
@@ -89,6 +89,14 @@ class JobTests(unittest.TestCase):
             self.decision("inspect_evidence", thread="0"*36)
         with self.assertRaisesRegex(link.LinkError, "ACCEPTANCE_NOT_PASSED"):
             self.decision(decision="COMPLETE")
+
+    def test_unregistered_task_waits_without_models_sends_or_execution(self):
+        self.business_plan();jobs.submit(self.plan)
+        result = jobs.step("J", worker_factory=Worker, queue=self.queue, prepare=lambda _: False)
+        self.assertEqual(result["status"], "WAITING_PREPARATION")
+        self.assertEqual(Worker.calls, 0)
+        self.assertFalse(self.sends)
+        self.assertFalse(jobs.load("J")[2]["actions_done"])
 
     def test_execution_failure_stops_without_retries_or_extra_model_calls(self):
         self.business_plan(); jobs.submit(self.plan); self.step()

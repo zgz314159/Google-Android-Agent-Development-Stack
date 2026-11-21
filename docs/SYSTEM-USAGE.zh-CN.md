@@ -415,3 +415,8 @@ Bridge 协议／重放／契约／wrapper／沙箱／guard／broker／清理与�
 `STACK-CURRENT-CHAT-AUTO-20261121` 仅授权报告核对，已在当前聊天收到两份自动回报并完成一次核对，
 最终 COMPLETE；原业务失败结论不变。后台独立调度于 2026-11-21 08:49（Asia/Shanghai）
 首次实际唤醒当前聊天并完成空队列读取；这证明调度回调，不冒充后台执行业务动作。
+
+业务 job 也可在可信准备前冻结：此时为 `WAITING_PREPARATION`，`tick` 只读检查登记；没有 registry
+条目时不调用模型、不发送、不执行，也不将“尚未准备”当失败任务恢复。登记和真实 gate 通过后，
+才进入本地汇报与当前聊天审查。现有 calendar prepare.sh 可用 `--task TASK_ID TASK_ROOT BASE_COMMIT
+MANIFEST_SHA [--check]` 复用同一准备入口；项目/可信目录仍固定，参数不作为代码执行。

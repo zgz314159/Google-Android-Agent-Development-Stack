@@ -25,6 +25,29 @@
 
 ### 最新进度（2026-11-21 自动汇报接入）
 
+**当前用户新要求：回到日历真实开发验证。** 用户已明确要求“通过系统开发日历 → 汇报自动到当前
+本地 Codex 界面 → 审查指令自动交回系统继续”，不是再做只读演示。本轮据此准备一个新的、有价值的
+小切片 `CAL-WORD-PARAGRAPH-001`：Word body-level 段落导入，仅导入器和测试，不含表格/UI/依赖。
+这是当前明确用户要求下的新范围；旧 CAL-WPF-001 仍 FAILED/124 且已消费，不重放、不 recover。
+
+- 批准工作副本：`/var/tmp/RILI-WPF-V2/WORD-PARAGRAPH-001/project`，HEAD
+  `59f9b807a3516740fff9bf8784221b534f70bf44`。正式 main 保持 `832836e`；本轮只提交了项目拥有的
+  8 份作者输入，没有业务实现或测试代码。契约五门 PASS／READY／errors=0，manifest
+  `b451b36ce9d4083d584b0b7af3f69a173f3c3f8e4275d17551fbd28d32d9c291`。
+- 真实自动接力 job `CAL-WORD-PARAGRAPH-001-AUTO` 已冻结并提交，当前 WAITING_PREPARATION。
+  精确任务预算 120 秒、清理宽限沿用 10 秒，失败不重试。宿主验收使用已有 SDK 与
+  `FullyQualifiedName~WordParagraphImportTests`，要求真实执行 >=4 项且全通过，并审查实际差异/断言。
+- 唯一当前阻断：新任务尚未 root 安装/登记；registry 与 trusted 目录 root 拥有，当前不可写。
+  现有 `aegl/recovery/calendar_wpf_001/prepare.sh` 增加 `--task` 数据参数复用，不复制准备设施；
+  修正 worktree Git 元数据路径为实际查询结果。新任务 `--check` 已通过，脚本 SHA-256
+  `e7c9cdd29ab219d342893a42e3a5024b744aa13e5aa89ea245f615d4d9b5dddb`。
+- 队列新增 WAITING_PREPARATION：登记缺失时只读等待，不调用模型或发送；真实登记和 gate 通过后自动
+  开始汇报、当前聊天审查、一次原 Bridge/Hermes 执行、结果回传与宿主验收。相关 15 项测试通过。
+  heartbeat 提示已更新到该精确范围，不再把本轮视为“缺新执行授权”；授权已有，缺的是 root 权限操作。
+- 当前状态仍为业务/模型执行/宿主验收 NOT_RUN；没有 root 执行、Chrome 发送或新 round。
+  用户执行一次已审查的 root 准备命令后，后台在同一冻结 job 中自动续行，无需再搬运汇报或重复申请
+  同一单次授权。该 job 总等待/接力窗口 1 小时，若超时则停手，不自动延长或另建身份。
+
 **第二阶段（本轮）**：用户进一步明确要求继续接通业务派发、后台运行与当前聊天。
 新增 `agent_link_jobs.py`／`agent_link_actions.py`；业务派发通过原 Bridge，新的 entry guard
 在锁内、启动恢复或状态修改前拒绝未授权／已消费身份。dotnet 宿主验收采用外部副本、只读宿主
