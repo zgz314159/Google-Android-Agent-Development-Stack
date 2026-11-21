@@ -82,8 +82,8 @@
 | SYS-06 | 004 原始工具错误全文及实际 executor 上下文不完整：UNKNOWN | 两条 hook 记录快速 `exit=-1`；模型 `timeout=300` 已提取；原始 tool result 未持久化 | 保留历史限制，不继续猜测性改 timeout/cwd，不以新任务补写旧证据。新的真实故障再按其证据处理 |
 | SYS-07 | 新业务受控接入缺少 root 契约安装/登记能力：已收口 | 用户执行 root 准备成功；registry 条目、trusted manifest、worktree owner、BASE_COMMIT 已核对 | 不再阻断 CAL-WPF-001；保留为其他新项目接入的前置说明 |
 | SYS-08 | 前阶段业务代码由当前会话直接提交正式仓，偏离受控闭环：已记录并纠正 | 正式仓 `main` `d362963`…`832836e` 为会话直接提交；journal 无日历任务记录 | 保留成果但不回填为 Hermes 结果；正式仓只读，新工作只在 CAL-001 worktree，交付走可信晋升 |
-| SYS-09 | CAL-WPF-001 单次受控执行 120 秒超时且 worktree 无变更：UNKNOWN | round `BLOCKED`/exit 124/timed_out；cleanup CONFIRMED；result CONFIRMED_SENT；worktree status 空；无任务级诊断（不在 launcher 白名单），scratch aegl-ai 750 不可读 | 阻断该业务任务；不重跑、不 recover。已定位一个契约层缺陷（SYS-10），但超时根因仍无工具级证据 |
-| SYS-11 | CAL-WPF-001 契约 `read_first` 路径与 sandbox cwd 不一致：已定位，已在 CAL-WPF-002 修复 | bwrap `--chdir <worktree>`；契约写 `project/src/...`，从 worktree 读取为 `project/project/...`；`test -f` 实测前者存在、后者不存在 | 使模型无法按指令读取既有 API；是否为超时直接原因仍 UNKNOWN。CAL-WPF-002 已改为绝对路径并 READY |
+| SYS-09 | CAL-WPF-001 单次受控执行 120 秒超时且 worktree 无变更：UNKNOWN | round `BLOCKED`/exit 124/timed_out；cleanup CONFIRMED；result CONFIRMED_SENT；worktree status 空；无任务级诊断（不在 launcher 白名单），scratch aegl-ai 750 不可读 | 阻断该业务任务；不重跑、不 recover。已定位一个契约层缺陷（SYS-20），但超时根因仍无工具级证据 |
+| SYS-20 | CAL-WPF-001 契约 `read_first` 路径与 sandbox cwd 不一致：已定位，已在 CAL-WPF-002 修复 | bwrap `--chdir <worktree>`；契约写 `project/src/...`，从 worktree 读取为 `project/project/...`；`test -f` 实测前者存在、后者不存在 | 使模型无法按指令读取既有 API；是否为超时直接原因仍 UNKNOWN。CAL-WPF-002 已改为绝对路径并 READY |
 | SYS-10 | 自动汇报接口首次本地回报 JSON 不合规：已修复并验证 | 首次通信在严格解析处停止，未派发动作；分离输出模板与输入数据后，真实四消息往返 COMPLETE；14 项边界测试通过 | 只读报告审查已接通；不据此声称业务执行、当前桌面直连或通用自动接入通过 |
 | SYS-11 | 自动派发未声明正式 Chrome adapter 环境：已修复并真实验证 | 首次读取前 READ_FAILED；固定正式端点并拒绝冲突。用户授权后经 INITIAL_READ_RECOVERY 审计继续，实际控制发送及 ACCEPTED 成功 | 入口问题收口；原失败保留，不把后续业务超时归因于此 |
 | SYS-12 | Hermes bootstrap re-exec 丢失项目入口导入路径：已修复并真实验证 | 原重启 ModuleNotFoundError，未发送未消费；运行时选择提前且显式入口路径。23项针对性测试PASS，精确请求只读确认不存在后经 BOOTSTRAP_READ_CONTINUATION 续接同次尝试，实际进入EXECUTING | 已收口；未增加模型次数或任务预算。CAL-WORD-PARAGRAPH-001后续120秒超时根因仍UNKNOWN，与SYS-09同类现象但不能推定同一原因 |
@@ -156,7 +156,7 @@ Word `.docx` 导入；离线契约已 READY（manifest `639ed1fe…`），root �
 - **只读核验**：使用现有参数化入口
   `recovery/calendar_wpf_001/prepare.sh --task CAL-WPF-002 ... --check`
   通过，输出 `BINDING_OK` / `CHECK_OK`。
-- **系统问题变化**：新增 SYS-11（契约路径与 cwd 不一致，已在新任务修复）；
+- **系统问题变化**：新增 SYS-20（契约路径与 cwd 不一致，已在新任务修复）；
   SYS-09 保留 UNKNOWN；SYS-07 已收口；无新增系统代码缺陷。
 - **修复生效位置**：AEGL 开发副本提交 wrapper 哈希 pin；未做 root 安装/登记。
 - **未覆盖**：CAL-WPF-002 的 trusted install、register、gate、launcher、Hermes、
@@ -171,7 +171,7 @@ Word `.docx` 导入；离线契约已 READY（manifest `639ed1fe…`），root �
 预先约定的独立验收：CAL-WPF-002 契约 READY；round 后宿主 WordImportTests >0 全通过；源哈希不变
 实际结果：CAL-WPF-001 BLOCKED/124；无重跑；CAL-WPF-002 --check CHECK_OK；无 root 准备
 已证明的范围／证据摘要：read_first 路径不匹配实测；CAL-002 manifest b1e08ba6…；worktree 3d9a87d
-本轮系统问题：SYS-11 已定位并修复于新契约；SYS-09 仍 UNKNOWN；SYS-07 已收口
+本轮系统问题：SYS-20 已定位并修复于新契约；SYS-09 仍 UNKNOWN；SYS-07 已收口
 修复生效位置：AEGL wrapper hash pin；CAL-002 契约输入；未 root 安装
 未覆盖或无法证明的部分：超时根因；CAL-002 trusted install/register/gate/round/宿主验收；Windows
 收口决定：停在 root 外部阻断，不自动执行新任务
