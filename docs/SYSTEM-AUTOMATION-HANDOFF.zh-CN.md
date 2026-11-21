@@ -2,15 +2,29 @@
 
 更新：2026-11-21。本文件保存用户要求与证据边界，不是新的运行框架或执行授权。
 
+## 自动化回传与派发：两条独立链路（2026-11-21 用户纠正）
+
+必须分开，禁止把审查终端接到 Chrome ChatGPT：
+
+1. **链路1 — 审查／派发**：`Hermes/Stack agent-link` ↔ **Cursor 终端** 或 **Codex 终端**。  
+   本地受控汇报写入审查端（Cursor inbox 或 `codex queue`），审查端用 `pending`／`decide`／`ack` 回写；  
+   不经 Chrome，也不经 ChatGPT 网页中转。
+2. **链路2 — 受控执行协议**：`Hermes Bridge` ↔ **Chrome ChatGPT**。  
+   仅用于 `HERMES_TASK_V1` 控制块发送、唯一新控制回复校验、round／清理／结果回传。  
+   ChatGPT 回复只作协议控制块或指导，不是审查会话，也不是 Cursor／Codex 的消息总线。
+
+错误拓扑：**Chrome ChatGPT ↔ Cursor／Codex**（用网页 ChatGPT 给审查终端传汇报或派发指令）——明确禁止。  
+关闭 Codex 审查通道只影响链路1的 Codex 端点；不影响链路2。Cursor 审查计划的 `thread_id` 应为 `cursor-inbox`。
+
 ## 总目标
 
 建设 AEGL／Google-Android-Agent-Development-Stack 的可复用自动化开发能力。日历、图片分析等都是业务验证项目，不是系统本身。
 
-理想使用方式：用户给出项目路径、需求和授权范围，系统自动完成精确 binding 与 Git 归属检查、开发契约五门（schema／traceability／boundaries／acceptance／hashes）、可信安装与任务登记及实际 gate、Hermes 受控执行（wrapper／sandbox／guard／broker）、Chrome 中 ChatGPT 指导、清理与结果回传、独立验收和系统问题总结。
+理想使用方式：用户给出项目路径、需求和授权范围，系统自动完成精确 binding 与 Git 归属检查、开发契约五门（schema／traceability／boundaries／acceptance／hashes）、可信安装与任务登记及实际 gate、Hermes 受控执行（wrapper／sandbox／guard／broker）、链路2 上 Chrome ChatGPT 控制协议、清理与结果回传、经链路1 的审查终端独立验收与系统问题总结。
 
 通用接入应复用现有入口、配置和可信接口；项目差异主要由项目拥有的需求、精确路径、构建命令和验收条件表达。目标是不必每换项目就修改系统源码、复制专用准备脚本或手工拼装命令。当前尚未证明该目标已实现，不能承诺所有技术栈和外部环境零适配。
 
-自动接入不是自动放行。保持既有权限与沙箱边界；首次可信配置、授权外操作、不可代替的用户认证按真实权限处理。Chrome 回复作为指导或按正式协议校验的控制块，不是可直接执行的可信代码。
+自动接入不是自动放行。保持既有权限与沙箱边界；首次可信配置、授权外操作、不可代替的用户认证按真实权限处理。Chrome 回复作为指导或按正式协议校验的控制块，不是可直接执行的可信代码，更不是审查终端通道。
 
 ## 不得偏离的推进路径
 

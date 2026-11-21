@@ -402,19 +402,27 @@ python3 orchestration/hermes/supervisor/agent_link.py
 
 ### 9.1 当前聊天、后台唤醒与业务派发（后续接入）
 
+架构纠正（2026-11-21）：自动化回传与派发是**两条独立链路**，不是 Chrome ChatGPT 给 Cursor／Codex 传话。
+
+1. **链路1 Hermes ↔ Cursor 或 Codex 终端**：`agent_link_jobs` 汇报与 `decide`／`ack`。  
+   Cursor 用 `thread_id=cursor-inbox` + `agent-link/cursor-inbox/`；Codex 用官方  
+   `codex queue --thread <UUID>`。由 `review-binding.json` 选择端点；可只开 Cursor。
+2. **链路2 Hermes ↔ Chrome ChatGPT**：仅 `execute_contract` 内的控制块发送／校验／round／结果。  
+   禁止用 ChatGPT 网页充当审查终端或 Cursor／Codex 的消息总线。
+
 新增 `supervisor/agent_link_jobs.py` 和 `agent_link_actions.py`，沿用同一 supervisor 状态根、
-锁和原子写入。调用方在已有授权范围内冻结一份任务计划，`submit` 后由 `tick` 推进；
-本地 AI 汇报使用官方 `codex queue --thread <UUID>` 自动进入当前聊天，无需剪贴板。
-`decide` 把当前聊天的关联决定写回队列，下次 `tick` 自动派发；报告哈希、聊天 ID 和状态不符即拒绝，
-旧消息不会造成重复执行。`pending` 用于当前聊天读取已冻结范围与回报，`ack` 只确认收到。
+锁和原子写入。调用方在已有授权范围内冻结一份任务计划，`submit` 后由 `tick`／`host-run` 推进；
+链路1 汇报进入选定审查终端，无需经 Chrome。`decide` 把审查终端的关联决定写回队列；报告哈希、
+审查端 ID 和状态不符即拒绝，旧消息不会造成重复执行。`pending` 读取已冻结范围与回报，`ack` 只确认收到。
 
 计划字段为 `job_id`、`thread_id`、`evidence`、`evidence_sha256`、`worker_model`、
-`max_wall_seconds`、`max_actions`、`task`、`acceptance`。计划是外部运行状态，冻结后不可改写；
-它不能代替本聊天中的真实用户授权。`task=null` 只允许一次报告核对；业务计划中的 `task`
-只能固定 `task_id`、`project`、`contract_package`、`contract_manifest_sha256`、
-`max_runtime_s=120`。没有声明的身份、路径、预算、动作和 shell 文本一律不能由模型追加。
+`max_wall_seconds`、`max_actions`、`task`、`acceptance`。`thread_id` 为 Codex UUID 或  
+`cursor-inbox`。计划是外部运行状态，冻结后不可改写；不能代替审查终端中的真实用户授权。
+`task=null` 只允许一次报告核对；业务计划中的 `task` 只能固定 `task_id`、`project`、
+`contract_package`、`contract_manifest_sha256`、`max_runtime_s=120`。没有声明的身份、路径、
+预算、动作和 shell 文本一律不能由模型追加。
 
-业务动作复用原链路：在 Bridge 锁内、任何状态修改或启动恢复之前检查精确范围、未消费身份、
+业务动作走**链路2**：在 Bridge 锁内、任何状态修改或启动恢复之前检查精确范围、未消费身份、
 root 登记和真实 gate；然后单次正式 Chrome 请求、读取唯一且逐字段相同的新控制块，走原
 Bridge 协议／重放／契约／wrapper／沙箱／guard／broker／清理与结果事务。失败不恢复、不重发。
 只有实际任务 SUCCESS、退出 0、清理确认且回传确认，才可请求 `host_acceptance`。

@@ -567,6 +567,33 @@ results=Path(sys.argv[sys.argv.index('--results-directory')+1])
         self.assertEqual(result["job_status"], "HUMAN_REQUIRED")
         self.assertTrue(Path(result["path"]).is_file())
 
+    def test_cursor_review_thread_id_is_first_class_link1_endpoint(self):
+        self.plan["thread_id"] = jobs.CURSOR_REVIEW_ID
+        self._write_binding(["cursor_inbox"], ["cursor_inbox"])
+        jobs.submit(self.plan)
+        jobs.step("J", worker_factory=Worker, queue=self.queue, prepare=lambda _: True)
+        self.assertEqual(jobs.load("J")[2]["notification"], "QUEUED")
+        self.assertTrue(jobs.load("J")[2]["notification_channels"]["cursor_inbox"]["ok"])
+        self.assertNotIn("codex", jobs.load("J")[2]["notification_channels"])
+        sha = jobs.load("J")[2]["report_sha256"]
+        jobs.decide("J", jobs.CURSOR_REVIEW_ID, sha, "CONTINUE", "inspect_evidence", "cursor link-1 decide")
+        self.assertEqual(jobs.load("J")[2]["status"], "READY")
+        with self.assertRaisesRegex(link.LinkError, "THREAD_ID"):
+            bad = dict(self.plan); bad["job_id"] = "J2"; bad["thread_id"] = "chatgpt-relay"
+            jobs.validate_plan(bad)
+
+    def test_host_run_check_skips_codex_cli_when_cursor_only(self):
+        self.plan["thread_id"] = jobs.CURSOR_REVIEW_ID
+        self._write_binding(["cursor_inbox"], ["cursor_inbox"])
+        jobs.submit(self.plan)
+        sha = jobs.load("J")[2]["plan_sha256"]
+        svc = actions.services()
+        with patch.object(svc.ce, "require_launch_privilege"), \
+                patch.object(jobs, "codex_executable", side_effect=AssertionError("codex must not be required")):
+            result = jobs.host_run("J", jobs.CURSOR_REVIEW_ID, sha, check_only=True)
+        self.assertEqual(result["host_context"], "READY")
+        self.assertEqual(result["review_channels"], ["cursor_inbox"])
+
 
 if __name__ == "__main__":
     unittest.main()

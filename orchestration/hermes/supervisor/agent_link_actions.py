@@ -83,6 +83,11 @@ def task_check(task, svc=None):
 
 
 def execute_contract(task, job_id, *, svc=None):
+    """Link 2 only: Hermes Bridge <-> Chrome ChatGPT control/result protocol.
+
+    Review/dispatch decisions belong on link 1 (Hermes <-> Cursor or Codex terminal)
+    and must not be routed through Chrome ChatGPT.
+    """
     svc = svc or services()
     authorized = {}
 

@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Persistent Agent Link jobs, reviewed in the current chat and driven by app heartbeat.
+"""Persistent Agent Link jobs: Hermes review/dispatch terminal link.
+
+Two links stay separate:
+1) Hermes/Stack agent-link <-> Cursor terminal OR Codex terminal (reports + decide/ack).
+2) Hermes Bridge <-> Chrome ChatGPT (HERMES_TASK_V1 control/result only).
+Chrome ChatGPT must not be used as the review/dispatch path to Cursor or Codex.
 
 No new daemon or deployment framework. The operator freezes one scope; model text
 cannot introduce paths, commands, task identities, budgets, retries or promotion.
@@ -26,6 +31,8 @@ TERMINAL = {"COMPLETE", "HUMAN_REQUIRED", "STOP"}
 DESKTOP_CODEX_BIN = Path('/usr/lib/chatgpt/resources/codex')
 REVIEW_BINDING_NAME = 'review-binding.json'
 CURSOR_INBOX_NAME = 'cursor-inbox'
+CURSOR_REVIEW_ID = 'cursor-inbox'
+CODEX_THREAD_RE = re.compile(r"[0-9a-f-]{36}")
 
 
 class NotificationNotStarted(link.LinkError):
@@ -89,12 +96,30 @@ def load_review_binding():
 
 
 def report_message(plan, state):
-    return ("【Stack 自动汇报｜非新增授权】job_id=" + plan["job_id"]
+    return ("【Stack 自动汇报｜非新增授权｜链路1 Hermes↔审查终端】job_id=" + plan["job_id"]
             + " report_sha256=" + state["report_sha256"]
-            + "。这是本地执行者的回报事件。请通过批准 Stack 副本中的 "
-            "orchestration/hermes/supervisor/agent_link_jobs.py pending 读取已冻结范围和回报，"
-            "或读取 agent-link/cursor-inbox 落盘通知；用 decide 写回关联决策，由已授权的宿主执行器依冻结计划推进。"
-            "当前桌面聊天不承担sudo执行。模型回报本身不授予执行、重试、sudo或晋升权限；已消费任务不重放。")
+            + "。这是 Hermes/Stack 对 Cursor 或 Codex 审查终端的回报，不是 Chrome ChatGPT 中转。"
+            "请用 agent_link_jobs.py pending 或 cursor-inbox 读取冻结范围与回报，用 decide 写回决策；"
+            "宿主执行器再走链路2 Hermes↔Chrome ChatGPT 控制协议。桌面审查不承担 sudo。"
+            "模型回报本身不授予执行、重试、sudo或晋升权限；已消费任务不重放。")
+
+
+def validate_review_thread_id(thread_id):
+    """Link-1 reviewer identity: Codex terminal UUID or the Cursor inbox endpoint id."""
+    if thread_id == CURSOR_REVIEW_ID or CODEX_THREAD_RE.fullmatch(thread_id):
+        return thread_id
+    raise link.LinkError("THREAD_ID")
+
+
+def review_queue_for_binding(codex_bin=None):
+    """Build the optional Codex terminal queue only when link-1 binding includes codex."""
+    binding = load_review_binding()
+    if "codex" not in binding["channels"]:
+        def _cursor_only(_thread, _message):
+            raise link.LinkError("CODEX_REVIEW_CHANNEL_DISABLED")
+        return None, _cursor_only
+    binary = codex_executable(codex_bin)
+    return binary, (lambda thread, message: codex_queue(thread, message, executable=binary))
 
 
 def write_cursor_inbox(plan, state, message):
@@ -158,8 +183,7 @@ def validate_plan(p):
                   "max_wall_seconds", "max_actions", "task", "acceptance"}:
         raise link.LinkError("PLAN_FIELDS")
     ident(p["job_id"])
-    if not re.fullmatch(r"[0-9a-f-]{36}", p["thread_id"]):
-        raise link.LinkError("THREAD_ID")
+    validate_review_thread_id(p["thread_id"])
     if not Path(p["evidence"]).is_absolute() or not re.fullmatch(r"[0-9a-f]{64}", p["evidence_sha256"]):
         raise link.LinkError("EVIDENCE_BINDING")
     if (type(p["max_wall_seconds"]) is not int or not 60 <= p["max_wall_seconds"] <= 3600
@@ -484,11 +508,13 @@ def host_run(job_id, thread_id, plan_sha256, *, check_only=False, codex_bin=None
     _, plan, state=load(job_id)
     if thread_id != plan['thread_id'] or plan_sha256 != state['plan_sha256']:
         raise link.LinkError('HOST_JOB_BINDING_MISMATCH')
-    binary=codex_executable(codex_bin)
+    # Link-1 only: Codex CLI is optional unless review-binding includes the codex channel.
+    _binary, queue = review_queue_for_binding(codex_bin)
     if not shutil.which('command-code'):
         raise link.LinkError('HOST_REPORT_WORKER_EXECUTABLE_MISSING')
     if check_only:
-        return {'job_id':job_id,'status':state['status'],'host_context':'READY','execution_attempted':False}
+        return {'job_id':job_id,'status':state['status'],'host_context':'READY','execution_attempted':False,
+                'review_channels': load_review_binding()['channels']}
     deadline=state['expires_at']
     while True:
         # Reuse the same serialization as tick; review decisions use the job lock
@@ -513,7 +539,7 @@ def host_run(job_id, thread_id, plan_sha256, *, check_only=False, codex_bin=None
                 return {'job_id':job_id,'status':state['status'],'host_context':'READY','error':state.get('error')}
             if not waiting_repair:
                 action=(state.get('decision') or {}).get('action') if state['status']=='READY' else None
-                result=step(job_id,queue=lambda thread,message:codex_queue(thread,message,executable=binary))
+                result=step(job_id, queue=queue)
                 if action=='execute_contract':
                     after=load(job_id)[2]
                     diagnostic=after.get('results',{}).get('execute_contract',{}).get('bridge_result',{}).get('diagnostic',{})
