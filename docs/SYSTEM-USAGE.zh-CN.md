@@ -97,12 +97,12 @@ Bridge 为 WAITING_FOR_GPT、seq=13、pending=false。9333 不可达，所以**�
 用户从普通终端显式启动同一`agent_link_jobs.py host-run`承担宿主动作。不从桌面绕过NNP或自动
 另起宿主进程，不加sudo运行整个worker，不安装新常驻服务。
 
-入口要求`--job-id`、`--thread-id`、`--plan-sha256`精确等于已冻结计划；`--check-only`只读核验环境
-和CLI依赖。普通终端PATH未包含Codex时，可显式传`--codex-bin /usr/lib/chatgpt/resources/codex`；
+入口要求`--job-id`、`--thread-id`、`--plan-sha256`精确等于已冻结计划；`--check-only`只读核验环境、
+CLI依赖和绑定，不调用模型/执行任务。普通终端PATH未包含Codex时，可显式传`--codex-bin /usr/lib/chatgpt/resources/codex`；
 默认还识别应用提供的`CODEX_APP_RUNTIME_CLI_PATH`及本机既有安装位置。依赖必须在报告模型调用前
 通过检查。若通知进程启动前ENOENT，保留原报告并记NOT_SENT；仅在精确事实和原授权/窗口内通过
 `recover-notification-start`复用原报告通知，不重新调用模型。真正已启动的SEND_UNCERTAIN仍不自动重试。
-和绑定，不调用模型/执行任务。省略该标志只用于有适用人类授权且未消费的冻结业务job；worker沿用
+省略check-only只用于有适用人类授权且未消费的冻结业务job；worker沿用
 原截止时间、step、单worker锁、受控wrapper与沙箱，等待当前聊天的限定决定后自动推进。终止或消费
 失败任务不会重放；已知安全的发送前失败只等待既有审计恢复，不自动补预算或新建身份。实际退出后，
 已有阶段摘要在宿主内固定入口读取一次，存job外部state目录phase-summary.*，供当前聊天审查。
