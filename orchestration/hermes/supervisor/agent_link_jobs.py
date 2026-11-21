@@ -297,8 +297,81 @@ def tick():
     with link.cstate.campaign_lock(root()/"worker"):
         for item in pending():
             if item["state"]["status"] in ACTIVE:
+                if (item['state']['status'] == 'READY'
+                        and (item['state'].get('decision') or {}).get('action') == 'execute_contract'):
+                    try:
+                        actions.services().ce.require_launch_privilege()
+                    except Exception as exc:
+                        if not hasattr(exc,'code'):
+                            raise
+                        results.append({'job_id':item['plan']['job_id'],'status':'READY',
+                                        'dispatch':'HOST_CONTEXT_REQUIRED','code':exc.code})
+                        continue
                 results.append(step(item["plan"]["job_id"]))
     return results
+
+
+def collect_host_diagnostic(directory, task, svc):
+    """Read existing fixed phase metadata once, in the user-started host context."""
+    marker=directory/'phase-summary-attempt.json'
+    if marker.exists():
+        return
+    link.cstate._atomic_write(marker,link.json_text({'attempted':True,'task_id':task['task_id']})+'\n')
+    try:
+        proc=subprocess.run(['sudo','-n','--',svc.ce.CONTROLLED_WRAPPER,'--diagnostic-summary',
+            '--task-id',task['task_id']],capture_output=True,text=True,timeout=15)
+        stdout,stderr,rc=proc.stdout,proc.stderr,proc.returncode
+    except (OSError,subprocess.SubprocessError) as exc:
+        stdout,stderr,rc='',type(exc).__name__,None
+    link.cstate._atomic_write(directory/'phase-summary.txt',stdout)
+    link.cstate._atomic_write(directory/'phase-summary.stderr.txt',stderr)
+    link.cstate._atomic_write(marker,link.json_text({'attempted':True,'exit_code':rc,
+        'sha256':link.digest(stdout),'task_id':task['task_id']})+'\n')
+
+
+def host_run(job_id, thread_id, plan_sha256, *, check_only=False):
+    """User-started, bounded operator process for ONE frozen job; no daemon/service."""
+    if os.geteuid() == 0 or os.geteuid() != os.getuid():
+        raise link.LinkError('HOST_RUN_REQUIRES_UNPRIVILEGED_OPERATOR')
+    svc=actions.services()
+    try:
+        svc.ce.require_launch_privilege()
+    except Exception as exc:
+        if not hasattr(exc,'code'):
+            raise
+        raise link.LinkError('HOST_CONTEXT_REQUIRED:'+exc.code) from exc
+    _, plan, state=load(job_id)
+    if thread_id != plan['thread_id'] or plan_sha256 != state['plan_sha256']:
+        raise link.LinkError('HOST_JOB_BINDING_MISMATCH')
+    if check_only:
+        return {'job_id':job_id,'status':state['status'],'host_context':'READY','execution_attempted':False}
+    deadline=state['expires_at']
+    while True:
+        # Reuse the same serialization as tick; review decisions use the job lock
+        # and remain writable while this operator process waits.
+        with link.cstate.campaign_lock(root()/'worker'):
+            directory, current_plan, state=load(job_id)
+            if (thread_id != current_plan['thread_id'] or plan_sha256 != state['plan_sha256']
+                    or state['expires_at'] != deadline):
+                raise link.LinkError('HOST_JOB_BINDING_OR_DEADLINE_CHANGED')
+            failed=state.get('results',{}).get('execute_contract',{}).get('bridge_result',{})
+            waiting_repair=(state['status']=='HUMAN_REQUIRED' and not state.get('recovery_history')
+                and failed.get('decision')=='READ_FAILED' and svc.cli.initial_read_failure_is_presend(failed)
+                and deadline-time.time()>=430 and len(state['actions_done'])+2<=plan['max_actions']
+                and not (directory/'stop.request').exists())
+            if state['status'] in TERMINAL and not waiting_repair:
+                return {'job_id':job_id,'status':state['status'],'host_context':'READY'}
+            if not waiting_repair:
+                action=(state.get('decision') or {}).get('action') if state['status']=='READY' else None
+                result=step(job_id)
+                if action=='execute_contract':
+                    after=load(job_id)[2]
+                    diagnostic=after.get('results',{}).get('execute_contract',{}).get('bridge_result',{}).get('diagnostic',{})
+                    if diagnostic.get('stage')=='EXECUTED':
+                        collect_host_diagnostic(directory,current_plan['task'],svc)
+                if result.get('status') in {'COMPLETE','STOP'}:
+                    return {**result,'host_context':'READY'}
+        time.sleep(1)
 
 
 def ack(job_id, thread_id, report_sha):
@@ -421,6 +494,11 @@ def main():
     p.add_argument("--plan", type=Path, required=True)
     sub.add_parser("pending")
     sub.add_parser("tick")
+    p = sub.add_parser('host-run')
+    p.add_argument('--job-id',required=True)
+    p.add_argument('--thread-id',required=True)
+    p.add_argument('--plan-sha256',required=True)
+    p.add_argument('--check-only',action='store_true')
     p = sub.add_parser("decide")
     p.add_argument("--job-id", required=True)
     p.add_argument("--thread-id", required=True)
@@ -448,7 +526,7 @@ def main():
     p.add_argument("--authorization-id", required=True)
     args = parser.parse_args()
     try:
-        if args.command in {"tick", "continue-bootstrap"}:
+        if args.command in {"tick", "continue-bootstrap", "host-run"}:
             prepare_tick_runtime()
         if args.command == "submit":
             result = submit(link.strict_json(args.plan.read_text()))
@@ -456,6 +534,8 @@ def main():
             result = pending()
         elif args.command == "tick":
             result = tick()
+        elif args.command == 'host-run':
+            result=host_run(args.job_id,args.thread_id,args.plan_sha256,check_only=args.check_only)
         elif args.command == "check-task":
             actions.task_check(link.strict_json(args.task_plan.read_text()))
             result = {"status": "TASK_PREFLIGHT_PASS_NO_EXECUTION"}

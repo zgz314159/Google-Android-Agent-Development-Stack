@@ -85,6 +85,10 @@ class AdapterError(RuntimeError):
     pass
 
 
+class SubmitNotReady(AdapterError):
+    """No submit action was attempted because the unique enabled button was absent."""
+
+
 def select_latest_assistant(snapshot: dict) -> dict:
     """Choose the latest visible assistant candidate from a structure snapshot.
 
@@ -165,6 +169,7 @@ def _ensure_browser_env() -> dict:
 
     from browser_harness.admin import ensure_daemon  # noqa: PLC0415
     from browser_harness.helpers import (  # noqa: PLC0415
+        click_at_xy,
         current_tab,
         fill_input,
         js,
@@ -174,6 +179,7 @@ def _ensure_browser_env() -> dict:
     )
 
     _HELPERS = {
+        "click_at_xy": click_at_xy,
         "ensure_daemon": ensure_daemon,
         "current_tab": current_tab,
         "fill_input": fill_input,
@@ -235,6 +241,34 @@ class RealOps:
 
     def press_key(self, key: str) -> None:
         self.h["press_key"](key)
+
+    def submit_target(self, selector: str) -> dict:
+        """Read the unique enabled send button in THIS composer's form."""
+        target = self.js("""
+            (() => {
+              const editor = document.querySelector(%s);
+              const form = editor && editor.closest('form');
+              if (!form) return null;
+              const buttons = [...form.querySelectorAll('button[type="submit"]')].filter(b => {
+                const r = b.getBoundingClientRect();
+                return r.width > 0 && r.height > 0 && !b.disabled &&
+                  b.getAttribute('aria-disabled') !== 'true' &&
+                  (b.getAttribute('data-testid') === 'send-button' ||
+                   ['发送', 'Send', 'Send message', '发送消息'].includes(b.getAttribute('aria-label')));
+              });
+              if (buttons.length !== 1) return null;
+              const r = buttons[0].getBoundingClientRect();
+              return {x: r.x + r.width / 2, y: r.y + r.height / 2};
+            })()
+            """ % json.dumps(selector))
+        if not isinstance(target, dict) or any(type(target.get(k)) not in (int,float) for k in ('x','y')):
+            raise SubmitNotReady('unique enabled send button not found in composer form')
+        return target
+
+    def submit_once(self, selector: str) -> None:
+        # A physical single click avoids depending on the page's Enter-key behavior.
+        target = self.submit_target(selector)
+        self.h['click_at_xy'](target['x'], target['y'])
 
     # -- DOM reads -----------------------------------------------------------
     def composer_selector(self) -> str:
@@ -584,7 +618,7 @@ def send_once(text: str, identifier: str, *, ops=None,
     ops.fill_input(selector, text)
 
     if exact:
-        # Pre-Enter guard for the production result path: the composer body must
+        # Pre-submit guard for the production result path: the composer body must
         # still equal the original multi-line text under the existing exact
         # normalisation. A lost newline, truncation, an empty body or an
         # unreadable composer must never be submitted, and is never refilled or
@@ -614,7 +648,18 @@ def send_once(text: str, identifier: str, *, ops=None,
         }
 
     # 3. SINGLE SEND ATTEMPT ------------------------------------------------
-    ops.press_key("Enter")
+    try:
+        submit = getattr(ops, 'submit_once', None)
+        if callable(submit):
+            submit(selector)
+        else:
+            # Compatibility for the existing injected test/legacy transports.
+            ops.press_key("Enter")
+    except SubmitNotReady as exc:
+        return {'status': SEND_UNCERTAIN, 'sent': False, 'reason': str(exc)}
+    except Exception as exc:  # a partial click/transport failure is uncertain, never retried
+        return {'status': SEND_UNCERTAIN, 'sent': True,
+                'reason': 'single submit attempt raised '+type(exc).__name__}
 
     # 4. CONFIRM THE RESULT MESSAGE (exact) OR THE IDENTIFIER (legacy) ------
     deadline = now() + max(0.0, confirm_timeout_s)

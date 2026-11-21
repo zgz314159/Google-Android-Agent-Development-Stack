@@ -389,6 +389,75 @@ results=Path(sys.argv[sys.argv.index('--results-directory')+1])
         self.assertEqual(result["counts"]["executed"], 1)
         self.assertFalse((worktree/"forbidden").exists())
 
+    def test_host_check_is_readonly_and_bound_to_frozen_job(self):
+        jobs.submit(self.plan)
+        _,_,state=jobs.load('J')
+        before=(jobs.root()/'J/state.json').read_bytes()
+        svc=actions.services()
+        with patch.object(svc.ce,'require_launch_privilege'):
+            r=jobs.host_run('J',THREAD,state['plan_sha256'],check_only=True)
+            self.assertFalse(r['execution_attempted'])
+            for thread,sha in [('0'*36,state['plan_sha256']),(THREAD,'0'*64)]:
+                with self.assertRaisesRegex(link.LinkError,'BINDING_MISMATCH'):
+                    jobs.host_run('J',thread,sha,check_only=True)
+        self.assertEqual(before,(jobs.root()/'J/state.json').read_bytes())
+        self.assertEqual(Worker.calls,0)
+
+    def test_host_context_refusal_never_runs_step(self):
+        jobs.submit(self.plan);svc=actions.services()
+        error=svc.ce.ControlledLaunchError('E_LAUNCH_NO_NEW_PRIVS','blocked')
+        with patch.object(svc.ce,'require_launch_privilege',side_effect=error),patch.object(jobs,'step') as run:
+            with self.assertRaisesRegex(link.LinkError,'HOST_CONTEXT_REQUIRED'):
+                jobs.host_run('J',THREAD,jobs.load('J')[2]['plan_sha256'])
+        run.assert_not_called()
+
+    def test_host_runner_never_replays_terminal_job(self):
+        jobs.submit(self.plan);directory,_,state=jobs.load('J')
+        state['status']='HUMAN_REQUIRED';jobs.save(directory,state)
+        svc=actions.services()
+        with patch.object(svc.ce,'require_launch_privilege'),patch.object(jobs,'step') as run:
+            result=jobs.host_run('J',THREAD,state['plan_sha256'])
+        self.assertEqual(result['status'],'HUMAN_REQUIRED')
+        run.assert_not_called()
+
+    def test_host_runner_waits_for_review_and_uses_existing_step_only(self):
+        jobs.submit(self.plan);svc=actions.services()
+        sha=jobs.load('J')[2]['plan_sha256']
+        sleeps=[]
+        def review(_):
+            sleeps.append(1)
+            state=jobs.load('J')[2]
+            if state['status']=='WAITING_REVIEW':
+                self.decision('inspect_evidence') if not state['actions_done'] else self.decision(decision='COMPLETE')
+        real_step=jobs.step
+        with patch.object(svc.ce,'require_launch_privilege'),patch.object(jobs.time,'sleep',side_effect=review), \
+                patch.object(jobs,'step',side_effect=lambda job: real_step(job,worker_factory=Worker,queue=self.queue)):
+            result=jobs.host_run('J',THREAD,sha)
+        self.assertEqual(result['status'],'COMPLETE')
+        self.assertEqual(jobs.load('J')[2]['actions_done'],['inspect_evidence'])
+        self.assertEqual(Worker.calls,2)
+
+    def test_desktop_tick_cannot_consume_ready_action_when_nnp_blocks(self):
+        self.business_plan();jobs.submit(self.plan);self.step();self.decision('execute_contract')
+        before=(jobs.root()/'J/state.json').read_bytes();svc=actions.services()
+        with patch.object(svc.ce,'require_launch_privilege',side_effect=svc.ce.ControlledLaunchError('E_LAUNCH_NO_NEW_PRIVS','blocked')):
+            result=jobs.tick()
+        self.assertEqual(result[0]['dispatch'],'HOST_CONTEXT_REQUIRED')
+        self.assertEqual(before,(jobs.root()/'J/state.json').read_bytes())
+
+    def test_host_diagnostic_is_fixed_readonly_and_never_retried(self):
+        self.business_plan();jobs.submit(self.plan)
+        directory,_,_=jobs.load('J');svc=actions.services()
+        proc=SimpleNamespace(stdout='DIAG phase=sandbox_prep_begin task=FRESH\n',stderr='',returncode=0)
+        with patch.object(jobs.subprocess,'run',return_value=proc) as run:
+            jobs.collect_host_diagnostic(directory,self.plan['task'],svc)
+            jobs.collect_host_diagnostic(directory,self.plan['task'],svc)
+        self.assertEqual(run.call_count,1)
+        argv=run.call_args.args[0]
+        self.assertEqual(argv,['sudo','-n','--',svc.ce.CONTROLLED_WRAPPER,'--diagnostic-summary','--task-id','FRESH'])
+        self.assertEqual((directory/'phase-summary.txt').read_text(),proc.stdout)
+        self.assertEqual(json.loads((directory/'phase-summary-attempt.json').read_text())['exit_code'],0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -25,6 +25,34 @@
 
 ### 最新进度（2026-11-21 自动汇报接入）
 
+**用户要求查根因后，已完成的修复（覆盖下方旧停止快照）**：
+
+1. **回传根因与真实修复**：只读现场显示完整canonical结果616字符仍在composer，用户turn中没有
+   result_sha；输入框有焦点，同form唯一可用“发送”按钮存在。原Enter提交方式未完成提交。
+   正式adapter改为同form唯一可见/启用submit按钮的物理单击，保留完整草稿校验、exact用户turn确认，
+   无按钮不提交、异常不重试。用户随后明确授权仅补发此失败结果一次，经原HUMAN-ONLY resolver
+   记录HUMAN_RESEND_AUTHORIZED后真实CONFIRMED_SENT/HUMAN_RESEND_CONFIRMED，resend_count=1。
+   result仍`33b66caf…`／FAILED/exit1，未执行Hermes/重跑任务。Bridge现WAITING_FOR_GPT／seq21／
+   pending=false。SYS-14回传阻断收口；旧SEND_UNCERTAIN报告e940…保留原样，不能回填为业务成功。
+   证据：项目外send-resolution.json；原journal含补发授权、确认与RESULT。
+2. **执行归属根因与修复源码**：进程链在桌面应用子进程层开始NoNewPrivs=1（其主进程为0），之后
+   Codex→bash→python均继承1。当前代码把需要sudo的宿主执行放在此受限子进程内，是执行归属错误；
+   不能在该进程清除标志。新增同一agent_link_jobs.py的有界`host-run`入口，由用户显式从普通终端启动，
+   只绑定一个job_id/thread_id/plan_sha256、沿用原deadline/step/worker锁/受控wrapper/沙箱，不建新服务。
+   当前聊天只pending/decide/ack；桌面tick遇执行动作且NNP阻断时保持READY且不改state/消费身份，
+   宿主进程自动取已审核决定执行并回报。宿主内一次读取既有phase-summary，原始正文/arg不输出。
+   安全的发送前已知错误可在既有窗口等待审计恢复，消费失败/不确定发送等仍退出，不补模型次数。
+3. **实际验证与限制**：提交按钮4项、现有发送/精确确认/resolver相关26项、队列/宿主31项，共61项通过。
+   现有normal-path测试stub缺task_id关键字参数已按已生效接口修正，未放宽断言。桌面真实host-run
+   --check-only拒绝E_LAUNCH_NO_NEW_PRIVS，job字节不变。普通终端正向host-context核验尚待用户执行；
+   该核验绑定当前已失败job，仅只读、不调模型/不重跑。当前三个业务身份均仍消费失败，业务源码无实现，
+   宿主业务验收/Windows NOT_RUN。不得把源码/上下文检查当真实业务成功，也不自动新建下一任务。
+
+普通终端只读核验（不加sudo）：
+`PYTHONDONTWRITEBYTECODE=1 python3 /var/tmp/IAP-CONTROL-DEV/stack/orchestration/hermes/supervisor/agent_link_jobs.py host-run --job-id CAL-WORD-PARAGRAPH-DIAG-001-AUTO --thread-id 01a1fb52-6dac-7f61-b200-1f8169e7a605 --plan-sha256 588351f7a8cb2a759af90e0e0298cc218d2368407a71c20f45d37e7b5a0b5ee3 --check-only`
+预期host_context=READY、execution_attempted=false、status=HUMAN_REQUIRED。新业务须另有适用授权及
+未消费身份；获授权时由用户启动同一宿主入口，桌面不得自行通过外部进程逃逸其权限限制。
+
 **普通终端诊断已实际读取并收口**：用户执行同一固定只读summary后，后台文件已到达，退出码2；
 stderr为`DIAG_SUMMARY_FAILED reason=FileNotFoundError`，stdout为空。本次不是成功读取到空事件集，
 而是汇总器未找到所需诊断路径/文件。exit文件SHA

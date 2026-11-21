@@ -90,6 +90,25 @@ Bridge 为 WAITING_FOR_GPT、seq=13、pending=false。9333 不可达，所以**�
 
 ## 4. 专用 Chrome 与 Browser-Harness
 
+### 当前聊天接力的执行归属（2026-11-21 修复）
+
+桌面应用子进程可能带`NoNewPrivs=1`，该标志由Codex及shell继承，不能在子进程清除。
+本系统的业务执行必须经固定sudo wrapper，因此桌面聊天负责`pending`、`decide`、`ack`；
+用户从普通终端显式启动同一`agent_link_jobs.py host-run`承担宿主动作。不从桌面绕过NNP或自动
+另起宿主进程，不加sudo运行整个worker，不安装新常驻服务。
+
+入口要求`--job-id`、`--thread-id`、`--plan-sha256`精确等于已冻结计划；`--check-only`只读核验环境
+和绑定，不调用模型/执行任务。省略该标志只用于有适用人类授权且未消费的冻结业务job；worker沿用
+原截止时间、step、单worker锁、受控wrapper与沙箱，等待当前聊天的限定决定后自动推进。终止或消费
+失败任务不会重放；已知安全的发送前失败只等待既有审计恢复，不自动补预算或新建身份。实际退出后，
+已有阶段摘要在宿主内固定入口读取一次，存job外部state目录phase-summary.*，供当前聊天审查。
+
+当前聊天不得在READY业务动作上改走普通会话开发；NNP阻断的tick保持任务状态不变并返回
+`HOST_CONTEXT_REQUIRED`。宿主已退出或未启动时，先报告真实执行环境，不重复消费任务验证。
+业务实际SUCCESS、清理和回传确认后才独立host_acceptance；非零测试/源码断言审查通过才完成。
+
+当前旧任务的安全只读核验见`SYSTEM-AUTOMATION-HANDOFF.zh-CN.md`的最新进度，不复用其身份执行。
+
 ### 4.1 恢复前检查
 
 本机专用地址是 `http://127.0.0.1:9333`，profile 是

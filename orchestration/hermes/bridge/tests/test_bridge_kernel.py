@@ -1076,7 +1076,7 @@ class TestNormalPathExactConfirmation(TempStateMixin):
             root=self.root,
             read_fn=lambda: {"status": "OK", "text": envelope_for(make_task())},
             gate_fn=safe_gate,
-            execute_fn=lambda package, prompt, max_runtime_s: {"outcome": "SUCCESS", "exit_code": 0},
+            execute_fn=lambda package, prompt, max_runtime_s, **kwargs: {"outcome": "SUCCESS", "exit_code": 0},
             send_fn=lambda text, identifier: adapter.send_once(
                 text, identifier, ops=ops, confirm_timeout_s=0, exact=True),
             progress_fn=lambda payload: None,

@@ -86,8 +86,8 @@
 | SYS-10 | 自动汇报接口首次本地回报 JSON 不合规：已修复并验证 | 首次通信在严格解析处停止，未派发动作；分离输出模板与输入数据后，真实四消息往返 COMPLETE；14 项边界测试通过 | 只读报告审查已接通；不据此声称业务执行、当前桌面直连或通用自动接入通过 |
 | SYS-11 | 自动派发未声明正式 Chrome adapter 环境：已修复并真实验证 | 首次读取前 READ_FAILED；固定正式端点并拒绝冲突。用户授权后经 INITIAL_READ_RECOVERY 审计继续，实际控制发送及 ACCEPTED 成功 | 入口问题收口；原失败保留，不把后续业务超时归因于此 |
 | SYS-12 | Hermes bootstrap re-exec 丢失项目入口导入路径：已修复并真实验证 | 原重启 ModuleNotFoundError，未发送未消费；运行时选择提前且显式入口路径。23项针对性测试PASS，精确请求只读确认不存在后经 BOOTSTRAP_READ_CONTINUATION 续接同次尝试，实际进入EXECUTING | 已收口；未增加模型次数或任务预算。CAL-WORD-PARAGRAPH-001后续120秒超时根因仍UNKNOWN，与SYS-09同类现象但不能推定同一原因 |
-| SYS-13 | 当前执行环境NoNewPrivs=1禁止进入必需sudo wrapper：已确认权限阻断，未解除 | 当前工具进程与父shell均为1；固定summary命令exit1，sudo明确拒绝提权。本轮业务快速FAILED/1、cleanup UNKNOWN，原业务stderr缺失，不能冒充已读业务日志 | 生产run_round增加发送/状态/消费前检查，3项测试通过；不清标志、不换进程绕过。必须在实际允许既有wrapper的授权环境执行；当前已消费task不重放 |
-| SYS-14 | CAL-WORD-PARAGRAPH-DIAG-001结果回传SEND_UNCERTAIN：未解决 | 结果33b66caf…，一次发送后未精确确认，随后只读复核仍不在用户turn；Bridge ERROR/seq20/pending=true | 保留pending和链值，不重发、不resolve为已送达；阻断后续业务派发。当前报告e940cb31…已ack |
+| SYS-13 | 桌面NNP子进程承担需要sudo的宿主执行：根因已定位，执行归属源码已修复，宿主正向核验待完成 | 进程链由桌面应用子进程开始NNP=1，Codex/shell继承；当前sudo直接拒绝。新增原入口host-run绑定单job/thread/plan/deadline，由用户显式启动普通宿主进程，桌面只审查；31项队列/宿主检查通过，桌面真实只读核验拒绝且state字节不变 | 不清NNP、不在桌面自动拉起外部进程绕过。待用户普通终端只读host-context核验，之后仅按新适用授权/未消费身份在宿主执行；原失败不回填 |
+| SYS-14 | 结果停在composer，Enter未完成提交：已修复并真实验证 | 完整616字符canonical仍为草稿，用户turn无该结果，同form唯一可用发送按钮存在。改物理单击且保留exact确认；用户明确授权一次补发后原resolver真实CONFIRMED_SENT，resend_count=1 | Bridge WAITING_FOR_GPT/seq21/pending=false，回传阻断收口；FAILED/1原业务结果不变，未重跑Hermes。证据send-resolution.json及journal |
 
 问题如有状态变化，在此表更新，并在任务记录中留下变化依据。业务已完成而问题仍 UNKNOWN 时，可以保留 UNKNOWN；不要为了让整表变绿而重跑任务。
 
@@ -136,6 +136,27 @@ Word `.docx` 导入；离线契约已 READY（manifest `639ed1fe…`），root �
 ```
 
 ## 8. 简短任务记录
+
+### 2026-11-21 根因修复：结果提交已实证，宿主执行归属已修改
+
+- **回传现场与修复**：只读比对确认616字符完整结果仍在composer，用户turn无result，焦点在editor，
+  同form唯一enabled发送submit存在。原Enter方式未完成提交；adapter改为唯一可用发送按钮物理单击，
+  仍校验完整草稿及exact canonical用户turn；异常不重试，不用草稿当送达。4项提交检查及相关26项
+  现有发送/确认/resolver检查通过。旧normal-path测试stub适配现有task_id关键字，断言未放宽。
+- **真实单次恢复**：用户明确授权仅补发33b66caf失败结果一次。原resolver先持久化授权，单次发送后
+  CONFIRMED_SENT/HUMAN_RESEND_CONFIRMED，human_resend_count=1，RESULT保持FAILED/1。
+  Bridge WAITING_FOR_GPT/seq21/pending=false，未执行Hermes/未重跑/未新建身份。SYS-14收口。
+- **执行归属根因**：实测进程祖先链为桌面主进程NNP0→桌面子进程NNP1→Codex1→shell1→python1。
+  受限桌面子进程不能执行需要sudo的宿主动作；仅拦截错误不足以接通系统，需把执行交回授权宿主。
+  不清NNP或自行通过外部进程逃逸。原任务stderr未保留，旧超时不据此回写根因。
+- **已完成源码修复**：复用agent_link_jobs.py、step与worker锁新增单job host-run；显式绑定thread/plan
+  hash和原deadline，拒绝root或受NNP限制的调用方。桌面只审查decide/ack，tick被NNP阻断时不改变
+  READY任务，宿主正常用户进程取决定自动推进；阶段摘要在宿主内通过固定入口只读一次，不新建服务。
+  31项队列/宿主测试通过，含终止job不重放、错绑定拒绝、状态不变、审查往返、单次固定摘要读取。
+- **实际边界与下一步**：共61项相关检查通过。桌面真实--check-only已拒绝E_LAUNCH_NO_NEW_PRIVS且
+  state字节不变；普通终端正向只读核验尚未执行。此核验不调模型/不跑业务，不是新一次任务授权。
+  用户显式从普通终端启动宿主入口后，未来仅按新的适用授权和未消费身份执行，不回放当前三个失败身份。
+  原业务FAILED、宿主业务验收/Windows NOT_RUN；自动回传修复不等于日历开发成功。
 
 ### 2026-11-21 普通终端阶段摘要读取结果（已收口）
 
