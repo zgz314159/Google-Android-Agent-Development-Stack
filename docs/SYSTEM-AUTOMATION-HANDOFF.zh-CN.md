@@ -5,7 +5,7 @@
 
 
 
-**顾问双链已落地（Stack）**：`execute_contract` 改为本地受权直跑 Hermes，内嵌 `chatgpt_advise` 纯文本汇报+最多1次指令直注；禁止 Chrome 控制块。相关 unittest 43/43 PASS。旧 `CAL-WORD-TABLE-001` STOP/superseded；阶段2将重冻 `CAL-WORD-TABLE-002`。
+**顾问双链已落地（Stack）**：`execute_contract` 改为本地受权直跑 Hermes，内嵌 `chatgpt_advise` 纯文本汇报+最多1次指令直注；禁止 Chrome 控制块。相关 unittest 43/43 PASS。旧 `CAL-WORD-TABLE-001` STOP/superseded。**阶段2重冻 CAL-WORD-TABLE-002（顾问拓扑）**：job `CAL-WORD-TABLE-002-AUTO` WAITING_PREPARATION；baseline `bb347cedfb9683c2c2153e375b614d260440eb3d`；manifest `389ecb52b97edf27d8fa68cb14fb39d4f4f407fcd0d817ada7a502f41929de86`；plan_sha256 `b41db9bbaf58cdfcddb7e6a4c11a432614c9a31a84e2b792be9e80cee509ff18`；`--check` PASS；Chrome 只应收开发汇报/指令，不见控制块。
 
 **用户再次纠正双链语义（2026-11-21 19:44）**：要的不是把 `HERMES_TASK_V1`/`EXECUTE_CONTRACT` 控制块丢给 Chrome ChatGPT 做协议中继。正确意图：**(A) Hermes + Command Code + 终端** 上实际开发编程；开发完成后 **(B) 把开发汇报发给 Chrome ChatGPT 分析**；**(C) ChatGPT 给出下一步开发指令，回流到 Hermes + Command Code + 终端继续写代码**。Chrome 侧应是「分析/下指令」会话，不是 `<<<HERMES_TASK_V1>>>` 挑战-应答。`CAL-WORD-WIRE-001` seq25 虽已 SUCCESS（控制协议路径），但不代表该拓扑符合用户意图；**暂停** `CAL-WORD-TABLE-001` 的 root prepare/host-run（同拓扑），待按新语义改派发/回报通道后再冻。正式仓仍未晋升；阶段3未冻。
 
