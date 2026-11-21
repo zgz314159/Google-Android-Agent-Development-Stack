@@ -120,6 +120,29 @@ class CliContractTest(unittest.TestCase):
         self.assertTrue(os.path.isfile(os.path.join(proc.stdout.strip(), 'manifest.json')))
         self.assertEqual(support.read(os.path.join(pkg, 'manifest.json')), manifest_before)
 
+    def test_absolute_source_root_is_baked_into_prompt_paths(self):
+        pkg = make_cli_package(self.tmp.name)
+        task_root = os.path.join(self.tmp.name, 'TASK-ROOT')
+        report = support.run_pipeline(pkg)
+        self.assertEqual(report['status'], 'READY', report['errors'])
+        contract = json.loads(support.read(os.path.join(pkg, 'implementation-contract.json')))
+        contract['read_first'] = [{'path': 'project/app/Main.kt', 'why': 'entry'}]
+        contract['allowed_paths'] = ['project']
+        prompt = support.build_contract.render_prompt(
+            contract,
+            source_root=task_root,
+            package_dir=pkg,
+        )
+        abs_read = os.path.abspath(os.path.join(task_root, 'project/app/Main.kt'))
+        abs_allowed = os.path.abspath(os.path.join(task_root, 'project'))
+        self.assertIn(f'Frozen `source_root` absolute path: `{os.path.abspath(task_root)}`', prompt)
+        self.assertIn(f'`{abs_read}`', prompt)
+        self.assertIn(f'`{abs_allowed}`', prompt)
+        self.assertIn('Do not reinterpret those absolute paths relative to cwd.', prompt)
+        self.assertIn('Do not run `find`/`ls` to locate the contract package.', prompt)
+        self.assertIn('`$HERMES_CONTRACT_PACKAGE/READY.json`', prompt)
+        self.assertNotIn('  1. project/app/Main.kt\n', prompt)
+
     def test_prompt_is_contract_first_for_evidence(self):
         pkg = make_cli_package(self.tmp.name)
         prompt = self._prompt(pkg)

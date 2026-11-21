@@ -115,16 +115,67 @@ def build(pkg: str) -> dict:
     return contract
 
 
-def render_prompt(contract: dict) -> str:
+def _resolve_source_root(source_root: str | None, package_dir: str | None) -> str | None:
+    if not source_root:
+        return None
+    if os.path.isabs(source_root):
+        return os.path.abspath(source_root)
+    if package_dir:
+        return os.path.abspath(os.path.join(package_dir, source_root))
+    return source_root
+
+
+def _under_root(root: str | None, rel: str) -> str:
+    if not root:
+        return rel
+    if os.path.isabs(rel):
+        return os.path.abspath(rel)
+    return os.path.abspath(os.path.join(root, rel))
+
+
+def render_prompt(
+    contract: dict,
+    *,
+    source_root: str | None = None,
+    package_dir: str | None = None,
+) -> str:
     tasks = contract["tasks"]
     task_lines = "\n".join(
         f"  {task['id']}  {task['goal']}  (depends: {', '.join(task['depends']) or 'none'})"
         for task in tasks
     )
-    allowed = "\n".join(f"  - {path}" for path in contract["allowed_paths"])
-    forbidden = "\n".join(f"  - {path}" for path in contract["forbidden_paths"]) or "  - (none declared)"
+    root = _resolve_source_root(source_root, package_dir)
+    allowed = "\n".join(
+        f"  - `{_under_root(root, path)}`" if root else f"  - {path}"
+        for path in contract["allowed_paths"]
+    )
+    forbidden = (
+        "\n".join(
+            f"  - `{_under_root(root, path)}`" if root else f"  - {path}"
+            for path in contract["forbidden_paths"]
+        )
+        or "  - (none declared)"
+    )
     stops = "\n".join(f"  - {item}" for item in contract["stop_conditions"])
-    read_first = "\n".join(f"  {i + 1}. {item['path']}" for i, item in enumerate(contract["read_first"]))
+    if root:
+        read_first = "\n".join(
+            f"  {i + 1}. `{_under_root(root, item['path'])}`"
+            f" (from source_root + `{item['path']}`)"
+            for i, item in enumerate(contract["read_first"])
+        )
+        source_root_line = (
+            f"- Frozen `source_root` absolute path: `{root}`.\n"
+            "- Use the absolute `read_first` / allowed / forbidden paths listed below with "
+            "`read_file` or shell. Do not reinterpret those absolute paths relative to cwd.\n"
+        )
+    else:
+        read_first = "\n".join(
+            f"  {i + 1}. {item['path']}" for i, item in enumerate(contract["read_first"])
+        )
+        source_root_line = (
+            "- Resolve `read_first`, allowed paths and forbidden paths against `source_root` "
+            "from that package's `project-context.json`, not against the current working directory.\n"
+        )
     intent = contract["verification_intent"]
     if intent.get("engine") == "cli":
         checks = "\n".join(
@@ -162,24 +213,27 @@ re-plan decisions this contract has already frozen.
   not under the current working directory. If it is unavailable, emit `CONTRACT_GAP` and STOP;
   do not scan the repository to find the contract.
   Obtain that directory once using `printf '%s\\n' "$HERMES_CONTRACT_PACKAGE"`.
-  Batch the required package reads from that directory; do not repeat directory discovery.
-- Resolve `read_first`, allowed paths and forbidden paths against `source_root` from that
-  package's `project-context.json`, not against the current working directory.
-- Keep the registered launch working directory for CLI checks unless the frozen command
+  Then batch-read only: `"$HERMES_CONTRACT_PACKAGE/READY.json"`,
+  `"$HERMES_CONTRACT_PACKAGE/manifest.json"`,
+  `"$HERMES_CONTRACT_PACKAGE/implementation-contract.json"`,
+  `"$HERMES_CONTRACT_PACKAGE/project-context.json"`, and the other package members listed
+  below. Do not run `find`/`ls` to locate the contract package.
+{source_root_line}- Keep the registered launch working directory for CLI checks unless the frozen command
   explicitly changes it. Reading the package or source_root does not change the CLI workdir.
+  Frozen CLI commands that use paths like `src/...` are already relative to that launch cwd.
 
 ## 0. Verify the frozen contract
-- Contract: `implementation-contract.json` (contract_id `{contract['contract_id']}`, version `{contract['contract_version']}`)
-- Package manifest: `manifest.json` — sha256 of every authored artifact
+- Contract: `$HERMES_CONTRACT_PACKAGE/implementation-contract.json` (contract_id `{contract['contract_id']}`, version `{contract['contract_version']}`)
+- Package manifest: `$HERMES_CONTRACT_PACKAGE/manifest.json` — sha256 of every authored artifact
 - Recompute the manifest hashes. If any artifact differs, emit `CONTRACT_CHANGED` and STOP
   (unless this session was explicitly launched with `--accept-contract-update`).
-- Confirm `READY.json` reports `status == READY`.
+- Confirm `$HERMES_CONTRACT_PACKAGE/READY.json` reports `status == READY`.
 
 ## 1. Read, in this order
-1. `implementation-contract.json`
-2. `project-context.json` (then ONLY the `read_first` files it lists)
-3. `requirements.md`, `acceptance.md`, `design.md`, `DESIGN.md`, `tasks.md`
-4. `verification-intent.json`
+1. `$HERMES_CONTRACT_PACKAGE/implementation-contract.json`
+2. `$HERMES_CONTRACT_PACKAGE/project-context.json` (then ONLY the `read_first` files it lists)
+3. `$HERMES_CONTRACT_PACKAGE/requirements.md`, `$HERMES_CONTRACT_PACKAGE/acceptance.md`, `$HERMES_CONTRACT_PACKAGE/design.md`, `$HERMES_CONTRACT_PACKAGE/DESIGN.md`, `$HERMES_CONTRACT_PACKAGE/tasks.md`
+4. `$HERMES_CONTRACT_PACKAGE/verification-intent.json`
 
 ## 2. Recon budget
 - `broad repo scan = forbidden`.
@@ -237,8 +291,15 @@ def main(argv: list[str] | None = None) -> int:
     write_json(os.path.join(pkg, CONTRACT_FILE), contract)
     prompt_path = os.path.join(pkg, PROMPT_FILE)
     tmp = prompt_path + ".tmp"
+    pc = load_json(os.path.join(pkg, "project-context.json"))
     with open(tmp, "w", encoding="utf-8") as handle:
-        handle.write(render_prompt(contract))
+        handle.write(
+            render_prompt(
+                contract,
+                source_root=pc.get("source_root"),
+                package_dir=pkg,
+            )
+        )
     os.replace(tmp, prompt_path)
 
     print(
