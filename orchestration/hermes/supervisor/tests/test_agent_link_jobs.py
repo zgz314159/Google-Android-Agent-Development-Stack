@@ -214,6 +214,76 @@ class JobTests(unittest.TestCase):
             svc.cli.run_round(root=d, entry_guard_fn=deny)
         self.assertFalse((d/"state.json").exists())
 
+    def recovery_fixture(self):
+        svc = actions.services()
+        d = self.base/"read-recovery";d.mkdir()
+        state = svc.state.initial_state();state["status"] = "ERROR"
+        (d/"state.json").write_text(link.json_text(state))
+        rejection = {"event": "READ_FAILED", "error": "AdapterError",
+                     "message": "BU_CDP_URL must equal http://127.0.0.1:9333"}
+        svc.state.journal_append(rejection, d)
+        last = svc.state.read_journal(d)[-1]
+        self.business_plan();task = dict(self.plan["task"]);task["project"] = "OfflineTaskCalendar_WPF"
+        kwargs = {"task": task, "expected_state_sha256": link.digest(link.json_text(state)),
+                  "rejection_sha256": link.digest(link.json_text(last)), "authorization_id": "USER-READ-ONCE",
+                  "root": d, "gate_fn": lambda *a, **k: None}
+        return svc, d, state, kwargs
+
+    def test_recovery_changes_only_status_and_appends_audit(self):
+        svc, d, state, kwargs = self.recovery_fixture()
+        result = svc.cli.recover_initial_read_failure(**kwargs)
+        after = json.loads((d/"state.json").read_text())
+        expected = dict(state);expected["status"] = "WAITING_FOR_GPT"
+        self.assertEqual(after, expected)
+        self.assertEqual(result["decision"], "INITIAL_READ_RECOVERED")
+        self.assertEqual([e["event"] for e in svc.state.read_journal(d)], ["READ_FAILED", "INITIAL_READ_RECOVERY"])
+        self.assertEqual(svc.state.consumed_identities(d), (set(), set()))
+        with self.assertRaises(ValueError):
+            svc.cli.recover_initial_read_failure(**kwargs)
+
+    def test_recovery_refuses_uncertain_other_read_errors_and_pending(self):
+        svc, d, state, kwargs = self.recovery_fixture()
+        (d/"pending_result.json").write_text('{}')
+        with self.assertRaisesRegex(ValueError, "PENDING"):
+            svc.cli.recover_initial_read_failure(**kwargs)
+        (d/"pending_result.json").unlink()
+        svc.state.journal_append({"event": "READ_FAILED", "error": "AdapterError", "message": "response timed out after send"}, d)
+        kwargs["rejection_sha256"] = link.digest(link.json_text(svc.state.read_journal(d)[-1]))
+        with self.assertRaisesRegex(ValueError, "NOT_INITIAL_CDP"):
+            svc.cli.recover_initial_read_failure(**kwargs)
+        self.assertEqual(json.loads((d/"state.json").read_text()), state)
+
+    def test_recovery_refuses_consumed_identity_and_wrong_snapshot(self):
+        svc, d, state, kwargs = self.recovery_fixture()
+        bad = dict(kwargs);bad["expected_state_sha256"] = '0'*64
+        with self.assertRaisesRegex(ValueError, "STATE_MISMATCH"):
+            svc.cli.recover_initial_read_failure(**bad)
+        with patch.object(svc.state, "is_consumed", return_value=True):
+            with self.assertRaisesRegex(ValueError, "ALREADY_CONSUMED"):
+                svc.cli.recover_initial_read_failure(**kwargs)
+
+    def test_job_recovery_retains_failed_attempt_and_grants_only_one_repeat(self):
+        self.business_plan();jobs.submit(self.plan);self.step()
+        self.decision("execute_contract")
+        failure = {"decision": "READ_FAILED", "error": "AdapterError",
+                   "message": "BU_CDP_URL must equal http://127.0.0.1:9333"}
+        self.step(execute=lambda *_: {"passed": False, "bridge_result": failure})
+        _, _, state = jobs.load('J');sha = state['report_sha256']
+        svc, _, _, _ = self.recovery_fixture()
+        bridge = self.base/'read-recovery'
+        fake = SimpleNamespace(adapter=svc.adapter,
+            state=SimpleNamespace(state_dir=lambda: bridge, read_journal=lambda: svc.state.read_journal(bridge)),
+            cli=SimpleNamespace(recover_initial_read_failure=lambda **k: {"decision":"INITIAL_READ_RECOVERED"}))
+        jobs.recover_initial_read('J', THREAD, sha, 'USER-ONCE', svc=fake)
+        _, _, restored = jobs.load('J')
+        self.assertEqual(restored['actions_done'], ['execute_contract'])
+        self.assertEqual(restored['recovery_history'][0]['failed_attempt']['results']['execute_contract']['bridge_result'], failure)
+        self.step(execute=lambda *_: {"passed":True})
+        _, _, after = jobs.load('J')
+        self.assertTrue(after['recovery_history'][0]['retry_dispatched'])
+        self.assertEqual(after['actions_done'], ['execute_contract','execute_contract'])
+        self.assertNotIn('execute_contract', jobs.allowed(self.plan,after))
+
     def test_host_acceptance_sandbox_writes_only_external_copy(self):
         worktree = self.base/"business"
         (worktree/"tests").mkdir(parents=True)

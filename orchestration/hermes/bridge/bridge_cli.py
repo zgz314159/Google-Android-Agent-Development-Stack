@@ -57,6 +57,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -578,6 +579,54 @@ def run_recover(*, root: Path | None = None, exit_code: int = EXIT_INTERRUPTED,
 
 PRECONSUME_RECOVERY_REASON_DEFAULT = "E_EXT_WORKTREE_GIT"
 PRECONSUME_TERMINAL_EVENTS = ("ACCEPTED", "RESULT", "STOPPED")
+
+
+def recover_initial_read_failure(*, task, expected_state_sha256, rejection_sha256,
+                                 authorization_id, root=None, gate_fn=None):
+    """Audited one-shot recovery ONLY for the pre-send missing-CDP rejection.
+
+    No model, browser operation, send, task consumption or chain rewind. The
+    operator supplies a task-specific authorization and exact failure snapshots.
+    Other READ_FAILED errors may have happened after a send and are NOT eligible.
+    """
+    if not isinstance(authorization_id, str) or not re.fullmatch(r"[A-Za-z0-9._:-]{1,128}", authorization_id):
+        raise ValueError("RECOVERY_AUTHORIZATION_REQUIRED")
+    directory = Path(root) if root is not None else bs.state_dir()
+    with bs.bridge_lock(root):
+        path = directory / bs.STATE_FILE
+        if not path.is_file():
+            raise ValueError("RECOVERY_STATE_ABSENT")
+        raw = proto.load_json_strict(path.read_text())
+        if proto.canonical_sha256(raw) != expected_state_sha256 or raw.get("status") != "ERROR":
+            raise ValueError("RECOVERY_STATE_MISMATCH")
+        if (directory / bs.PENDING_FILE).exists() or bs.unresolved_accepted(root):
+            raise ValueError("RECOVERY_UNRESOLVED_OR_PENDING")
+        journal = bs.read_journal(root)
+        if any(e.get("event") == "INITIAL_READ_RECOVERY" and e.get("authorization_id") == authorization_id for e in journal):
+            raise ValueError("RECOVERY_ALREADY_USED")
+        last = journal[-1] if journal else {}
+        if (proto.canonical_sha256(last) != rejection_sha256
+                or last.get("event") != "READ_FAILED" or last.get("error") != "AdapterError"
+                or last.get("message") != "BU_CDP_URL must equal " + adapter.EXPECTED_CDP):
+            raise ValueError("RECOVERY_NOT_INITIAL_CDP_FAILURE")
+        if bs.is_consumed(task["task_id"], raw["expected_sequence"], raw["expected_nonce"], root):
+            raise ValueError("RECOVERY_TASK_ALREADY_CONSUMED")
+        candidate = {"protocol": "HERMES_TASK_V1", **task, "action": "EXECUTE_CONTRACT", "risk": "LOW",
+                     "sequence": raw["expected_sequence"], "nonce": raw["expected_nonce"],
+                     "in_reply_to": raw["expected_in_reply_to"]}
+        verdict = proto.validate_task(candidate, raw)
+        if verdict.get("status") != "ACCEPTED":
+            raise ValueError("RECOVERY_TASK_PROTOCOL_REJECTED")
+        (gate_fn or ce.gate)(task["contract_package"], task["contract_manifest_sha256"],
+                            project=task["project"], task_id=task["task_id"])
+        bs.journal_append({"event": "INITIAL_READ_RECOVERY", "task_id": task["task_id"],
+                           "sequence": raw["expected_sequence"], "authorization_id": authorization_id,
+                           "rejection_sha256": rejection_sha256, "state_sha256": expected_state_sha256,
+                           "from_status": "ERROR", "to_status": "WAITING_FOR_GPT"}, root)
+        state = bs.BridgeState(raw, path)
+        state.set_status("WAITING_FOR_GPT")
+        return {"decision": "INITIAL_READ_RECOVERED", "task_id": task["task_id"],
+                "sequence": raw["expected_sequence"], "authorization_id": authorization_id}
 
 
 def _recover_preconsume_precheck(state, root, *, task_id, sequence, nonce,

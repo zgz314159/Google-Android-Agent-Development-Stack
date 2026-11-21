@@ -161,7 +161,9 @@ def allowed(plan, state):
     if "inspect_evidence" not in state["actions_done"]:
         available.append("inspect_evidence")
     if plan["task"] is not None:
-        if "execute_contract" not in state["actions_done"]:
+        recovery = (state.get("recovery_history") or [{}])[-1]
+        retry = recovery.get("phase") == "RECOVERED" and not recovery.get("retry_dispatched")
+        if "execute_contract" not in state["actions_done"] or retry:
             available.append("execute_contract")
         if state["results"].get("execute_contract", {}).get("passed") and "host_acceptance" not in state["actions_done"]:
             available.append("host_acceptance")
@@ -226,7 +228,10 @@ def step(job_id, *, worker_factory=None, queue=None, execute=None, acceptance=No
                 action = state["decision"]["action"]
                 if action not in allowed(plan, state) or len(state["actions_done"]) >= plan["max_actions"]:
                     raise link.LinkError("ACTION_NOT_AUTHORIZED")
-                # Once consumed here, an interrupted or failed action can never be retried.
+                # Repeats require the one-shot audited recovery grant, persisted first.
+                if action == "execute_contract" and "execute_contract" in state["actions_done"]:
+                    recovery = state["recovery_history"][-1]
+                    recovery["retry_dispatched"] = True
                 state["actions_done"].append(action)
                 state["status"] = "ACTION_RUNNING"
                 save(directory, state)
@@ -314,6 +319,52 @@ def stop(job_id, thread_id):
             "note": "No next action; an in-flight controlled task retains its existing bounded cleanup."}
 
 
+def recover_initial_read(job_id, thread_id, report_sha, authorization_id, *, svc=None):
+    """One authorized pre-send recovery; preserve the failed attempt and frozen plan."""
+    svc = svc or actions.services()
+    directory = root()/ident(job_id)
+    with link.cstate.campaign_lock(root()/"worker"), link.cstate.campaign_lock(directory):
+        directory, plan, state = load(job_id)
+        failed = state.get("results", {}).get("execute_contract", {}).get("bridge_result", {})
+        if (thread_id != plan["thread_id"] or state["status"] != "HUMAN_REQUIRED"
+                or report_sha != state["report_sha256"] or plan["task"] is None
+                or failed.get("decision") != "READ_FAILED" or failed.get("error") != "AdapterError"
+                or failed.get("message") != "BU_CDP_URL must equal " + svc.adapter.EXPECTED_CDP
+                or "result" in failed or (directory/"stop.request").exists()):
+            raise link.LinkError("RECOVERY_NOT_ELIGIBLE")
+        if state.get("recovery_history"):
+            raise link.LinkError("RECOVERY_LIMIT_REACHED")
+        if len(state["actions_done"])+2 > plan["max_actions"] or state["expires_at"]-time.time() < 430:
+            raise link.LinkError("RECOVERY_OUTSIDE_EXISTING_BUDGET")
+        if not re.fullmatch(r"[A-Za-z0-9._:-]{1,128}", authorization_id):
+            raise link.LinkError("RECOVERY_AUTHORIZATION_REQUIRED")
+        actions.configure_browser_env(svc.adapter)
+        bridge_state = link.strict_json((svc.state.state_dir()/"state.json").read_text())
+        journal = svc.state.read_journal()
+        record = {"authorization_id": authorization_id, "phase": "AUTHORIZED",
+                  "failed_report_sha256": report_sha,
+                  "failed_attempt": json.loads(link.json_text({k: state.get(k) for k in
+                      ("report", "results", "decision", "actions_done", "error")})),
+                  "retry_dispatched": False}
+        state["recovery_history"] = [record]
+        save(directory, state)
+        try:
+            result = svc.cli.recover_initial_read_failure(task=plan["task"],
+                expected_state_sha256=link.digest(link.json_text(bridge_state)),
+                rejection_sha256=link.digest(link.json_text(journal[-1] if journal else {})),
+                authorization_id=authorization_id)
+        except Exception as exc:
+            record.update(phase="REJECTED", error=str(exc))
+            save(directory, state)
+            raise link.LinkError("RECOVERY_REJECTED:"+str(exc)) from exc
+        record.update(phase="RECOVERED", bridge=result)
+        state.update(status="READY", decision={"decision": "CONTINUE", "action": "execute_contract",
+            "instruction": "用户已授权本次有审计的入口恢复；沿用原冻结任务、身份和120秒预算执行一次，再自动回报。"})
+        state.pop("error", None)
+        save(directory, state)
+        return {"job_id": job_id, "status": "READY", "recovery": result}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -337,6 +388,11 @@ def main():
     p = sub.add_parser("stop")
     p.add_argument("--job-id", required=True)
     p.add_argument("--thread-id", required=True)
+    p = sub.add_parser("recover-initial-read")
+    p.add_argument("--job-id", required=True)
+    p.add_argument("--thread-id", required=True)
+    p.add_argument("--report-sha256", required=True)
+    p.add_argument("--authorization-id", required=True)
     args = parser.parse_args()
     try:
         if args.command == "submit":
@@ -352,6 +408,8 @@ def main():
             result = ack(args.job_id, args.thread_id, args.report_sha256)
         elif args.command == "stop":
             result = stop(args.job_id, args.thread_id)
+        elif args.command == "recover-initial-read":
+            result = recover_initial_read(args.job_id, args.thread_id, args.report_sha256, args.authorization_id)
         else:
             result = decide(args.job_id, args.thread_id, args.report_sha256, args.decision, args.action, args.instruction)
         print(link.json_text(result))
