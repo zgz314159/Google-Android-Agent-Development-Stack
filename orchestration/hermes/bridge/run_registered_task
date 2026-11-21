@@ -11,20 +11,32 @@ set -euo pipefail
 [ "$(id -u)" -eq 0 ] || { printf 'BLOCKED: root required\n' >&2; exit 1; }
 
 TASK_ID=""; PROMPT=""; EXPECTED=""
+DIAGNOSTIC_SUMMARY=0
+EXECUTION_OPTIONS=0
 MAX_RUNTIME=120
 GRACE=10
 while [ $# -gt 0 ]; do
   case "$1" in
     --task-id) TASK_ID="${2:-}"; shift 2 ;;
-    --prompt-file) PROMPT="${2:-}"; shift 2 ;;
-    --expected-manifest-sha256) EXPECTED="${2:-}"; shift 2 ;;
-    --max-runtime) MAX_RUNTIME="${2:-}"; shift 2 ;;
-    --grace) GRACE="${2:-}"; shift 2 ;;
+    --diagnostic-summary) DIAGNOSTIC_SUMMARY=1; shift ;;
+    --prompt-file) EXECUTION_OPTIONS=1; PROMPT="${2:-}"; shift 2 ;;
+    --expected-manifest-sha256) EXECUTION_OPTIONS=1; EXPECTED="${2:-}"; shift 2 ;;
+    --max-runtime) EXECUTION_OPTIONS=1; MAX_RUNTIME="${2:-}"; shift 2 ;;
+    --grace) EXECUTION_OPTIONS=1; GRACE="${2:-}"; shift 2 ;;
     *) printf 'BLOCKED: unknown argument %s\n' "$1" >&2; exit 1 ;;
   esac
 done
 case "$TASK_ID" in ""|*[!A-Za-z0-9._-]*) printf 'BLOCKED: invalid task id\n' >&2; exit 1 ;; esac
 [ "${#TASK_ID}" -le 64 ] || { printf 'BLOCKED: task id too long\n' >&2; exit 1; }
+if [ "$DIAGNOSTIC_SUMMARY" -eq 1 ]; then
+  [ "$EXECUTION_OPTIONS" -eq 0 ] || { printf 'BLOCKED: diagnostic summary takes only task id\n' >&2; exit 1; }
+  HELPER=/usr/local/lib/aegl-model/iap_diag_summary.py
+  [ -f "$HELPER" ] && [ ! -L "$HELPER" ] || { printf 'BLOCKED: trusted diagnostic helper missing\n' >&2; exit 1; }
+  [ "$(stat -c '%u' "$HELPER")" = 0 ] || { printf 'BLOCKED: diagnostic helper owner\n' >&2; exit 1; }
+  mode="$(stat -c '%a' "$HELPER")"
+  (( (8#$mode & 8#022) == 0 )) || { printf 'BLOCKED: diagnostic helper writable\n' >&2; exit 1; }
+  exec /usr/bin/python3 -I "$HELPER" --task "$TASK_ID"
+fi
 [ -n "$PROMPT" ] || { printf 'BLOCKED: prompt file required\n' >&2; exit 1; }
 [ "${#EXPECTED}" -eq 64 ] || { printf 'BLOCKED: manifest sha required\n' >&2; exit 1; }
 case "$EXPECTED" in *[!0-9a-f]*) printf 'BLOCKED: manifest sha must be lowercase hex\n' >&2; exit 1 ;; esac

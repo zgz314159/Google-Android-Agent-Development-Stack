@@ -135,6 +135,24 @@ Word `.docx` 导入；离线契约已 READY（manifest `639ed1fe…`），root �
 
 ## 8. 简短任务记录
 
+### 2026-11-21 新授权带诊断Word业务执行：离线准备
+
+- **明确授权与范围**：用户要求开始新一轮真实执行并启用已有分阶段诊断。冻结task
+  CAL-WORD-PARAGRAPH-DIAG-001，单次120秒/清理10秒；仅原两文件Word段落导入与>=4项确定性测试，
+  不重放CAL-WPF-001或CAL-WORD-PARAGRAPH-001，不扩大功能/权限/预算。
+- **实际准备**：批准新worktree基于832836e，契约提交e83902c；8份项目拥有作者输入，经hash→build→
+  validate现有入口READY，五门PASS/0错，manifest fa1efd946ceaa6ba767116430da8cec20b73938fa9cbc915b35d370a2312ebd8。
+  初次离线调用顺序缺manifest被编译器拒绝，按入口既定顺序更正后通过；无发送或业务执行。
+- **直接必要修正**：上轮无分阶段证据且读取需root，本轮复用既有launcher白名单与iap_diag_summary，
+  在固定wrapper添加按登记task只读摘要模式。拒绝执行参数混用、未知task、穿越/符号链接/不可信归属，
+  只读固定root-owned元数据，不开放shell/任意路径。7项汇总器+3项解析检查；仅本轮必要边界。
+  初始测试fixture受umask影响成group-writable被正确拒绝；fixture固定可信权限后通过，未放宽生产判断。
+- **当前实际状态**：非root --check CHECK_OK/DIAG_INPUTS_OK；root保护sink存在性UNKNOWN，必须root时
+  拒绝已有场景。job CAL-WORD-PARAGRAPH-DIAG-001-AUTO已冻结并WAITING_PREPARATION，tick只等待。
+  原始业务实现/模型/新控制发送/安装/登记/宿主验收均NOT_RUN；Windows NOT_RUN，正式main仍832836e。
+- **下一步**：用户完成一次root认证，集中安装诊断读取必要字节、可信契约/登记及gate；后台按现有人类
+  授权自动审查/派发/诊断汇报，实际成功才独立宿主验收。本次新授权前的旧失败仍保持，无新超时根因结论。
+
 ### 2026-11-21 scratch残留清单已自动接收并收口
 
 - **实际证据**：用户执行只读find后，直接读取外部产物，无需搬运清单正文。SHA-256为

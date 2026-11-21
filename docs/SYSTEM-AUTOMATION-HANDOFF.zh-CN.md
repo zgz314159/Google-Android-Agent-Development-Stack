@@ -25,6 +25,32 @@
 
 ### 最新进度（2026-11-21 自动汇报接入）
 
+**新一轮已有明确用户授权，正在等待root准备**：用户随后明确要求“那开始：下一轮真实执行需启用
+现有分阶段诊断，并明确授权新的执行范围和预算；已消费任务保持不重放”。本轮据此冻结
+`CAL-WORD-PARAGRAPH-DIAG-001`／job `CAL-WORD-PARAGRAPH-DIAG-001-AUTO`，一次120秒
+Hermes执行、原10秒清理宽限，仅Word段落导入器和>=4项对应确定性测试；无表格/UI/依赖/数据库/晋升。
+这次是用户新授权的带观测业务执行，不是系统自动替换失败身份。两个旧任务仍FAILED/已消费，不改记录。
+
+- worktree `/var/tmp/RILI-WPF-V2/WORD-PARAGRAPH-DIAG-001/project`，基于正式832836e，仅作者契约
+  提交`e83902c3048fe60a312cfc84a27f8b3850e4533d`；无业务实现。正式main仍832836e未修改。
+- manifest `fa1efd946ceaa6ba767116430da8cec20b73938fa9cbc915b35d370a2312ebd8`，五门PASS/READY/0错。
+  冻结证据在任务根preparation-summary.md，SHA `317c498ad5aa2a1f8cc84e7618d521accb437ccb6823d4f470c47cc37838915c`。
+- 复用calendar_wpf_001/prepare.sh的`--diagnostics`：精确核对现安装前驱与源码哈希，仅把本task加入
+  既有launcher诊断白名单；安装现有汇总器的登记任务读取模式及固定wrapper `--diagnostic-summary`。
+  诊断根目录仍root/700，不改ACL、不暴露任意路径、原始arg/正文/凭据。新增7项汇总器边界检查与
+  3项wrapper解析检查；不是重开原传输/隔离套件。非root --check实际通过，sink存在性需root检查，UNKNOWN。
+- 预期wrapper SHA `e8b90a5a995795555ef077482f0a80cc14a6249815e1c182decca4444e398725`，summary SHA
+  `5a3f3923fa186cc8770e5b6ef806627ca53895ab183051dd41e9c8ad520b84eb`，launcher仅白名单变更后SHA
+  `7f3d74c2e10b8e94101693cd126a35240694559bc54f990915312d2f2576a0a2`。
+- job已WAITING_PREPARATION，tick实测只等待，无模型/发送。用户完成一次root认证安装/登记/gate后，
+  后台自动初报；当前聊天核对上述安装哈希及精确task白名单后可decide execute_contract并tick一次。
+  执行后使用`sudo -n -- /usr/local/lib/aegl-bridge/run_registered_task --diagnostic-summary --task-id
+  CAL-WORD-PARAGRAPH-DIAG-001`读取元数据并记录，无需再让用户认证读日志。摘要读取本身不执行Hermes。
+  真实SUCCESS+清理/回传确认后，host_acceptance外部副本WordParagraphImportTests>=4全通过，核对源码
+  差异/断言/源文档哈希才COMPLETE。失败保留真实诊断并停止，不补模型次数/预算/替代身份。
+- 当前root安装、登记、诊断实证、Hermes和宿主验收均NOT_RUN，Windows NOT_RUN。准备等待总窗口1小时，
+  不自动延长。下方“没有新授权”等为本轮新授权前的历史结论，不覆盖本节。
+
 **scratch清单已核对（用户认证后自动读取）**：清单SHA-256
 `511019cbf32db45020b16b3043a99d6c0b77313a90218c7c00f5a92eab237f37`，51字节，
 仅含scratch根目录及一个2975字节、0600的`hermes-snap-e4d68d5c0ce9.sh`普通文件，未列出子目录。
