@@ -80,8 +80,9 @@
 | SYS-04 | 浏览器／Harness 进程退出及环境未就绪：待业务触发处理 | 多次发送前遇到 9333 不监听或 daemon 不在运行；005 经授权恢复成功 | 仅在下次实际发送前不就绪时阻断；可在当次授权中包含必要的一次恢复。无明确无人值守业务需求，不建设自启或监控服务 |
 | SYS-05 | 005 精确工具调用次数缺少本次提取证据：UNKNOWN | journal 证明一次受控任务，不证明内部工具次数 | 当前不阻止已通过的产物验收、不补跑。未来若业务明确要求次数证明，优先只读使用已有 sink，不先新增采集字段 |
 | SYS-06 | 004 原始工具错误全文及实际 executor 上下文不完整：UNKNOWN | 两条 hook 记录快速 `exit=-1`；模型 `timeout=300` 已提取；原始 tool result 未持久化 | 保留历史限制，不继续猜测性改 timeout/cwd，不以新任务补写旧证据。新的真实故障再按其证据处理 |
-| SYS-07 | 新业务受控接入缺少 root 契约安装/登记能力：待业务触发处理（外部权限，不是代码缺陷） | `/var/lib/aegl-model/trusted` 与 `registry.json` root 拥有且不可写；`sudo -n -l` 仅免密放行受控 wrapper | 直接阻断 `CAL-WPF-001` 的 trusted install、register、真实 gate、launcher 与 Hermes；需要用户执行一次经审查的 root 准备命令 |
-| SYS-08 | 前阶段业务代码由当前会话直接提交正式仓，偏离受控闭环：已记录并纠正 | 正式仓 `main` `d362963`…`832836e` 为会话直接提交；journal 无日历任务记录 | 保留成果但不回填为 Hermes 结果；本轮起正式仓只读，新工作只在 CAL-001 worktree，交付走可信晋升 |
+| SYS-07 | 新业务受控接入缺少 root 契约安装/登记能力：已收口 | 用户执行 root 准备成功；registry 条目、trusted manifest、worktree owner、BASE_COMMIT 已核对 | 不再阻断 CAL-WPF-001；保留为其他新项目接入的前置说明 |
+| SYS-08 | 前阶段业务代码由当前会话直接提交正式仓，偏离受控闭环：已记录并纠正 | 正式仓 `main` `d362963`…`832836e` 为会话直接提交；journal 无日历任务记录 | 保留成果但不回填为 Hermes 结果；正式仓只读，新工作只在 CAL-001 worktree，交付走可信晋升 |
+| SYS-09 | CAL-WPF-001 单次受控执行 120 秒超时且 worktree 无变更：UNKNOWN | round `BLOCKED`/exit 124/timed_out；cleanup CONFIRMED；result CONFIRMED_SENT；worktree status 空；无任务级诊断（不在 launcher 白名单），scratch aegl-ai 750 不可读 | 阻断该业务任务；不重跑、不 recover、不新建任务。下一步是否启用既有诊断或另开任务由用户决定 |
 
 问题如有状态变化，在此表更新，并在任务记录中留下变化依据。业务已完成而问题仍 UNKNOWN 时，可以保留 UNKNOWN；不要为了让整表变绿而重跑任务。
 
@@ -128,6 +129,39 @@ root 契约安装/登记阻断，见第 8 节记录。**不预创建 006，不�
 ```
 
 ## 8. 简短任务记录
+
+### 2026-11-21 CAL-WPF-001 首次受控执行（FAILED / BLOCKED）
+
+- **业务目标与验收**：Word `.docx` Infrastructure importer + 确定性测试；宿主验收要求
+  `WordImportTests` 实际执行数 > 0 且全通过，源 `.docx` 哈希不变，变更范围受限。
+- **实际结果**：控制请求单次 `CONFIRMED_SENT`；新 assistant 唯一控制块通过本地协议校验；
+  一次 round 返回 `outcome=BLOCKED`、任务 `exit_code=124`、`timed_out=true`、
+  timeout phases `KILL/TERM`；清理 `CONFIRMED`；结果回传 `CONFIRMED_SENT`；
+  result `63355a6f…`；链推进到 seq 19。
+- **业务变更与验收**：worktree `git status` 为空，无 Word 文件；宿主筛选
+  `WordImportTests` 实际 **0 个测试匹配**，不通过。对照 `ExcelImportExportTests`
+  4 项通过，说明测试基础设施正常。
+- **系统问题变化**：SYS-07 因用户完成 root 准备而收口；新增 SYS-09（超时且无变更，
+  无任务级诊断，根因 UNKNOWN）。SYS-01—06、08 状态不变；未重跑 005，未创建 006。
+- **修复生效位置**：无新修复；本轮没有修改系统源码。root 准备脚本与契约哈希保持
+  `9a3ae34a…` / `639ed1fe…`（该脚本为上一轮修复后的版本）。
+- **未覆盖或无法证明**：超时根因、Hermes 内部工具调用、scratch 内容（无权限）、
+  Windows 实机。全部 UNKNOWN/NOT_RUN。
+- **收口决定**：失败立即停止；不重发、不重试、不 recover、不延长预算、不另建任务；
+  正式仓保持只读，未晋升。
+- **下一步**：由用户决定是否调查 UNKNOWN、是否使用既有诊断白名单，或在有依据后另开任务。
+
+```text
+日期／任务／业务目标：2026-11-21／CAL-WPF-001／Word .docx 导入受控执行
+预先约定的独立验收：WordImportTests 数 >0 全通过；源 docx 哈希不变；范围受限
+实际结果：控制 CONFIRMED_SENT；round BLOCKED/exit 124；cleanup CONFIRMED；回传 CONFIRMED_SENT
+已证明的范围／证据摘要：worktree 无变更；WordImportTests 0 匹配；对照 4 项通过；seq 19
+本轮系统问题：SYS-07 收口；SYS-09 新增 UNKNOWN
+修复生效位置：无新修复；未修改系统源码
+未覆盖或无法证明的部分：超时根因、工具调用、scratch、Windows 实机
+收口决定：失败停止，不重试/不 recover/不新建
+下一步：用户决定是否调查或另开任务
+```
 
 ### 2026-11-21 CAL-WPF-001 接入纠正与离线准备
 
