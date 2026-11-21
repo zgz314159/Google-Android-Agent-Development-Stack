@@ -25,6 +25,8 @@
 
 ### 最新进度（2026-11-21 自动汇报接入）
 
+**Cursor 收件箱双通道已接入**：`agent-link/review-binding.json` 现为 `channels=[cursor_inbox,codex]`、`required=[cursor_inbox]`。notify 必写 `agent-link/cursor-inbox/`（含 LATEST/WAKE）；Codex 仍可副投但不阻断 Cursor 审查。新增 `publish-cursor-inbox` 可对已 WAITING_REVIEW 报告补投本会话，不重发 Codex、不改通知状态。ABS-001 初报已补投并 decide execute_contract→READY；38 项相关测试通过，Stack 本提交。
+
 **Cursor 接手：绝对路径提示已加强，新任务已冻结等待 root**：用户分享对话后由 Cursor
 会话接手未完成的 SYS-16。仅文字说明路径基准仍不足以让模型跳过寻址；生成器现将
 `source_root`/`read_first`/`allowed`/`forbidden` 写成绝对路径，包成员统一写为
