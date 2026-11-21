@@ -13,6 +13,7 @@ import subprocess
 import sys
 import time
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 try:
     from . import agent_link as link, agent_link_actions as actions
 except ImportError:
@@ -163,7 +164,7 @@ def allowed(plan, state):
     if plan["task"] is not None:
         recovery = (state.get("recovery_history") or [{}])[-1]
         retry = recovery.get("phase") == "RECOVERED" and not recovery.get("retry_dispatched")
-        if "execute_contract" not in state["actions_done"] or retry:
+        if "execute_contract" not in state["actions_done"] or retry or state.get("resume_inflight"):
             available.append("execute_contract")
         if state["results"].get("execute_contract", {}).get("passed") and "host_acceptance" not in state["actions_done"]:
             available.append("host_acceptance")
@@ -229,10 +230,12 @@ def step(job_id, *, worker_factory=None, queue=None, execute=None, acceptance=No
                 if action not in allowed(plan, state) or len(state["actions_done"]) >= plan["max_actions"]:
                     raise link.LinkError("ACTION_NOT_AUTHORIZED")
                 # Repeats require the one-shot audited recovery grant, persisted first.
-                if action == "execute_contract" and "execute_contract" in state["actions_done"]:
+                continuing = action == "execute_contract" and state.pop("resume_inflight", False)
+                if action == "execute_contract" and "execute_contract" in state["actions_done"] and not continuing:
                     recovery = state["recovery_history"][-1]
                     recovery["retry_dispatched"] = True
-                state["actions_done"].append(action)
+                if not continuing:
+                    state["actions_done"].append(action)
                 state["status"] = "ACTION_RUNNING"
                 save(directory, state)
                 if action == "inspect_evidence":
@@ -365,6 +368,53 @@ def recover_initial_read(job_id, thread_id, report_sha, authorization_id, *, svc
         return {"job_id": job_id, "status": "READY", "recovery": result}
 
 
+def prepare_tick_runtime():
+    """Use the installed Hermes runtime BEFORE acquiring locks/changing state."""
+    proc = subprocess.run(["hermes", "--print-runtime-command"], capture_output=True, text=True, timeout=15)
+    if proc.returncode != 0:
+        raise link.LinkError("HERMES_RUNTIME_QUERY_FAILED")
+    command = link.strict_json(proc.stdout)
+    if not isinstance(command, list) or not command or not Path(command[0]).is_absolute() or not Path(command[0]).is_file():
+        raise link.LinkError("HERMES_RUNTIME_INVALID")
+    if Path(sys.executable).resolve() != Path(command[0]).resolve():
+        os.execv(command[0], [command[0], "-B", str(Path(__file__).resolve()), *sys.argv[1:]])
+
+
+def continue_bootstrap(job_id, thread_id, authorization_id, *, svc=None):
+    """Continue one in-flight pre-send attempt after a proven bootstrap crash."""
+    svc = svc or actions.services()
+    directory = root()/ident(job_id)
+    with link.cstate.campaign_lock(root()/"worker"), link.cstate.campaign_lock(directory):
+        directory, plan, state = load(job_id)
+        history = state.get("recovery_history", [])
+        if (thread_id != plan["thread_id"] or state["status"] != "ACTION_RUNNING"
+                or len(history) != 1 or not history[0].get("retry_dispatched")
+                or history[0].get("bootstrap_continuation")
+                or state["expires_at"]-time.time() < 430 or (directory/"stop.request").exists()):
+            raise link.LinkError("BOOTSTRAP_CONTINUATION_NOT_ELIGIBLE")
+        actions.configure_browser_env(svc.adapter)
+        raw = link.strict_json((svc.state.state_dir()/"state.json").read_text())
+        candidate = {"protocol": "HERMES_TASK_V1", **plan["task"], "action": "EXECUTE_CONTRACT", "risk": "LOW",
+                     "sequence": raw["expected_sequence"], "nonce": raw["expected_nonce"],
+                     "in_reply_to": raw["expected_in_reply_to"]}
+        # Exact confirmation uses the existing formal adapter; never sends.
+        if svc.adapter.confirm_message_present(actions.control_request(candidate, job_id)):
+            raise link.LinkError("BOOTSTRAP_REQUEST_ALREADY_PRESENT_NO_RESEND")
+        journal = svc.state.read_journal()
+        witness = {"authorization_id": authorization_id, "phase": "CONFIRMED_ABSENT",
+                   "cause": "Hermes bootstrap re-exec lost the project entrypoint import path"}
+        history[0]["bootstrap_continuation"] = witness
+        save(directory, state)
+        result = svc.cli.recover_initial_read_failure(task=plan["task"],
+            expected_state_sha256=link.digest(link.json_text(raw)),
+            rejection_sha256=link.digest(link.json_text(journal[-1] if journal else {})),
+            authorization_id=authorization_id, bootstrap_request_absent=True)
+        witness.update(phase="AUDITED", bridge=result)
+        state.update(status="READY", resume_inflight=True)
+        save(directory, state)
+        return {"job_id": job_id, "status": "READY", "continuation": result}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -393,8 +443,14 @@ def main():
     p.add_argument("--thread-id", required=True)
     p.add_argument("--report-sha256", required=True)
     p.add_argument("--authorization-id", required=True)
+    p = sub.add_parser("continue-bootstrap")
+    p.add_argument("--job-id", required=True)
+    p.add_argument("--thread-id", required=True)
+    p.add_argument("--authorization-id", required=True)
     args = parser.parse_args()
     try:
+        if args.command in {"tick", "continue-bootstrap"}:
+            prepare_tick_runtime()
         if args.command == "submit":
             result = submit(link.strict_json(args.plan.read_text()))
         elif args.command == "pending":
@@ -410,6 +466,8 @@ def main():
             result = stop(args.job_id, args.thread_id)
         elif args.command == "recover-initial-read":
             result = recover_initial_read(args.job_id, args.thread_id, args.report_sha256, args.authorization_id)
+        elif args.command == "continue-bootstrap":
+            result = continue_bootstrap(args.job_id, args.thread_id, args.authorization_id)
         else:
             result = decide(args.job_id, args.thread_id, args.report_sha256, args.decision, args.action, args.instruction)
         print(link.json_text(result))

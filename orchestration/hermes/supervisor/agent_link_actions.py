@@ -52,6 +52,12 @@ def configure_browser_env(adapter, environ=None):
     env.setdefault("BU_CDP_URL", expected)
 
 
+def control_request(candidate, job_id):
+    return ("这是已由用户限定授权且完成可信登记的单次执行请求。请只输出恰好一个 "
+            "HERMES_TASK_V1 控制块，其 JSON 必须逐字段等于下面对象；不要改身份、路径、预算或链值。\n"
+            "request_id=" + job_id + "\n" + link.json_text(candidate))
+
+
 def task_check(task, svc=None):
     svc = svc or services()
     state_dir = svc.state.state_dir()
@@ -86,9 +92,9 @@ def execute_contract(task, job_id, *, svc=None):
 
     def control():
         previous = svc.adapter.read_latest_assistant()["sha256"]
-        request = ("这是已由用户限定授权且完成可信登记的单次执行请求。请只输出恰好一个 "
-                   "HERMES_TASK_V1 控制块，其 JSON 必须逐字段等于下面对象；不要改身份、路径、预算或链值。\n"
-                   "request_id=" + job_id + "\n" + link.json_text(authorized))
+        request = control_request(authorized, job_id)
+        svc.state.journal_append({"event": "CONTROL_REQUEST_SEND_ATTEMPTED", "task_id": task["task_id"],
+                                  "sequence": authorized["sequence"], "job_id": job_id})
         sent = svc.adapter.send_once(request, job_id, exact=True)
         if sent.get("status") not in {"CONFIRMED_SENT", "ALREADY_PRESENT"}:
             raise link.LinkError("CONTROL_SEND_UNCERTAIN_NO_RESEND")

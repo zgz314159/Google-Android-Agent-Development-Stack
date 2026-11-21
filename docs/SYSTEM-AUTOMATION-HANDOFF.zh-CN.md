@@ -25,6 +25,25 @@
 
 ### 最新进度（2026-11-21 自动汇报接入）
 
+**最新结论（覆盖下方历史状态）**：CAL-WORD-PARAGRAPH-001 已真实执行一次，120秒超时，
+BLOCKED／exit124；cleanup CONFIRMED，结果 CONFIRMED_SENT。Bridge WAITING_FOR_GPT／seq20／
+pending=false；当前任务身份已消费，不能再恢复或重放。worktree HEAD 仍59f9b807，status为空，
+WordParagraphImporter.cs 与 WordParagraphImportTests.cs 均不存在。业务验收 FAILED；宿主验收
+因受控执行未成功而 NOT_RUN；Windows NOT_RUN；超时根因 UNKNOWN，scratch权限不可读。
+失败回报已由正式queue自动入当前聊天队列并通过ack确认，无人工搬运；job HUMAN_REQUIRED。
+report_sha256=0c9b2030e4b13d03ec94b02a5ef66fb635247acbf75e61cb8ce440e71a81cdcc；
+result_sha256=22f1aeba843d3acc01274bb88afb22e0f0906aa4bf4431e4500401b8bc652016。
+自动派发／审查回写／失败回传已实证，成功开发及宿主验收接力尚未通过；不称系统业务闭环成功。
+下一业务方向是依据已有、允许读取的执行证据查明超时，不新建诊断框架；无可读证据则保持UNKNOWN，
+不能以新规则为由补模型次数、延长预算或另建身份。后台无新待办时保持安静。
+
+**本轮恢复过程**：用户已授权安全有界恢复。首次 CDP READ_FAILED 经
+审计恢复；续行首次读取又因 Hermes bootstrap re-exec 丢失入口模块路径中断，未发送、未消费。
+修复把官方运行时选择提前到锁与状态修改之前，并固定项目入口导入路径。23 项针对性测试通过。
+正式 adapter 只读确认精确请求不存在后，经 BOOTSTRAP_READ_CONTINUATION 审计续接同一次尝试；
+没有增加 actions_done、任务身份、模型次数或预算。原 task/job/manifest 已发送一次并被 Bridge
+ACCEPTED，seq19；实际结果见上方。下方未执行/等待授权等描述为历史快照。
+
 **最新授权更新**：用户已明确授权补齐本次恢复并继续，且将“失败即停、不自动 recover”改为授权范围内
 自动修复及有界审计恢复。当前仅允许对 CAL-WORD-PARAGRAPH-001 的发送前 CDP 配置失败恢复一次，
 不增加模型次数、120秒预算，不重放 CAL-WPF-001。新增 scoped recovery 检查原失败/状态摘要、未消费

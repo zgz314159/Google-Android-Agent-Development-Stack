@@ -84,7 +84,8 @@
 | SYS-08 | 前阶段业务代码由当前会话直接提交正式仓，偏离受控闭环：已记录并纠正 | 正式仓 `main` `d362963`…`832836e` 为会话直接提交；journal 无日历任务记录 | 保留成果但不回填为 Hermes 结果；正式仓只读，新工作只在 CAL-001 worktree，交付走可信晋升 |
 | SYS-09 | CAL-WPF-001 单次受控执行 120 秒超时且 worktree 无变更：UNKNOWN | round `BLOCKED`/exit 124/timed_out；cleanup CONFIRMED；result CONFIRMED_SENT；worktree status 空；无任务级诊断（不在 launcher 白名单），scratch aegl-ai 750 不可读 | 阻断该业务任务；不重跑、不 recover、不新建任务。下一步是否启用既有诊断或另开任务由用户决定 |
 | SYS-10 | 自动汇报接口首次本地回报 JSON 不合规：已修复并验证 | 首次通信在严格解析处停止，未派发动作；分离输出模板与输入数据后，真实四消息往返 COMPLETE；14 项边界测试通过 | 只读报告审查已接通；不据此声称业务执行、当前桌面直连或通用自动接入通过 |
-| SYS-11 | 自动派发未声明正式 Chrome adapter 环境：源码已修复，真实验证未完成 | CAL-WORD-PARAGRAPH-001-AUTO 在首次读取前 READ_FAILED，缺 BU_CDP_URL；无控制发送/Hermes/新身份消费。修复固定正式端点配置且保留冲突拒绝，16 项测试 PASS | 当前 Bridge ERROR/seq19。既有 preconsume 恢复只覆盖 CONTRACT_REJECTED，不涵盖 READ_FAILED；本轮停止，待用户决定继续与可信恢复范围，不直接改 state、不重试 |
+| SYS-11 | 自动派发未声明正式 Chrome adapter 环境：已修复并真实验证 | 首次读取前 READ_FAILED；固定正式端点并拒绝冲突。用户授权后经 INITIAL_READ_RECOVERY 审计继续，实际控制发送及 ACCEPTED 成功 | 入口问题收口；原失败保留，不把后续业务超时归因于此 |
+| SYS-12 | Hermes bootstrap re-exec 丢失项目入口导入路径：已修复并真实验证 | 原重启 ModuleNotFoundError，未发送未消费；运行时选择提前且显式入口路径。23项针对性测试PASS，精确请求只读确认不存在后经 BOOTSTRAP_READ_CONTINUATION 续接同次尝试，实际进入EXECUTING | 已收口；未增加模型次数或任务预算。CAL-WORD-PARAGRAPH-001后续120秒超时根因仍UNKNOWN，与SYS-09同类现象但不能推定同一原因 |
 
 问题如有状态变化，在此表更新，并在任务记录中留下变化依据。业务已完成而问题仍 UNKNOWN 时，可以保留 UNKNOWN；不要为了让整表变绿而重跑任务。
 
@@ -133,6 +134,26 @@ Word `.docx` 导入；离线契约已 READY（manifest `639ed1fe…`），root �
 ```
 
 ## 8. 简短任务记录
+
+### 2026-11-21 CAL-WORD-PARAGRAPH-001 授权恢复与真实业务执行（FAILED）
+
+- **规则**：按用户明确修改，授权范围内对原因明确且安全可证的故障自动修复并走有界审计恢复；
+  保留原失败、链值和预算，不盲目重发、不重放消费身份。全局AGENTS与后台提示已同步。
+- **必要修复**：首次CDP配置失败经INITIAL_READ_RECOVERY恢复；首次读取bootstrap重启丢模块路径，
+  改为状态修改前选择官方Hermes运行时并固定入口路径。23项针对性测试PASS，含已发送拒绝续接、
+  链值/消费保护与续接不增加动作计数；隔离runpy入口也实际可读pending。
+- **真实链路**：正式adapter只读确认精确请求不存在，追加BOOTSTRAP_READ_CONTINUATION；同一job、
+  task、manifest和120秒预算续行。一次控制发送、ACCEPTED seq19、一次受控业务执行。
+  结果BLOCKED／exit124／timed_out=true，phases KILL/TERM，cleanup CONFIRMED，回传CONFIRMED_SENT。
+  CLI退出0不代表业务成功。Bridge现WAITING_FOR_GPT／seq20／pending=false。
+- **业务结果**：FAILED。worktree HEAD仍59f9b807，status为空；两个要求新增的源码/测试文件均不存在。
+  宿主验收NOT_RUN（必须先真实SUCCESS）；未声称零匹配通过。Windows实机NOT_RUN。
+- **自动回报**：原队列已自动提交当前聊天；读取冻结plan和真实结果后ack确认。job HUMAN_REQUIRED，
+  report `0c9b2030…`，result `22f1aeba…`，完整证据在外部agent-link/jobs/CAL-WORD-PARAGRAPH-001-AUTO。
+- **收口**：SYS-11/12入口修复收口；新的业务超时根因UNKNOWN，scratch为aegl-ai/750不可读。
+  自动派发/审查回写/失败回传实证通过，成功开发与独立验收闭环未通过。原任务身份和预算已消费，
+  不重发、不恢复、不另建身份、不晋升。下一方向为现有权限/证据下查明超时；不扩建诊断设施。
+  正式main仍832836e，未修改。源码仅批准Stack副本，未正式晋升/安装。
 
 ### 2026-11-21 CAL-WORD-PARAGRAPH-001 自动派发入口失败
 

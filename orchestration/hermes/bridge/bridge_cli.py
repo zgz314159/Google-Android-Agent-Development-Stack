@@ -582,7 +582,7 @@ PRECONSUME_TERMINAL_EVENTS = ("ACCEPTED", "RESULT", "STOPPED")
 
 
 def recover_initial_read_failure(*, task, expected_state_sha256, rejection_sha256,
-                                 authorization_id, root=None, gate_fn=None):
+                                 authorization_id, root=None, gate_fn=None, bootstrap_request_absent=False):
     """Audited one-shot recovery ONLY for the pre-send missing-CDP rejection.
 
     No model, browser operation, send, task consumption or chain rewind. The
@@ -597,17 +597,21 @@ def recover_initial_read_failure(*, task, expected_state_sha256, rejection_sha25
         if not path.is_file():
             raise ValueError("RECOVERY_STATE_ABSENT")
         raw = proto.load_json_strict(path.read_text())
-        if proto.canonical_sha256(raw) != expected_state_sha256 or raw.get("status") != "ERROR":
+        expected_status = "VALIDATING" if bootstrap_request_absent else "ERROR"
+        if proto.canonical_sha256(raw) != expected_state_sha256 or raw.get("status") != expected_status:
             raise ValueError("RECOVERY_STATE_MISMATCH")
         if (directory / bs.PENDING_FILE).exists() or bs.unresolved_accepted(root):
             raise ValueError("RECOVERY_UNRESOLVED_OR_PENDING")
         journal = bs.read_journal(root)
-        if any(e.get("event") == "INITIAL_READ_RECOVERY" and e.get("authorization_id") == authorization_id for e in journal):
+        if any(e.get("event") in {"INITIAL_READ_RECOVERY", "BOOTSTRAP_READ_CONTINUATION"} and e.get("authorization_id") == authorization_id for e in journal):
             raise ValueError("RECOVERY_ALREADY_USED")
         last = journal[-1] if journal else {}
-        if (proto.canonical_sha256(last) != rejection_sha256
-                or last.get("event") != "READ_FAILED" or last.get("error") != "AdapterError"
-                or last.get("message") != "BU_CDP_URL must equal " + adapter.EXPECTED_CDP):
+        eligible = ((last.get("event") == "INITIAL_READ_RECOVERY" and last.get("task_id") == task["task_id"]
+                     and last.get("sequence") == raw["expected_sequence"])
+                    if bootstrap_request_absent else
+                    (last.get("event") == "READ_FAILED" and last.get("error") == "AdapterError"
+                     and last.get("message") == "BU_CDP_URL must equal " + adapter.EXPECTED_CDP))
+        if proto.canonical_sha256(last) != rejection_sha256 or not eligible:
             raise ValueError("RECOVERY_NOT_INITIAL_CDP_FAILURE")
         if bs.is_consumed(task["task_id"], raw["expected_sequence"], raw["expected_nonce"], root):
             raise ValueError("RECOVERY_TASK_ALREADY_CONSUMED")
@@ -619,10 +623,11 @@ def recover_initial_read_failure(*, task, expected_state_sha256, rejection_sha25
             raise ValueError("RECOVERY_TASK_PROTOCOL_REJECTED")
         (gate_fn or ce.gate)(task["contract_package"], task["contract_manifest_sha256"],
                             project=task["project"], task_id=task["task_id"])
-        bs.journal_append({"event": "INITIAL_READ_RECOVERY", "task_id": task["task_id"],
+        event = "BOOTSTRAP_READ_CONTINUATION" if bootstrap_request_absent else "INITIAL_READ_RECOVERY"
+        bs.journal_append({"event": event, "task_id": task["task_id"],
                            "sequence": raw["expected_sequence"], "authorization_id": authorization_id,
                            "rejection_sha256": rejection_sha256, "state_sha256": expected_state_sha256,
-                           "from_status": "ERROR", "to_status": "WAITING_FOR_GPT"}, root)
+                           "from_status": expected_status, "to_status": "WAITING_FOR_GPT"}, root)
         state = bs.BridgeState(raw, path)
         state.set_status("WAITING_FOR_GPT")
         return {"decision": "INITIAL_READ_RECOVERED", "task_id": task["task_id"],

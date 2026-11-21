@@ -167,6 +167,7 @@ class JobTests(unittest.TestCase):
                                                      "expected_nonce": "nonce", "expected_in_reply_to": "hash"}))
         calls = []
         state = SimpleNamespace(state_dir=lambda: bridge, unresolved_accepted=lambda: [],
+                                journal_append=lambda event: calls.append(event['event']),
                                 consumed_identities=lambda: ({"FRESH"} if consumed else set(), set()))
         def run_round(entry_guard_fn, read_fn):
             entry_guard_fn();calls.append("guard");read_fn();calls.append("round")
@@ -283,6 +284,59 @@ class JobTests(unittest.TestCase):
         self.assertTrue(after['recovery_history'][0]['retry_dispatched'])
         self.assertEqual(after['actions_done'], ['execute_contract','execute_contract'])
         self.assertNotIn('execute_contract', jobs.allowed(self.plan,after))
+
+    def test_bootstrap_continuation_requires_original_recovery_and_no_later_send(self):
+        svc, d, state, kwargs = self.recovery_fixture()
+        svc.cli.recover_initial_read_failure(**kwargs)
+        raw = json.loads((d/'state.json').read_text());raw['status'] = 'VALIDATING'
+        (d/'state.json').write_text(link.json_text(raw))
+        kwargs.update(expected_state_sha256=link.digest(link.json_text(raw)),
+                      rejection_sha256=link.digest(link.json_text(svc.state.read_journal(d)[-1])),
+                      authorization_id='USER-BOOTSTRAP', bootstrap_request_absent=True)
+        svc.state.journal_append({'event':'CONTROL_REQUEST_SEND_ATTEMPTED'}, d)
+        kwargs['rejection_sha256'] = link.digest(link.json_text(svc.state.read_journal(d)[-1]))
+        with self.assertRaisesRegex(ValueError, 'NOT_INITIAL_CDP'):
+            svc.cli.recover_initial_read_failure(**kwargs)
+        self.assertEqual(json.loads((d/'state.json').read_text()), raw)
+
+    def test_bootstrap_continuation_preserves_chain_and_consumption(self):
+        svc, d, state, kwargs = self.recovery_fixture()
+        svc.cli.recover_initial_read_failure(**kwargs)
+        raw = json.loads((d/'state.json').read_text());raw['status'] = 'VALIDATING'
+        (d/'state.json').write_text(link.json_text(raw))
+        kwargs.update(expected_state_sha256=link.digest(link.json_text(raw)),
+                      rejection_sha256=link.digest(link.json_text(svc.state.read_journal(d)[-1])),
+                      authorization_id='USER-BOOTSTRAP', bootstrap_request_absent=True)
+        svc.cli.recover_initial_read_failure(**kwargs)
+        expected = dict(raw);expected['status'] = 'WAITING_FOR_GPT'
+        self.assertEqual(json.loads((d/'state.json').read_text()), expected)
+        self.assertEqual(svc.state.read_journal(d)[-1]['event'], 'BOOTSTRAP_READ_CONTINUATION')
+        self.assertEqual(svc.state.consumed_identities(d), (set(),set()))
+
+    def test_inflight_continuation_does_not_consume_third_action(self):
+        self.business_plan();jobs.submit(self.plan);self.step()
+        self.decision('execute_contract')
+        d, _, state = jobs.load('J')
+        state.update(status='ACTION_RUNNING', actions_done=['execute_contract','execute_contract'],
+                     recovery_history=[{'phase':'RECOVERED','retry_dispatched':True}])
+        jobs.save(d,state)
+        bridge=self.base/'bootstrap';bridge.mkdir()
+        (bridge/'state.json').write_text(link.json_text({'expected_sequence':20,'expected_nonce':'n','expected_in_reply_to':'h'}))
+        seen=[]
+        svc=SimpleNamespace(adapter=SimpleNamespace(EXPECTED_CDP='http://127.0.0.1:9333',
+            confirm_message_present=lambda request: (seen.append(request) or True)),
+            state=SimpleNamespace(state_dir=lambda:bridge, read_journal=lambda:[{}]),
+            cli=SimpleNamespace(recover_initial_read_failure=lambda **k: {'decision':'INITIAL_READ_RECOVERED'}))
+        with self.assertRaisesRegex(link.LinkError,'ALREADY_PRESENT'):
+            jobs.continue_bootstrap('J',THREAD,'USER-BOOTSTRAP',svc=svc)
+        self.assertEqual(jobs.load('J')[2]['status'],'ACTION_RUNNING')
+        svc.adapter.confirm_message_present=lambda request: False
+        jobs.continue_bootstrap('J',THREAD,'USER-BOOTSTRAP',svc=svc)
+        self.step(execute=lambda *_: {'passed':True})
+        self.assertEqual(jobs.load('J')[2]['actions_done'],['execute_contract','execute_contract'])
+        self.decision('host_acceptance')
+        self.step(acceptance=lambda *_: {'passed':True,'executed_tests':4})
+        self.decision(decision='COMPLETE')
 
     def test_host_acceptance_sandbox_writes_only_external_copy(self):
         worktree = self.base/"business"
