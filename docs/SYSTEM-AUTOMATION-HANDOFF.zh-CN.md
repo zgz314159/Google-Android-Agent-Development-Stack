@@ -25,6 +25,33 @@
 
 ### 最新进度（2026-11-21 自动汇报接入）
 
+**新的真实开发验证已获授权并冻结，等待用户一次普通终端启动**：用户在宿主核验通过后明确要求
+“那开始：接下来需要验证修复后的真实开发流程”。本轮task `CAL-WORD-PARAGRAPH-HOST-001`，job
+`CAL-WORD-PARAGRAPH-HOST-001-AUTO`；只开发原Word段落导入器和>=4项确定性测试，单次Hermes120秒、
+清理10秒，无表格/UI/新依赖/数据库/晋升；旧三个失败身份不重放。这是用户新授权，不是系统自动换身份。
+
+- 新worktree `/var/tmp/RILI-WPF-V2/WORD-PARAGRAPH-HOST-001/project`，基于正式832836e，只有项目契约
+  提交`f18b30f35513dcce5b7fdfe9111a1d70c200e196`。manifest
+  `f93a9583154d5cd6e6be9f73a90aeb809ecaff123b2ee85b9cd13c3a463158f3`，五门PASS/READY/0错。
+- plan SHA `825c0bec523a25db19a0e95e3ec495b38915dc5c9d36044d637ade65eef24a3f`；证据文件任务根
+  preparation-summary.md，SHA `80960dcd66546fc63c00aa93ae38c102fcd1ddca38b56ef2f4262de768ab23c6`。
+  已submit为WAITING_PREPARATION，actions_done空，无模型/发送；总窗口沿用冻结的一小时，不延长。
+- 必要准备修正：原脚本仅接受升级前哈希，会拒绝已成功安装的诊断组件。本轮复用当前root-owned
+  wrapper/summary，不重复安装；launcher除受严格语法/基线/登记检查的任务配置行外，全部代码字节
+  仍固定SHA `0c8aafde79be9b2564ef771d97ed78982aa5887790da50d84147b2d2d19174ec`。
+  只追加本task诊断配置，拒绝未知任务、重复/命令语法、其他代码改动；5项针对性检查与--check实际通过。
+- root完成后预期launcher SHA `71b8d9e149a37f08b6d7c34eaeca61b87ed81c1293f668afd29c89c15899f73d`，
+  wrapper e8b90a5a995795555ef077482f0a80cc14a6249815e1c182decca4444e398725，summary
+  5a3f3923fa186cc8770e5b6ef806627ca53895ab183051dd41e9c8ad520b84eb。sink存在性仍由root检查，当前UNKNOWN。
+- 用户将在同一普通终端命令里先root prepare --diagnostics，成功后普通用户host-run（不带check-only），
+  绑定上述job/thread/plan。桌面不tick，不sudo、不在外部偷偷拉起进程；只pending/decide/ack。用户已给
+  单次业务授权，不重复申请；尚缺的是root认证和用户显式启动宿主。宿主等待当前聊天决定后取指执行。
+- 实际退出后宿主在job外部state目录读取一次phase-summary.*；真实SUCCESS/0、cleanup和回传确认
+  后才下发host_acceptance，WordParagraphImportTests实际>=4且全通过、核对真实差异/断言/源docx哈希
+  才COMPLETE。失败保留真实诊断并停本轮，不扩预算/模型次数/替代身份。安全可证的发送前失败仍只走
+  已审查有界恢复；宿主可在原deadline内等修复，已消费失败不恢复。Windows保持NOT_RUN。
+当前正式main仍832836e未变，root准备/业务执行/宿主业务验收均NOT_RUN；下方宿主旧任务核验已收口。
+
 **宿主只读核验已通过**：用户普通终端生成host-context-check.json，已实际读取并核对：
 host_context=READY、execution_attempted=false、job_id=CAL-WORD-PARAGRAPH-DIAG-001-AUTO、
 status=HUMAN_REQUIRED；文件SHA `8ccb13e2be7bd825bdde63f46b37bd0b155a2a4f0c6eefd66ffdcf51c05acf33`。

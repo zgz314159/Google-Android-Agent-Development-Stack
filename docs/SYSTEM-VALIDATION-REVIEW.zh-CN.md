@@ -137,6 +137,21 @@ Word `.docx` 导入；离线契约已 READY（manifest `639ed1fe…`），root �
 
 ## 8. 简短任务记录
 
+### 2026-11-21 新授权修复后真实开发：CAL-WORD-PARAGRAPH-HOST-001 准备
+
+- **授权/范围**：用户明确要求开始修复后的真实开发验证，新task/job分别CAL-WORD-PARAGRAPH-HOST-001
+  和CAL-WORD-PARAGRAPH-HOST-001-AUTO；只Word段落导入器+>=4项测试，120秒/清理10秒，不重放旧3身份。
+- **项目准备**：新批准worktree基于832836e，仅作者契约提交f18b30f；8份输入经现有三入口READY，五门
+  PASS/0错。manifest f93a9583154d5cd6e6be9f73a90aeb809ecaff123b2ee85b9cd13c3a463158f3。
+  计划hash825c0bec…已冻结submit，WAITING_PREPARATION，actions_done空；正式main未修改。
+- **集中必要修正**：旧prepare硬编码升级前哈希，直接阻止本轮复用已安装诊断组件。改为launcher代码
+  字节固定、任务配置行严格语法/原基线/已登记约束且拒绝其他改动；当前可信wrapper/summary直接复用，
+  保留root归属/mode及sink不存在检查。5项针对性检查和本轮--check通过，未重跑未变化的61项检查。
+- **真实状态与下一步**：root仍未运行，sink状态UNKNOWN；没有模型调用、控制发送、业务实现或宿主
+  验收，Windows NOT_RUN。交付一次普通终端组合命令，root prepare成功后以普通用户启动绑定计划的
+  host-run，由宿主取当前聊天审核决定自动执行、回报和独立验收；桌面不再承担sudo调用。
+  本轮已有单次执行授权，缺物理root认证和用户显式启动；不重复申请或将新准备说成业务通过。
+
 ### 2026-11-21 用户普通终端宿主核验通过
 
 - **实际文件**：host-context-check.json，SHA
