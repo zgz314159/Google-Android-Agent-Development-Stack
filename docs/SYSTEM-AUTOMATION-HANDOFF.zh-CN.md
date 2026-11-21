@@ -25,6 +25,22 @@
 
 ### 最新进度（2026-11-21 自动汇报接入）
 
+**guard请求已核对，本轮查因不再等待用户读取**：新提取exit0/stderr空，输出SHA
+`794007fa623220f3c4dd7f3ade2551bf54b9cb2c5a1876624d00a8dcf225e65f`；原capture SHA
+`cf770cb02da82e326a829cada5a934880c072b5284fc7ea2d308f7c4c527a27a`，11条、无坏行，全部真实请求
+相关性及记录标记通过，guard rc均0。模型未显式传workdir；6条请求出现find词、7条出现ls词，
+多次出现相对契约文件引用，无一命令hash逐字匹配两个冻结CLI检查。词提示不是完整shell语义；请求
+中有cd，不能仅凭相对文件名认定每次读取都用了启动cwd。guard正常ALLOW不输出JSON，摘要中
+guard_decision=UNKNOWN不表示guard阻断，也不为此修改guard协议。
+
+已确认的系统缺口是提示缺少契约/源码路径基准，实际请求又持续出现契约查找行为；这支持启动寻址
+消耗预算的判断，但现存脱敏记录没有4个原始tool_error正文或每次工具内部cwd，不能声称唯一超时
+根因已完全证明。修复在原提示生成器：明确包目录HERMES_CONTRACT_PACKAGE、源码source_root及
+CLI登记cwd，并给出一次printf取包目录、批量必要读取、禁止重复寻址的明确步骤。新增独立cwd下
+执行该只读定位命令的回归通过；相关CLI9项、build3项共12项通过。未重跑业务/改旧冻结包，当前
+修复为源码及离线验证完成，尚无修复后真实开发成功证据。业务仍FAILED、宿主验收/Windows NOT_RUN。
+本轮提取收口，不追加日志字段或诊断设施。下一真实业务执行需新的适用未消费授权；不自动创建任务。
+
 **工具结果已读取；路径提示缺口已修复源码，因果核对仍待既有请求记录**：用户认证后的
 phase-summary-tools提取exit0、stderr空，SHA `1f82794897256d052fb6739082c85bd794bcc43676fa7432c3185672590a69f6`。
 20个post中4个ERROR（terminal三次exit1/2/1，read_file一次）、16个OK；无write_file/patch事件。

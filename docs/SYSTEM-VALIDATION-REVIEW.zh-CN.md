@@ -89,7 +89,7 @@
 | SYS-13 | 桌面NNP子进程承担需要sudo的宿主执行：已修复，宿主真实入口验证通过 | 用户启动HOST-001的host-run，seq21真实受控执行；摘要确认sandbox准备、模型响应及工具事件，固定summary读取exit0 | 入口阻断收口；业务随后120秒超时，无代码，不能将入口通过当业务通过。不清NNP或自动拉起外部进程绕过 |
 | SYS-14 | 结果停在composer，Enter未完成提交：已修复并真实验证 | 完整616字符canonical仍为草稿，用户turn无该结果，同form唯一可用发送按钮存在。改物理单击且保留exact确认；用户明确授权一次补发后原resolver真实CONFIRMED_SENT，resend_count=1 | Bridge WAITING_FOR_GPT/seq21/pending=false，回传阻断收口；FAILED/1原业务结果不变，未重跑Hermes。证据send-resolution.json及journal |
 | SYS-15 | 普通宿主PATH无codex，初报通知未启动却误标发送不确定：已修复，原报告通知已恢复 | 初报6918a73e…保留；CLI绝对定位、NOT_SENT区分及精确恢复，36项测试通过，普通终端类似环境真实QUEUED且new_model_call=false；用户重启后HOST-001已实际执行并自动回报失败 | 通知入口收口，不重复root/报告生成/恢复；本轮业务超时另记SYS-16。真正不确定发送不适用此恢复 |
-| SYS-16 | HOST-001 已进入模型/工具阶段但120秒超时、无业务改动：UNKNOWN | seq21 BLOCKED/124，清理和回传确认；阶段摘要exit0，14次完整模型响应、20对工具事件、11次guard返回0；worktree干净且要求文件不存在 | 原任务已消费并ack，不重跑/延预算/换身份。摘要未输出工具status/error/exit，scratch不可读，不能确诊为何无产物或将HTTP200当业务成功；下一方向为现有权限内核对工具失败证据 |
+| SYS-16 | HOST-001 超时无业务改动：路径交接缺口已修复源码，完整超时根因仍UNKNOWN | 工具4次ERROR/16次OK；11条相关guard请求均rc0，反复出现契约相对名/find/ls词，未逐字匹配冻结CLI。静态复现启动cwd无法直接解析提示相对路径；原生成器补路径基准及一次定位/批量读取，12项相关检查通过 | 已完成现有记录提取，不追加诊断设施；缺原始错误文本/工具内部cwd，不能断言每个错误都由路径造成。修复后真实开发NOT_RUN；旧任务不重放、不自动换身份 |
 
 问题如有状态变化，在此表更新，并在任务记录中留下变化依据。业务已完成而问题仍 UNKNOWN 时，可以保留 UNKNOWN；不要为了让整表变绿而重跑任务。
 
@@ -141,6 +141,16 @@ Word `.docx` 导入；离线契约已 READY（manifest `639ed1fe…`），root �
 
 ### 2026-11-21 HOST-001 真实执行：超时，自动回报已接收
 
+- **guard核对与修复收口**：用户只读请求提取exit0/stderr空，输出SHA
+  `794007fa623220f3c4dd7f3ade2551bf54b9cb2c5a1876624d00a8dcf225e65f`；capture SHA
+  `cf770cb02da82e326a829cada5a934880c072b5284fc7ea2d308f7c4c527a27a`。11条相关请求全记录、rc0，
+  未显式传workdir；6条含find词、7条含ls词，多次契约相对名，无逐字匹配冻结CLI命令的hash。
+  这些为词法提示，不据此重构完整命令/内部cwd；guard ALLOW无stdout是原协议，不另改guard。
+  提示路径交接缺失已静态证明，实际查找行为支持其影响；完整超时因果、4条错误具体正文仍UNKNOWN。
+  原提示生成器已补包目录/源码根/CLI cwd，并给一次只读printf取路径和批量读取指引。独立启动cwd
+  回归及相关CLI9/build3共12项通过；旧冻结包、身份、预算不改，无新模型调用。
+  查因提取到此收口，修复仅源码/离线验证完成，真实开发效果NOT_RUN。业务仍FAILED，宿主验收及
+  Windows NOT_RUN；不重复提取、扩诊断设施或自建下一任务。
 - **工具结果实证及必要修复**：用户认证只读提取成功，exit0/stderr空；新摘要SHA
   `1f82794897256d052fb6739082c85bd794bcc43676fa7432c3185672590a69f6`。20个post有4个ERROR：
   terminal三次exit1/2/1、read_file一次；其余16个OK，无write_file/patch事件。不能据此断言terminal

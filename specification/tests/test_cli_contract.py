@@ -2,6 +2,7 @@
 
 import json
 import os
+import subprocess
 import tempfile
 import unittest
 
@@ -101,6 +102,23 @@ class CliContractTest(unittest.TestCase):
         self.assertEqual(report["status"], "READY", report["errors"])
         contract = json.loads(support.read(os.path.join(pkg, "implementation-contract.json")))
         return support.build_contract.render_prompt(contract)
+
+    def test_package_location_works_from_a_separate_launch_worktree(self):
+        pkg = make_cli_package(self.tmp.name)
+        prompt = self._prompt(pkg)
+        line = next(line for line in prompt.splitlines() if 'Obtain that directory once using' in line)
+        command = line.split('`')[1]
+        worktree = os.path.join(self.tmp.name, 'launch-worktree')
+        os.mkdir(worktree)
+        self.assertFalse(os.path.exists(os.path.join(worktree, 'manifest.json')))
+        manifest_before = support.read(os.path.join(pkg, 'manifest.json'))
+        proc = subprocess.run(['bash', '-c', command], cwd=worktree,
+                              env={'HERMES_CONTRACT_PACKAGE': pkg, 'PATH': '/usr/bin:/bin'},
+                              capture_output=True, text=True, timeout=5)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(proc.stdout.strip(), pkg)
+        self.assertTrue(os.path.isfile(os.path.join(proc.stdout.strip(), 'manifest.json')))
+        self.assertEqual(support.read(os.path.join(pkg, 'manifest.json')), manifest_before)
 
     def test_prompt_is_contract_first_for_evidence(self):
         pkg = make_cli_package(self.tmp.name)

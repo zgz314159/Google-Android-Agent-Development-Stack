@@ -161,6 +161,8 @@ re-plan decisions this contract has already frozen.
   contract package directory. Resolve ALL package member names below under that directory,
   not under the current working directory. If it is unavailable, emit `CONTRACT_GAP` and STOP;
   do not scan the repository to find the contract.
+  Obtain that directory once using `printf '%s\\n' "$HERMES_CONTRACT_PACKAGE"`.
+  Batch the required package reads from that directory; do not repeat directory discovery.
 - Resolve `read_first`, allowed paths and forbidden paths against `source_root` from that
   package's `project-context.json`, not against the current working directory.
 - Keep the registered launch working directory for CLI checks unless the frozen command
