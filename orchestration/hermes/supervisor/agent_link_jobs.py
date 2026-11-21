@@ -130,15 +130,17 @@ def write_cursor_inbox(plan, state, message):
 
 
 def publish_cursor_inbox(job_id):
-    """Re-publish an existing WAITING_REVIEW report into the Cursor inbox without resending Codex."""
+    """Re-publish an existing review/failure report into the Cursor inbox without resending Codex."""
     directory, plan, state = load(job_id)
-    if state["status"] != "WAITING_REVIEW" or not state.get("report_sha256") or not state.get("report"):
-        raise link.LinkError("NO_WAITING_REVIEW_REPORT")
+    if (state["status"] not in {"WAITING_REVIEW", "HUMAN_REQUIRED"}
+            or not state.get("report_sha256") or not state.get("report")):
+        raise link.LinkError("NO_PUBLISHABLE_REPORT")
     message = report_message(plan, state)
     path = write_cursor_inbox(plan, state, message)
     return {
         "job_id": job_id,
         "status": "CURSOR_INBOX_WRITTEN",
+        "job_status": state["status"],
         "report_sha256": state["report_sha256"],
         "path": str(path),
         "latest": str(cursor_inbox_root()/"LATEST.json"),

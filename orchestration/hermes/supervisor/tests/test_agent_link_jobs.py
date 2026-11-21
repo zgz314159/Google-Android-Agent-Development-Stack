@@ -555,6 +555,18 @@ results=Path(sys.argv[sys.argv.index('--results-directory')+1])
         self.assertTrue(Path(result["path"]).is_file())
         self.assertTrue(Path(result["latest"]).is_file())
 
+    def test_publish_cursor_inbox_accepts_human_required_failure_report(self):
+        jobs.submit(self.plan); self.step()
+        d, _, s = jobs.load("J")
+        failure = {"error": "ACTION_FAILED_NO_RETRY:execute_contract", "results": {}}
+        s.update(status="HUMAN_REQUIRED", error="ACTION_FAILED_NO_RETRY:execute_contract",
+                 report=failure, report_sha256=link.digest(link.json_text(failure)))
+        jobs.save(d, s)
+        result = jobs.publish_cursor_inbox("J")
+        self.assertEqual(result["status"], "CURSOR_INBOX_WRITTEN")
+        self.assertEqual(result["job_status"], "HUMAN_REQUIRED")
+        self.assertTrue(Path(result["path"]).is_file())
+
 
 if __name__ == "__main__":
     unittest.main()
