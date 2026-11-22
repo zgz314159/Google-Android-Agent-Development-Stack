@@ -36,9 +36,43 @@ import sys
 import time
 from pathlib import Path
 
-CONTROL_URL = "https://chatgpt.com/c/6ac4d058-acb8-83e8-bf2c-8bb4b8aa2278"
+# Default pinned conversation (OfflineTaskCalendar / legacy). Prefer per-project
+# binding via HERMES_CHATGPT_CONTROL_URL or ~/.local/share/aegl-dual-link/project-control-map.json.
+_DEFAULT_CONTROL_URL = "https://chatgpt.com/c/6ac4d058-acb8-83e8-bf2c-8bb4b8aa2278"
+_CONTROL_URL_RE = re.compile(r"^https://chatgpt\.com/c/[A-Za-z0-9._-]{1,128}$")
 
 EXPECTED_CDP = "http://127.0.0.1:9333"
+
+
+class AdapterError(RuntimeError):
+    pass
+
+
+def _resolve_control_url(raw: str | None = None) -> str:
+    """Resolve the active ChatGPT control conversation URL.
+
+    Order: explicit ``raw`` → ``HERMES_CHATGPT_CONTROL_URL`` → default pinned.
+    Invalid non-empty values raise (no silent fallback). Call sites that need
+    per-project binding must set the env (dual-link arm / chatgpt_advise) first.
+    """
+    value = os.environ.get("HERMES_CHATGPT_CONTROL_URL") if raw is None else raw
+    if value is None or value == "":
+        return _DEFAULT_CONTROL_URL
+    if not isinstance(value, str) or not _CONTROL_URL_RE.match(value):
+        raise AdapterError(
+            "HERMES_CHATGPT_CONTROL_URL must match "
+            "https://chatgpt.com/c/<conversation-id>; got %r" % (value,)
+        )
+    return value
+
+
+def active_control_url() -> str:
+    """Control URL for the current process (re-resolved each call)."""
+    return _resolve_control_url()
+
+
+# Back-compat module attribute (import-time snapshot). Prefer active_control_url().
+CONTROL_URL = _resolve_control_url()
 
 
 def _default_hermes_agent_dir() -> str:
@@ -75,14 +109,30 @@ def _keystroke_plan(text: str) -> list[tuple[str, int]]:
             plan.append((char, 0))
     return plan
 
+
+def _visible_composer_js(selector: str, body: str) -> str:
+    """Run ``body`` with ``e`` bound to the unique *visible* composer match.
+
+    ChatGPT keeps a zero-size twin of the same aria-label in the DOM. Plain
+    ``document.querySelector`` hits that hidden node first, so fills land in a
+    composer that never shows text and ``send_once`` stops as SEND_UNCERTAIN.
+    """
+    return """
+            (() => {
+              const nodes = [...document.querySelectorAll(%s)].filter(el => {
+                const r = el.getBoundingClientRect();
+                return r.width > 0 && r.height > 0;
+              });
+              if (nodes.length !== 1) return null;
+              const e = nodes[0];
+              %s
+            })()
+            """ % (json.dumps(selector), body)
+
 # Status vocabulary
 CONFIRMED_SENT = "CONFIRMED_SENT"
 SEND_UNCERTAIN = "SEND_UNCERTAIN"
 ALREADY_PRESENT = "ALREADY_PRESENT"
-
-
-class AdapterError(RuntimeError):
-    pass
 
 
 class SubmitNotReady(AdapterError):
@@ -200,12 +250,17 @@ class RealOps:
     # -- tab -----------------------------------------------------------------
     def find_control_tab(self) -> dict:
         self.h["ensure_daemon"]()
-        matches = [tab for tab in self.h["list_tabs"]() if tab.get("url") == CONTROL_URL]
+        control_url = active_control_url()
+        matches = [tab for tab in self.h["list_tabs"]() if tab.get("url") == control_url]
+        if len(matches) == 0:
+            raise AdapterError("TARGET_TAB_MISSING: no open tab with url %s" % control_url)
         if len(matches) != 1:
-            raise AdapterError("expected exactly 1 control tab, got %d" % len(matches))
+            raise AdapterError(
+                "TARGET_TAB_AMBIGUOUS: %d open tabs with url %s" % (len(matches), control_url)
+            )
         self.h["switch_tab"](matches[0])
         current = self.h["current_tab"]()
-        if current.get("url") != CONTROL_URL:
+        if current.get("url") != control_url:
             raise AdapterError("wrong control URL: %s" % current.get("url"))
         return {
             "target_id": current.get("targetId") or current.get("target_id"),
@@ -217,26 +272,49 @@ class RealOps:
         return self.h["js"](expression)
 
     def fill_input(self, selector: str, text: str) -> None:
-        """Fill the composer without losing line breaks.
+        """Fill the visible composer without losing line breaks.
 
-        Clears via the Browser-Harness primitive, then types the text through
-        :func:`_keystroke_plan` so every line break is a Shift+Enter instead of a
-        dropped ``\\n``, and finally dispatches input/change so the editor sees
-        the update.
+        Focuses the unique visible match (never the zero-size twin), clears it,
+        then types through :func:`_keystroke_plan` so every line break is a
+        Shift+Enter instead of a dropped ``\\n``.
         """
-        self.h["fill_input"](selector, "", clear_first=True, timeout=3)
+        target = self.js(
+            _visible_composer_js(
+                selector,
+                "const r = e.getBoundingClientRect();"
+                " return {x: r.x + r.width / 2, y: r.y + r.height / 2};",
+            )
+        )
+        if not isinstance(target, dict) or any(
+            type(target.get(k)) not in (int, float) for k in ("x", "y")
+        ):
+            raise AdapterError("unique visible ChatGPT composer not found for fill")
+        self.h["click_at_xy"](target["x"], target["y"])
+        cleared = self.js(
+            _visible_composer_js(
+                selector,
+                "e.focus();"
+                " const selection = window.getSelection();"
+                " const range = document.createRange();"
+                " range.selectNodeContents(e);"
+                " selection.removeAllRanges();"
+                " selection.addRange(range);"
+                " const deleted = document.execCommand('delete');"
+                " e.dispatchEvent(new Event('input', {bubbles: true}));"
+                " return !!deleted || !(e.innerText || '').trim();",
+            )
+        )
+        if not cleared:
+            raise AdapterError("failed to clear visible ChatGPT composer")
         for key, modifiers in _keystroke_plan(text):
             self.h["press_key"](key, modifiers)
         self.js(
-            """
-            (() => {
-              const e = document.querySelector(%s);
-              if (!e) return;
-              e.dispatchEvent(new Event('input', {bubbles: true}));
-              e.dispatchEvent(new Event('change', {bubbles: true}));
-            })()
-            """
-            % json.dumps(selector)
+            _visible_composer_js(
+                selector,
+                "e.dispatchEvent(new Event('input', {bubbles: true}));"
+                " e.dispatchEvent(new Event('change', {bubbles: true}));"
+                " return true;",
+            )
         )
 
     def press_key(self, key: str) -> None:
@@ -244,10 +322,11 @@ class RealOps:
 
     def submit_target(self, selector: str) -> dict:
         """Read the unique enabled send button in THIS composer's form."""
-        target = self.js("""
-            (() => {
-              const editor = document.querySelector(%s);
-              const form = editor && editor.closest('form');
+        target = self.js(
+            _visible_composer_js(
+                selector,
+                """
+              const form = e.closest('form');
               if (!form) return null;
               const buttons = [...form.querySelectorAll('button[type="submit"]')].filter(b => {
                 const r = b.getBoundingClientRect();
@@ -259,8 +338,9 @@ class RealOps:
               if (buttons.length !== 1) return null;
               const r = buttons[0].getBoundingClientRect();
               return {x: r.x + r.width / 2, y: r.y + r.height / 2};
-            })()
-            """ % json.dumps(selector))
+                """,
+            )
+        )
         if not isinstance(target, dict) or any(type(target.get(k)) not in (int,float) for k in ('x','y')):
             raise SubmitNotReady('unique enabled send button not found in composer form')
         return target
@@ -302,12 +382,14 @@ class RealOps:
         inserts extra newlines around blocks, so neither equals the submitted
         text. Read the block texts and join them with a single newline;
         ProseMirror's trailing placeholder break is not content.
+
+        Always reads the unique visible composer — a zero-size twin of the same
+        aria-label must not be treated as the live editor.
         """
         value = self.js(
-            """
-            (() => {
-              const e = document.querySelector(%s);
-              if (!e) return null;
+            _visible_composer_js(
+                selector,
+                """
               const blocks = [...e.children];
               if (!blocks.length) return [e.innerText || ""];
               return blocks.map(block => {
@@ -316,9 +398,8 @@ class RealOps:
                   .forEach(br => br.replaceWith('\\n'));
                 return clone.textContent || "";
               });
-            })()
-            """
-            % json.dumps(selector)
+                """,
+            )
         )
         if not isinstance(value, list):
             return ""

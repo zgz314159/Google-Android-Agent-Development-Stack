@@ -495,10 +495,42 @@ def collect_host_diagnostic(directory, task, svc):
         'sha256':link.digest(stdout),'task_id':task['task_id']})+'\n')
 
 
-def host_run(job_id, thread_id, plan_sha256, *, check_only=False, codex_bin=None):
+def _auto_decide_for_dual_link(job_id, thread_id, state, plan):
+    """Advance WAITING_REVIEW without Cursor: execute_contract → host_acceptance → COMPLETE.
+
+    Enabled by host-run --auto-decide / AEGL_DUAL_LINK_AUTO_DECIDE=1. Does not invent
+    new task ids, retries, or promotion.
+    """
+    report_sha = state.get("report_sha256")
+    if not report_sha:
+        raise link.LinkError("AUTO_DECIDE_MISSING_REPORT")
+    done = set(state.get("actions_done") or [])
+    if "execute_contract" not in done:
+        return decide(job_id, thread_id, report_sha, "CONTINUE", "execute_contract",
+                      "dual-link auto-decide: execute_contract")
+    if plan.get("task") and "host_acceptance" not in done:
+        return decide(job_id, thread_id, report_sha, "CONTINUE", "host_acceptance",
+                      "dual-link auto-decide: host_acceptance")
+    # Acceptance already recorded or inspect-only plans
+    if plan.get("task"):
+        ha = (state.get("results") or {}).get("host_acceptance") or {}
+        if not ha.get("passed"):
+            raise link.LinkError("AUTO_DECIDE_ACCEPTANCE_NOT_PASSED")
+    result = decide(job_id, thread_id, report_sha, "COMPLETE", None,
+                    "dual-link auto-decide: COMPLETE")
+    try:
+        ack(job_id, thread_id, report_sha)
+    except link.LinkError:
+        pass
+    return result
+
+
+def host_run(job_id, thread_id, plan_sha256, *, check_only=False, codex_bin=None, auto_decide=None):
     """User-started, bounded operator process for ONE frozen job; no daemon/service."""
     if os.geteuid() == 0 or os.geteuid() != os.getuid():
         raise link.LinkError('HOST_RUN_REQUIRES_UNPRIVILEGED_OPERATOR')
+    if auto_decide is None:
+        auto_decide = os.environ.get("AEGL_DUAL_LINK_AUTO_DECIDE", "1") not in {"0", "false", "no"}
     svc=actions.services()
     try:
         svc.ce.require_launch_privilege()
@@ -509,13 +541,21 @@ def host_run(job_id, thread_id, plan_sha256, *, check_only=False, codex_bin=None
     _, plan, state=load(job_id)
     if thread_id != plan['thread_id'] or plan_sha256 != state['plan_sha256']:
         raise link.LinkError('HOST_JOB_BINDING_MISMATCH')
+    # Bind ChatGPT advisor conversation for this job's AEGL project (per-project).
+    try:
+        if plan.get("task"):
+            actions._bind_project_control_url(plan["task"], svc=svc)
+    except Exception as exc:
+        raise link.LinkError("PROJECT_CONTROL_BIND_FAILED:" + str(exc)) from exc
     # Link-1 only: Codex CLI is optional unless review-binding includes the codex channel.
     _binary, queue = review_queue_for_binding(codex_bin)
     if not shutil.which('command-code'):
         raise link.LinkError('HOST_REPORT_WORKER_EXECUTABLE_MISSING')
     if check_only:
         return {'job_id':job_id,'status':state['status'],'host_context':'READY','execution_attempted':False,
-                'review_channels': load_review_binding()['channels']}
+                'review_channels': load_review_binding()['channels'],
+                'control_url': os.environ.get('HERMES_CHATGPT_CONTROL_URL'),
+                'auto_decide': auto_decide}
     deadline=state['expires_at']
     while True:
         # Reuse the same serialization as tick; review decisions use the job lock
@@ -538,6 +578,9 @@ def host_run(job_id, thread_id, plan_sha256, *, check_only=False, codex_bin=None
             waiting_repair=waiting_repair or waiting_notification
             if state['status'] in TERMINAL and not waiting_repair:
                 return {'job_id':job_id,'status':state['status'],'host_context':'READY','error':state.get('error')}
+            if state['status'] == 'WAITING_REVIEW' and auto_decide and not waiting_repair:
+                _auto_decide_for_dual_link(job_id, thread_id, state, current_plan)
+                continue
             if not waiting_repair:
                 action=(state.get('decision') or {}).get('action') if state['status']=='READY' else None
                 result=step(job_id, queue=queue)
@@ -722,6 +765,10 @@ def main():
     p.add_argument('--plan-sha256',required=True)
     p.add_argument('--check-only',action='store_true')
     p.add_argument('--codex-bin',type=Path,default=None)
+    p.add_argument('--auto-decide',action='store_true',default=None,
+                   help='Auto CONTINUE/COMPLETE on WAITING_REVIEW (default on; set AEGL_DUAL_LINK_AUTO_DECIDE=0 to disable)')
+    p.add_argument('--no-auto-decide',action='store_true',
+                   help='Require Cursor decide/ack between actions')
     p = sub.add_parser("decide")
     p.add_argument("--job-id", required=True)
     p.add_argument("--thread-id", required=True)
@@ -766,8 +813,10 @@ def main():
         elif args.command == "tick":
             result = tick()
         elif args.command == 'host-run':
+            auto=False if args.no_auto_decide else (True if args.auto_decide else None)
             result=host_run(args.job_id,args.thread_id,args.plan_sha256,check_only=args.check_only,
-                            codex_bin=str(args.codex_bin) if args.codex_bin else None)
+                            codex_bin=str(args.codex_bin) if args.codex_bin else None,
+                            auto_decide=auto)
         elif args.command == "check-task":
             actions.task_check(link.strict_json(args.task_plan.read_text()))
             result = {"status": "TASK_PREFLIGHT_PASS_NO_EXECUTION"}

@@ -39,17 +39,23 @@ def canonical_message() -> tuple[str, str]:
 
 class HarnessRecorder:
     def __init__(self):
-        self.fill_calls = []
+        self.clicks = []
         self.press = []
+        self.js_calls = 0
 
-    def fill_input(self, selector, text, clear_first=False, timeout=0.0):
-        self.fill_calls.append((selector, text, clear_first, timeout))
+    def click_at_xy(self, x, y):
+        self.clicks.append((x, y))
 
     def press_key(self, key, modifiers=0):
         self.press.append((key, modifiers))
 
     def js(self, expression):
-        return None
+        self.js_calls += 1
+        if self.js_calls == 1:
+            return {"x": 12.0, "y": 34.0}
+        if self.js_calls == 2:
+            return True
+        return True
 
 
 class ComposerInputTest(unittest.TestCase):
@@ -67,14 +73,22 @@ class ComposerInputTest(unittest.TestCase):
     def test_fill_input_uses_shift_enter_and_never_drops_newline(self):
         ops = object.__new__(adapter.RealOps)
         recorder = HarnessRecorder()
-        ops.h = {"fill_input": recorder.fill_input, "press_key": recorder.press_key, "js": recorder.js}
+        ops.h = {"click_at_xy": recorder.click_at_xy, "press_key": recorder.press_key}
+        ops.js = recorder.js
         ops.fill_input("sel", "line1\nline2")
-        self.assertEqual(recorder.fill_calls, [("sel", "", True, 3)])
+        self.assertEqual(recorder.clicks, [(12.0, 34.0)])
         self.assertNotIn(("\n", 0), recorder.press)
         self.assertNotIn(("Enter", 0), recorder.press)  # a bare Enter would submit
         self.assertEqual(recorder.press.count(("Enter", adapter.SHIFT_KEY)), 1)
         typed = "".join(key for key, _mods in recorder.press if len(key) == 1)
         self.assertEqual(typed, "line1line2")
+
+    def test_fill_input_requires_unique_visible_composer(self):
+        ops = object.__new__(adapter.RealOps)
+        ops.h = {"click_at_xy": lambda *a: None, "press_key": lambda *a: None}
+        ops.js = lambda expression: None
+        with self.assertRaisesRegex(adapter.AdapterError, "unique visible"):
+            ops.fill_input("sel", "x")
 
 
 class SendOps:

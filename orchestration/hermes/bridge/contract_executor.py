@@ -25,7 +25,9 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 from pathlib import Path
+from types import SimpleNamespace
 
 try:
     from protocol import GENESIS, sha256_file  # noqa: F401  (GENESIS re-exported for callers)
@@ -596,6 +598,66 @@ def _wrapper_markers(stderr: str, *, task_id, exit_code: int) -> dict:
     }
 
 
+def _run_live(argv, *, cwd: str, env: dict, timeout_s: float):
+    """Run argv with stdout/stderr teed live to this process (operator TTY).
+
+    Returns a CompletedProcess-like namespace with captured full streams so
+    callers can still persist ``stdout_tail`` / ``stderr_tail``.
+    """
+    out_chunks: list[str] = []
+    err_chunks: list[str] = []
+    proc = subprocess.Popen(
+        argv,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        cwd=cwd,
+        env=env,
+        shell=False,
+        bufsize=1,
+    )
+
+    def _pump(src, dest, chunks):
+        try:
+            for line in iter(src.readline, ""):
+                chunks.append(line)
+                try:
+                    dest.write(line)
+                    dest.flush()
+                except OSError:
+                    pass
+        finally:
+            try:
+                src.close()
+            except OSError:
+                pass
+
+    t_out = threading.Thread(target=_pump, args=(proc.stdout, sys.stdout, out_chunks), daemon=True)
+    t_err = threading.Thread(target=_pump, args=(proc.stderr, sys.stderr, err_chunks), daemon=True)
+    t_out.start()
+    t_err.start()
+    try:
+        rc = proc.wait(timeout=timeout_s)
+    except subprocess.TimeoutExpired as exc:
+        proc.kill()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            pass
+        t_out.join(timeout=2)
+        t_err.join(timeout=2)
+        raise subprocess.TimeoutExpired(
+            argv, timeout_s, output="".join(out_chunks), stderr="".join(err_chunks)
+        ) from exc
+    t_out.join(timeout=5)
+    t_err.join(timeout=5)
+    return SimpleNamespace(
+        returncode=rc,
+        stdout="".join(out_chunks),
+        stderr="".join(err_chunks),
+    )
+
+
 def execute(package: str, prompt_path: Path, max_runtime_s: int, *,
             project_root: Path = PROJECT_ROOT, runner=subprocess.run,
             base_env: dict | None = None, task_id=None,
@@ -606,6 +668,10 @@ def execute(package: str, prompt_path: Path, max_runtime_s: int, *,
 
     Sets HERMES_CONTRACT_PACKAGE to the validated package (the Contract Guard's own
     documented switch) and never disables the guard.
+
+    When ``runner`` is the real ``subprocess.run``, Hermes/wrapper output is
+    streamed live to the operator terminal (host-run foreground). Unit tests that
+    inject a fake ``runner`` keep the previous capture-only path.
     """
     env = dict(os.environ if base_env is None else base_env)
     env["HERMES_CONTRACT_PACKAGE"] = str(package)
@@ -636,16 +702,23 @@ def execute(package: str, prompt_path: Path, max_runtime_s: int, *,
             **_wrapper_markers("", task_id=task_id, exit_code=1),
         }
     runtime_s = max(1, int(max_runtime_s))
+    wait_s = runtime_s + WRAPPER_GRACE_S + WRAPPER_SLACK_S
     try:
-        proc = runner(
-            argv,
-            capture_output=True,
-            text=True,
-            timeout=runtime_s + WRAPPER_GRACE_S + WRAPPER_SLACK_S,
-            cwd=str(project_root),
-            env=env,
-            shell=False,
-        )
+        if runner is subprocess.run:
+            # Operator host-run: stream Hermes/wrapper output live to this TTY
+            # while still retaining tails for job state. Injected test runners keep
+            # the capture_output=True path below.
+            proc = _run_live(argv, cwd=str(project_root), env=env, timeout_s=wait_s)
+        else:
+            proc = runner(
+                argv,
+                capture_output=True,
+                text=True,
+                timeout=wait_s,
+                cwd=str(project_root),
+                env=env,
+                shell=False,
+            )
     except subprocess.TimeoutExpired as exc:
         return {
             "outcome": O_BLOCKED,
@@ -654,7 +727,7 @@ def execute(package: str, prompt_path: Path, max_runtime_s: int, *,
             "stdout_tail": (exc.stdout or "")[-LOG_TAIL_CHARS:] if isinstance(exc.stdout, str) else "",
             "stderr_tail": (
                 "controller wait exceeded after %ss; wrapper cleanup not confirmed"
-                % (runtime_s + WRAPPER_GRACE_S + WRAPPER_SLACK_S)
+                % wait_s
             ),
             **_wrapper_markers(
                 exc.stderr if isinstance(exc.stderr, str) else "",

@@ -134,7 +134,27 @@ def _contains_control_block(text):
     return any(marker in upper for marker in CONTROL_MARKERS)
 
 
-def _prompt_path(task, advisor_instruction=None):
+def _advisor_prompt_dir(task, svc):
+    """Writable sibling of registered scratch: <task-root>/advisor/.
+
+    Trusted contract packages are root-owned; scratch is aegl-ai-only. The
+    prepare root (`.../CAL-.../`) stays operator-writable, so advisor prompts
+    land there and ``run_registered_task`` allowlists ``advisor/advisor-prompt-*.md``.
+    """
+    registry = json.loads(Path(svc.ce.CONTROLLED_TASK_REGISTRY).read_text())
+    entry = registry.get(task["task_id"], {})
+    scratch = entry.get("scratch")
+    if not scratch:
+        raise link.LinkError("ADVISOR_SCRATCH_MISSING")
+    root = Path(scratch).resolve().parent
+    dest = root / "advisor"
+    dest.mkdir(parents=True, exist_ok=True)
+    # aegl-ai must traverse/read these; operator umask often leaves 0700/0600.
+    os.chmod(dest, 0o755)
+    return dest
+
+
+def _prompt_path(task, advisor_instruction=None, *, svc=None):
     package = Path(task["contract_package"])
     base = package / "EXECUTOR-PROMPT.md"
     if not base.is_file():
@@ -142,6 +162,8 @@ def _prompt_path(task, advisor_instruction=None):
     if not advisor_instruction:
         return base, None
     # Advisor text is prompt-only; never rewrite the trusted frozen package.
+    if svc is None:
+        raise link.LinkError("ADVISOR_PROMPT_REQUIRES_SERVICES")
     text = base.read_text(encoding="utf-8")
     appendix = (
         "\n\n## Advisor instruction (from Chrome ChatGPT; advisory only)\n"
@@ -150,17 +172,20 @@ def _prompt_path(task, advisor_instruction=None):
         + advisor_instruction.strip()
         + "\n"
     )
+    dest_dir = _advisor_prompt_dir(task, svc)
     tmp = tempfile.NamedTemporaryFile(
         prefix="advisor-prompt-", suffix=".md", delete=False,
-        dir=str(Path(os.environ.get("TMPDIR") or "/tmp")))
+        dir=str(dest_dir))
     tmp.write((text + appendix).encode("utf-8"))
     tmp.close()
-    return Path(tmp.name), Path(tmp.name)
+    path = Path(tmp.name)
+    os.chmod(path, 0o644)
+    return path, path
 
 
 def _local_execute(task, job_id, *, svc, advisor_instruction=None):
     local_authorize(task, svc)
-    prompt_path, ephemeral = _prompt_path(task, advisor_instruction)
+    prompt_path, ephemeral = _prompt_path(task, advisor_instruction, svc=svc)
     try:
         journal = getattr(svc.state, "journal_append", None)
         if callable(journal):
@@ -233,6 +258,35 @@ def _worktree_diff_summary(task, svc, limit=4000):
     return text[:limit]
 
 
+def _bind_project_control_url(task, *, svc=None):
+    """Select this task's ChatGPT advisor conversation (per-project, not global)."""
+    svc = svc or services()
+    root = Path.home() / ".local/share/aegl-dual-link"
+    helper = root / "project_control.py"
+    cwd = None
+    try:
+        registry = json.loads(Path(svc.ce.CONTROLLED_TASK_REGISTRY).read_text())
+        entry = registry.get(task["task_id"]) or {}
+        cwd = entry.get("worktree") or entry.get("project_root")
+    except (OSError, json.JSONDecodeError, TypeError, KeyError):
+        cwd = None
+    if helper.is_file():
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("aegl_project_control", helper)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        try:
+            url = mod.resolve_control_url(aegl_project=task.get("project"), cwd=cwd)
+        except Exception as exc:
+            raise link.LinkError("PROJECT_CONTROL_UNBOUND:" + str(exc)) from exc
+    else:
+        url = os.environ.get("HERMES_CHATGPT_CONTROL_URL") or ""
+        if not url:
+            raise link.LinkError("PROJECT_CONTROL_MAP_MISSING")
+    os.environ["HERMES_CHATGPT_CONTROL_URL"] = url
+    return url
+
+
 def chatgpt_advise(task, job_id, *, execution_result=None, svc=None):
     """Send a plain development report to Chrome ChatGPT; read advisory instructions.
 
@@ -240,6 +294,7 @@ def chatgpt_advise(task, job_id, *, execution_result=None, svc=None):
     """
     svc = svc or services()
     try:
+        control_url = _bind_project_control_url(task, svc=svc)
         configure_browser_env(svc.adapter)
         facts = {}
         if isinstance(execution_result, dict):
@@ -269,7 +324,8 @@ def chatgpt_advise(task, job_id, *, execution_result=None, svc=None):
         previous = svc.adapter.read_latest_assistant()["sha256"]
         journal = getattr(svc.state, "journal_append", None)
         if callable(journal):
-            journal({"event": "CHATGPT_ADVISE_SEND_ATTEMPTED", "task_id": task["task_id"], "job_id": job_id})
+            journal({"event": "CHATGPT_ADVISE_SEND_ATTEMPTED", "task_id": task["task_id"],
+                     "job_id": job_id, "control_url": control_url})
         sent = svc.adapter.send_once(report, job_id, exact=False)
         if sent.get("status") not in {"CONFIRMED_SENT", "ALREADY_PRESENT"}:
             raise link.LinkError("ADVISOR_SEND_UNCERTAIN_NO_RESEND")

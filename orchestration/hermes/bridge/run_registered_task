@@ -59,9 +59,32 @@ p=e.get("contract_package") if isinstance(e,dict) else None
 if not isinstance(p,str) or not p:
     raise SystemExit(1)
 print(p)' "$REG" "$TASK_ID")" || { printf 'BLOCKED: task not registered\n' >&2; exit 1; }
+SCRATCH="$("$PY" -c 'import json,sys
+try:
+    d=json.load(open(sys.argv[1], encoding="utf-8"))
+except Exception:
+    raise SystemExit(1)
+e=d.get(sys.argv[2])
+p=e.get("scratch") if isinstance(e,dict) else None
+if not isinstance(p,str) or not p:
+    raise SystemExit(1)
+print(p)' "$REG" "$TASK_ID")" || { printf 'BLOCKED: task scratch missing\n' >&2; exit 1; }
 REAL_CONTRACT="$(realpath -e "$CONTRACT")" || { printf 'BLOCKED: contract path missing\n' >&2; exit 1; }
 REAL_PROMPT="$(realpath -e "$PROMPT")" || { printf 'BLOCKED: prompt file missing\n' >&2; exit 1; }
-case "$REAL_PROMPT" in "$REAL_CONTRACT"/*) ;; *) printf 'BLOCKED: prompt outside contract\n' >&2; exit 1 ;; esac
+REAL_SCRATCH="$(realpath -e "$SCRATCH")" || { printf 'BLOCKED: scratch path missing\n' >&2; exit 1; }
+REAL_ADVISOR="$(realpath -m "$REAL_SCRATCH/../advisor")"
+PROMPT_OK=0
+case "$REAL_PROMPT" in "$REAL_CONTRACT"/*) PROMPT_OK=1 ;; esac
+if [ "$PROMPT_OK" -eq 0 ]; then
+  case "$REAL_PROMPT" in
+    "$REAL_ADVISOR"/advisor-prompt-*.md)
+      case "$(basename "$REAL_PROMPT")" in
+        advisor-prompt-*.md) PROMPT_OK=1 ;;
+      esac
+      ;;
+  esac
+fi
+[ "$PROMPT_OK" -eq 1 ] || { printf 'BLOCKED: prompt outside contract\n' >&2; exit 1; }
 
 for f in "$REAL_CONTRACT" "$REAL_CONTRACT/manifest.json" "$REAL_CONTRACT/implementation-contract.json" "$REAL_CONTRACT/project-context.json"; do
   [ -e "$f" ] || { printf 'BLOCKED: contract member missing: %s\n' "$f" >&2; exit 1; }
