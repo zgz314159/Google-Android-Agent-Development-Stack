@@ -145,6 +145,14 @@
 
 ## 8. 简短任务记录
 
+### 2026-11-22 dual-link continue: formal promote + CDP helper
+
+- **CAL-INTEGRATE-002** tip `484514f` FF into formal `OfflineTaskCalendar_WPF` main; host filter Word+VerticalSlice **19/19 PASS**.
+- Queue empty; A-ring idle. CDP dedicated profile requires ChatGPT login for advisor reinject.
+- Added `ensure-cdp-control.sh`; operator prints HINT on CONTROL_TAB_MISSING.
+- Windows still NOT_RUN. IAP dual-link already promoted earlier today (`2c1e2bb` formal AEGL/Stack).
+
+
 ### 2026-11-21 CAL-VS-CLOCK-001 与 Word 合并全绿
 
 - **业务结果**：`CAL-VS-CLOCK-001-AUTO` 状态 `COMPLETE`；`execute_contract`
