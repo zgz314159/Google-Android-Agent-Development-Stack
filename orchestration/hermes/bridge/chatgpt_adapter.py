@@ -36,9 +36,9 @@ import sys
 import time
 from pathlib import Path
 
-# Default pinned conversation (OfflineTaskCalendar / legacy). Prefer per-project
-# binding via HERMES_CHATGPT_CONTROL_URL or ~/.local/share/aegl-dual-link/project-control-map.json.
-_DEFAULT_CONTROL_URL = "https://chatgpt.com/c/6ac4d058-acb8-83e8-bf2c-8bb4b8aa2278"
+# No shared default conversation — dual-link must bind per project via
+# HERMES_CHATGPT_CONTROL_URL (set by arm / chatgpt_advise from project-control-map).
+_DEFAULT_CONTROL_URL = ""
 _CONTROL_URL_RE = re.compile(r"^https://chatgpt\.com/c/[A-Za-z0-9._-]{1,128}$")
 
 EXPECTED_CDP = "http://127.0.0.1:9333"
@@ -51,13 +51,16 @@ class AdapterError(RuntimeError):
 def _resolve_control_url(raw: str | None = None) -> str:
     """Resolve the active ChatGPT control conversation URL.
 
-    Order: explicit ``raw`` → ``HERMES_CHATGPT_CONTROL_URL`` → default pinned.
-    Invalid non-empty values raise (no silent fallback). Call sites that need
-    per-project binding must set the env (dual-link arm / chatgpt_advise) first.
+    Order: explicit ``raw`` → ``HERMES_CHATGPT_CONTROL_URL``.
+    Empty/missing raises (no calendar-default fallback — different projects must
+    not silently share one ChatGPT thread).
     """
     value = os.environ.get("HERMES_CHATGPT_CONTROL_URL") if raw is None else raw
     if value is None or value == "":
-        return _DEFAULT_CONTROL_URL
+        raise AdapterError(
+            "HERMES_CHATGPT_CONTROL_URL is required (per-project ChatGPT binding); "
+            "run dual-link-operator.sh bind-control / arm for this cwd"
+        )
     if not isinstance(value, str) or not _CONTROL_URL_RE.match(value):
         raise AdapterError(
             "HERMES_CHATGPT_CONTROL_URL must match "
@@ -71,8 +74,9 @@ def active_control_url() -> str:
     return _resolve_control_url()
 
 
-# Back-compat module attribute (import-time snapshot). Prefer active_control_url().
-CONTROL_URL = _resolve_control_url()
+# Back-compat module attribute. Prefer active_control_url() (re-resolves env).
+# Import must not require env; empty until arm/chatgpt_advise sets HERMES_CHATGPT_CONTROL_URL.
+CONTROL_URL = _DEFAULT_CONTROL_URL
 
 
 def _default_hermes_agent_dir() -> str:

@@ -36,8 +36,9 @@ class ResolveControlUrl(unittest.TestCase):
         else:
             os.environ.pop(ENV_VAR, None)
 
-    def test_unset_defaults_to_pinned(self):
-        self.assertEqual(adapter._resolve_control_url(), adapter._DEFAULT_CONTROL_URL)
+    def test_unset_raises_no_shared_default(self):
+        with self.assertRaises(adapter.AdapterError):
+            adapter._resolve_control_url()
 
     def test_valid_override(self):
         url = "https://chatgpt.com/c/11111111-2222-3333-4444-555555555555"
@@ -69,13 +70,36 @@ class ProjectMap(unittest.TestCase):
         with self.assertRaises(self.pc.ControlBindError):
             self.pc.resolve_control_url(cwd="/tmp/unbound-proj", allow_env=False)
 
-    def test_cwd_prefix_and_aegl(self):
+    def test_cwd_prefix_beats_aegl_project(self):
+        """Worktree cwd binding must win over shared OfflineTaskCalendar aegl id."""
+        cal = "https://chatgpt.com/c/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+        smoke = "https://chatgpt.com/c/ffffffff-eeee-dddd-cccc-bbbbbbbbbbbb"
+        root = Path(self.tmp.name)
+        (root / "rili").mkdir()
+        (root / "smoke").mkdir()
+        self.pc.bind_control(cwd=str(root / "rili"), url=cal, aegl_project="OfflineTaskCalendar_WPF")
+        self.pc.bind_control(cwd=str(root / "smoke"), url=smoke, aegl_project="DualLink_Advisor_Smoke")
+        self.assertEqual(
+            self.pc.resolve_control_url(
+                cwd=str(root / "smoke" / "project"),
+                aegl_project="OfflineTaskCalendar_WPF",
+                allow_env=False,
+            ),
+            smoke,
+        )
+        self.assertEqual(
+            self.pc.resolve_control_url(cwd=str(root / "rili"), allow_env=False),
+            cal,
+        )
+
+    def test_refuse_shared_url_across_projects(self):
         url = "https://chatgpt.com/c/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-        root = Path(self.tmp.name) / "proj"
-        root.mkdir()
-        self.pc.bind_control(cwd=str(root), url=url, aegl_project="DemoProj")
-        self.assertEqual(self.pc.resolve_control_url(cwd=str(root / "sub"), allow_env=False), url)
-        self.assertEqual(self.pc.resolve_control_url(aegl_project="DemoProj", allow_env=False), url)
+        root = Path(self.tmp.name)
+        (root / "a").mkdir()
+        (root / "b").mkdir()
+        self.pc.bind_control(cwd=str(root / "a"), url=url, aegl_project="ProjA")
+        with self.assertRaises(self.pc.ControlBindError):
+            self.pc.bind_control(cwd=str(root / "b"), url=url, aegl_project="ProjB")
 
 
 if __name__ == "__main__":
